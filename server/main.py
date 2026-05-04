@@ -54,9 +54,22 @@ async def estimate(
     STITCHES_PER_IN2 = 1800
     stitches = int(area_in2 * coverage * STITCHES_PER_IN2)
 
-    BASE_EUR, RATE_PER_1K, COLOR_FEE = 3.50, 1.00, 0.75
-    price = BASE_EUR + (stitches / 1000.0) * RATE_PER_1K + (k - 1) * COLOR_FEE
-    price = max(10.0, round(price, 2))
+    shirt_cost = 1.50
+    machine_amortization = 5.00
+    handling = 1.00
+    stitch_cost = (stitches / 1000.0) * 0.05
+    margin = 3.50
+
+    price = shirt_cost + machine_amortization + handling + stitch_cost + margin
+
+    # Cap pricing depending on placement size.
+    # Left chest stays cheaper, center front stays under the business target.
+    if width_mm <= 100:
+        price = min(price, 11.99)
+    else:
+        price = min(price, 14.99)
+
+    price = round(price, 2)
 
     return {
         "stitches": stitches,
