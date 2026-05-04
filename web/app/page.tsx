@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://stitchra-production.up.railway.app';
 
 type Estimate = {
   stitches: number;
