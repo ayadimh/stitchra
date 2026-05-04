@@ -9,10 +9,14 @@ import cv2
 
 app = FastAPI(title="Embroidery Estimator")
 
-# Allow your Next.js dev server to call this API (CORS)
+# Allow the deployed frontend and local dev server to call this API (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "https://stitchra.com",
+        "https://www.stitchra.com",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
