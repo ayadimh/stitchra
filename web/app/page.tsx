@@ -290,7 +290,7 @@ export default function Home() {
       </section>
 
       <section id="features" style={sectionStyle}>
-        <SectionHeader eyebrow="Features" title="Everything needed for fast custom embroidery" text="From visual preview to instant pricing, StitchLab gives customers confidence before ordering." />
+        <SectionHeader eyebrow="Features" title="Everything needed for fast custom embroidery" text="From visual preview to instant pricing, Stitchra gives customers confidence before ordering." />
         <div style={{ maxWidth: 1180, margin: '40px auto 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
           {features.map((feature) => (
             <div key={feature.title} style={featureCard}>
@@ -340,12 +340,12 @@ export default function Home() {
 
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '34px 24px', position: 'relative', zIndex: 1, background: 'rgba(0,0,0,0.18)' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', color: 'rgba(244,247,248,0.66)', fontSize: 14 }}>
-          <div><strong style={{ color: '#f4f7f8' }}>StitchLab</strong> · AI embroidery playground</div>
+          <div><strong style={{ color: '#f4f7f8' }}>Stitchra</strong> · AI embroidery platform</div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
             <a href="#how" style={footerLink}>How It Works</a>
             <a href="#pricing" style={footerLink}>Pricing</a>
             <a href="#features" style={footerLink}>Features</a>
-            <span>© 2026 StitchLab</span>
+            <span>© 2026 Stitchra</span>
           </div>
         </div>
       </footer>
@@ -358,8 +358,28 @@ function Header() {
     <header style={{ position: 'sticky', top: 0, zIndex: 20, backdropFilter: 'blur(18px)', background: 'rgba(7,9,8,0.72)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
       <nav style={{ maxWidth: 1240, margin: '0 auto', height: 82, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
         <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: '#f4f7f8' }}>
-          <div style={{ width: 42, height: 42, borderRadius: 13, background: 'linear-gradient(135deg, #00ff88, #00c4ff)', display: 'grid', placeItems: 'center', color: '#06100b', fontWeight: 950, boxShadow: '0 0 34px rgba(0,255,136,0.22)' }}>S</div>
-          <div style={{ fontWeight: 950, letterSpacing: '-0.03em', fontSize: 20 }}>StitchLab</div>
+<div
+  style={{
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    overflow: 'hidden',
+    background: '#050706',
+    border: '1px solid rgba(0,255,136,0.22)',
+    display: 'grid',
+    placeItems: 'center',
+    boxShadow: '0 0 34px rgba(0,255,136,0.22)',
+  }}
+>
+  <Image
+    src="/stitchra-app-icon-512.png"
+    alt="Stitchra logo"
+    width={54}
+    height={54}
+    priority
+    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+  />
+</div>          <div style={{ fontWeight: 950, letterSpacing: '-0.03em', fontSize: 20 }}>Stitchra</div>
         </a>
 
         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
