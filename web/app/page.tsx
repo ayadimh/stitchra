@@ -178,14 +178,17 @@ export default function Home() {
       : 'linear-gradient(120deg, #f7f9ff, #dfe6ff 55%, #ffffff)';
 
   return (
-    <main style={{ minHeight: '100vh', background: bg, color: '#f4f7f8', fontFamily: 'Inter, "SF Pro Display", system-ui, -apple-system, sans-serif', overflowX: 'hidden' }}>
+    <main style={{ minHeight: '100vh', background: bg, color: '#f4f7f8', fontFamily: 'Inter, "SF Pro Display", system-ui, -apple-system, sans-serif', overflowX: 'hidden', position: 'relative' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)', backgroundSize: '96px 96px', maskImage: 'radial-gradient(circle at 50% 20%, black, transparent 72%)' }} />
+      <div style={{ position: 'fixed', top: 90, left: -160, width: 460, height: 460, borderRadius: 999, background: 'rgba(0,255,136,0.16)', filter: 'blur(95px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', right: -180, top: 130, width: 560, height: 560, borderRadius: 999, background: 'rgba(0,196,255,0.12)', filter: 'blur(105px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', left: '42%', bottom: -260, width: 520, height: 520, borderRadius: 999, background: 'rgba(255,0,200,0.07)', filter: 'blur(120px)', pointerEvents: 'none' }} />
 
       <Header />
 
       <section id="hero" style={{ minHeight: 'calc(100vh - 82px)', display: 'grid', placeItems: 'center', padding: '72px 24px 54px', position: 'relative' }}>
         <div style={{ width: '100%', maxWidth: 1240, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 46, alignItems: 'center', position: 'relative', zIndex: 1 }}>
-          <div>
+          <div style={heroGlassCard}>
             <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center', padding: '8px 12px', borderRadius: 999, background: 'rgba(0,255,136,0.12)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.28)', fontSize: 13, fontWeight: 700, marginBottom: 18 }}>
               <span style={{ width: 7, height: 7, borderRadius: 999, background: '#00ff88', boxShadow: '0 0 16px #00ff88' }} />
               AI-powered embroidery platform
@@ -355,8 +358,8 @@ export default function Home() {
 
 function Header() {
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 20, backdropFilter: 'blur(18px)', background: 'rgba(7,9,8,0.72)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-      <nav style={{ maxWidth: 1240, margin: '0 auto', height: 82, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+    <header style={{ position: 'sticky', top: 0, zIndex: 20, backdropFilter: 'blur(26px)', WebkitBackdropFilter: 'blur(26px)', background: 'linear-gradient(180deg, rgba(7,9,8,0.70), rgba(7,9,8,0.40))', borderBottom: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 18px 60px rgba(0,0,0,0.28)' }}>
+      <nav style={{ maxWidth: 1240, margin: '0 auto', height: 86, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
         <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: '#f4f7f8' }}>
 <div
   style={{
@@ -471,7 +474,9 @@ const sectionStyle: React.CSSProperties = { padding: '94px 24px', position: 'rel
 
 const threeGrid: React.CSSProperties = { maxWidth: 1180, margin: '40px auto 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 22 };
 
-const glassCard: React.CSSProperties = { background: 'linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 26, padding: 24, backdropFilter: 'blur(16px)', boxShadow: '0 30px 80px rgba(0,0,0,0.26)' };
+const glassCard: React.CSSProperties = { background: 'linear-gradient(145deg, rgba(255,255,255,0.095), rgba(255,255,255,0.028))', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 28, padding: 24, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', boxShadow: '0 34px 95px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08)' };
+
+const heroGlassCard: React.CSSProperties = { ...glassCard, padding: 34, borderRadius: 34, background: 'linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.032))', boxShadow: '0 36px 120px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.10)' };
 
 const featureCard: React.CSSProperties = { ...glassCard, transition: 'transform 0.2s ease, border 0.2s ease' };
 
@@ -481,9 +486,9 @@ const navLink: React.CSSProperties = { color: 'rgba(244,247,248,0.74)', textDeco
 
 const footerLink: React.CSSProperties = { color: 'rgba(244,247,248,0.66)', textDecoration: 'none' };
 
-const primaryButton: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 22px', borderRadius: 13, background: '#00ff88', color: '#06100b', textDecoration: 'none', fontWeight: 950, cursor: 'pointer', boxShadow: '0 18px 45px rgba(0,255,136,0.22)' };
+const primaryButton: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 22px', borderRadius: 15, background: 'linear-gradient(135deg, #83ff9f, #00ff88)', color: '#06100b', textDecoration: 'none', fontWeight: 950, cursor: 'pointer', boxShadow: '0 18px 55px rgba(0,255,136,0.28)', border: '1px solid rgba(255,255,255,0.18)' };
 
-const secondaryButton: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 21px', borderRadius: 13, background: 'rgba(0,255,136,0.08)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.22)', textDecoration: 'none', fontWeight: 850, cursor: 'pointer' };
+const secondaryButton: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 21px', borderRadius: 15, background: 'rgba(255,255,255,0.06)', color: '#b8ffc9', border: '1px solid rgba(0,255,136,0.22)', textDecoration: 'none', fontWeight: 850, cursor: 'pointer', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' };
 
 const smallCta: React.CSSProperties = { ...primaryButton, padding: '11px 16px', fontSize: 13 };
 
