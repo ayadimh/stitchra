@@ -42,28 +42,28 @@ const placementPresets = {
 
 const features = [
   {
-    icon: '🤖',
-    title: 'AI logo generator',
-    text: 'Describe a logo idea and create a quick embroidery-style concept instantly.',
+    icon: '🧠',
+    title: 'Machine-aware AI',
+    text: 'Generate designs with embroidery production in mind: stitch count, thread colors, density and placement.',
   },
   {
     icon: '🧵',
-    title: 'Stitch estimator',
-    text: 'Upload artwork and get an instant stitch, coverage, color and price estimate.',
+    title: 'Stitch & time estimator',
+    text: 'Upload artwork and get stitch count, coverage, color count, production time and price guidance.',
   },
   {
     icon: '👕',
-    title: '3D tee preview',
-    text: 'Preview placement on a dark or light T-shirt before producing the design.',
+    title: 'Product preview',
+    text: 'Preview embroidery on T-shirts now, with hoodies, caps and patches planned for production workflows.',
   },
   {
-    icon: '⚡',
-    title: 'Fast quoting',
-    text: 'No endless messages. Customers understand cost and placement immediately.',
+    icon: '⚙️',
+    title: 'Production workflow',
+    text: 'Move from prompt to preview to machine-ready decision without endless manual quoting.',
   },
 ];
 
-const galleryItems = ['Monogram', 'Streetwear', 'Badge', 'Minimal'];
+const galleryItems = ['T-Shirt', 'Hoodie', 'Cap', 'Patch'];
 
 export default function Home() {
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
@@ -191,20 +191,20 @@ export default function Home() {
           <div style={heroGlassCard}>
             <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center', padding: '8px 12px', borderRadius: 999, background: 'rgba(0,255,136,0.12)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.28)', fontSize: 13, fontWeight: 700, marginBottom: 18 }}>
               <span style={{ width: 7, height: 7, borderRadius: 999, background: '#00ff88', boxShadow: '0 0 16px #00ff88' }} />
-              AI-powered embroidery platform
+              Machine-aware embroidery platform
             </div>
 
             <h1 style={{ fontSize: 'clamp(44px, 7vw, 82px)', lineHeight: 0.96, letterSpacing: '-0.07em', margin: '0 0 20px', fontWeight: 950 }}>
-              Design your own <span style={{ display: 'block', color: '#00ff88' }}>T-shirt with AI</span>
+              Turn AI designs into <span style={{ display: 'block', color: '#00ff88' }}>real embroidery</span>
             </h1>
 
             <p style={{ maxWidth: 580, fontSize: 18, lineHeight: 1.6, color: 'rgba(244,247,248,0.72)', marginBottom: 28 }}>
-              Generate logos, preview placement on a 3D-style tee and get embroidery pricing in seconds. Built for streetwear brands, creators and fast custom orders.
+              Generate embroidery-ready designs, preview them on T-shirts and estimate stitch count, machine time and production pricing before anything goes to the embroidery machine.
             </p>
 
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 28 }}>
-              <a href="#designer" style={primaryButton}>Start Designing →</a>
-              <a href="#how" style={secondaryButton}>See How It Works</a>
+              <a href="#designer" style={primaryButton}>Start Production Preview →</a>
+              <a href="#how" style={secondaryButton}>See Machine Workflow</a>
             </div>
 
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap', color: 'rgba(244,247,248,0.76)', fontSize: 13 }}>
@@ -213,7 +213,7 @@ export default function Home() {
                   <span key={letter} style={{ width: 28, height: 28, marginLeft: index ? -8 : 0, borderRadius: 999, display: 'grid', placeItems: 'center', color: '#07100b', fontWeight: 900, background: index === 0 ? '#00f0ff' : index === 1 ? '#ff3bd4' : '#d5ff4f', border: '2px solid #070908' }}>{letter}</span>
                 ))}
               </div>
-              <span>Join 10,000+ creators</span>
+              <span>Built for creators, streetwear brands and embroidery production</span>
               <span style={{ color: '#ffd84d' }}>★★★★★</span>
               <span>4.9/5 rating</span>
             </div>
@@ -229,14 +229,14 @@ export default function Home() {
       </section>
 
       <section id="designer" style={{ padding: '84px 24px', position: 'relative', zIndex: 1 }}>
-        <SectionHeader eyebrow="Live designer" title="Build your embroidery-ready tee" text="Upload a logo, generate an idea or switch placement and colors. The backend calculates a real quote from your image." />
+        <SectionHeader eyebrow="Live production preview" title="Prepare your design for the embroidery machine" text="Upload or generate a design, choose placement and get stitch count, coverage and pricing before production." />
 
         <div style={{ maxWidth: 1180, margin: '40px auto 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, alignItems: 'stretch' }}>
           <div style={glassCard}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, marginBottom: 20 }}>
-              <MiniStat label="Thread colors" value="Auto ≤ 6" />
-              <MiniStat label="Pricing" value="From €10" />
-              <MiniStat label="Coverage" value="Calculated" />
+              <MiniStat label="Machine type" value="Single head" />
+              <MiniStat label="Pricing" value="Target ≤ €15" />
+              <MiniStat label="Output" value="Stitch estimate" />
             </div>
 
             <div style={{ display: 'grid', gap: 14 }}>
@@ -254,16 +254,16 @@ export default function Home() {
               <label style={labelStyle}>Logo upload</label>
               <input type="file" accept="image/*" onChange={onFile} style={{ padding: '12px 0', color: '#f4f7f8' }} />
 
-              <label style={labelStyle}>Or describe a logo (AI)</label>
+              <label style={labelStyle}>Or describe an embroidery design (AI)</label>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <input type="text" value={logoPrompt} onChange={(e) => setLogoPrompt(e.target.value)} placeholder="e.g. minimal monogram in green" style={{ ...inputStyle, flex: '1 1 220px' }} />
+                <input type="text" value={logoPrompt} onChange={(e) => setLogoPrompt(e.target.value)} placeholder="e.g. bold streetwear chest logo, 3 colors" style={{ ...inputStyle, flex: '1 1 220px' }} />
                 <button type="button" onClick={generateLogo} disabled={isGeneratingLogo} style={{ ...primaryButton, border: 'none', minWidth: 160, opacity: isGeneratingLogo ? 0.65 : 1 }}>
-                  {isGeneratingLogo ? 'Generating…' : 'Generate logo'}
+                  {isGeneratingLogo ? 'Generating…' : 'Generate design'}
                 </button>
               </div>
 
               <button onClick={getQuote} disabled={isEstimating} style={{ ...primaryButton, border: 'none', width: '100%', opacity: isEstimating ? 0.65 : 1 }}>
-                {isEstimating ? 'Calculating…' : 'Estimate stitches & price'}
+                {isEstimating ? 'Calculating…' : 'Estimate machine cost'}
               </button>
 
               {(status || error) && <div style={{ fontSize: 13, color: error ? '#ffb4b4' : '#cde7ff' }}>{error || status}</div>}
@@ -284,16 +284,16 @@ export default function Home() {
       </section>
 
       <section id="how" style={sectionStyle}>
-        <SectionHeader eyebrow="Simple process" title="How It Works" text="Design your custom T-shirt in 3 simple steps. No design skills required." />
+        <SectionHeader eyebrow="Machine workflow" title="From AI idea to embroidery production" text="Stitchra is designed around the real workflow of a commercial single-head embroidery machine." />
         <div style={threeGrid}>
-          <StepCard number="01" icon="👕" title="Choose Your Shirt" text="Select your T-shirt color, size and placement. Start with a clean black or white canvas." />
-          <StepCard number="02" icon="🪄" title="Generate AI Logo" text="Describe your idea in plain English. Create a first logo concept or upload your own design." />
-          <StepCard number="03" icon="📦" title="Preview & Order" text="See the logo on the tee and get instant pricing based on stitches, colors and coverage." />
+          <StepCard number="01" icon="🪄" title="Generate Design" text="Create or upload artwork for T-shirts, hoodies, caps or patches." />
+          <StepCard number="02" icon="⚙️" title="Validate for Machine" text="Estimate stitch count, colors, coverage and production complexity before sewing." />
+          <StepCard number="03" icon="📦" title="Produce & Ship" text="Use the estimate to prepare a real embroidery order with shipping added separately." />
         </div>
       </section>
 
       <section id="features" style={sectionStyle}>
-        <SectionHeader eyebrow="Features" title="Everything needed for fast custom embroidery" text="From visual preview to instant pricing, Stitchra gives customers confidence before ordering." />
+        <SectionHeader eyebrow="Production features" title="Built around real embroidery machine limits" text="The goal is not only to create nice designs, but to understand if they can actually be produced on a commercial embroidery machine." />
         <div style={{ maxWidth: 1180, margin: '40px auto 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
           {features.map((feature) => (
             <div key={feature.title} style={featureCard}>
@@ -306,14 +306,14 @@ export default function Home() {
       </section>
 
       <section id="gallery" style={sectionStyle}>
-        <SectionHeader eyebrow="Gallery" title="Made for modern creators" text="A clean visual direction for brand badges, small chest logos, statement fronts and minimal streetwear." />
+        <SectionHeader eyebrow="Product types" title="One workflow for multiple embroidery products" text="Start with T-shirts, then expand the same machine-aware logic to hoodies, caps, patches and tote bags." />
         <div style={{ maxWidth: 1180, margin: '40px auto 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
           {galleryItems.map((item, index) => (
             <div key={item} style={{ ...glassCard, minHeight: 220, display: 'grid', alignContent: 'space-between' }}>
               <div style={{ width: 72, height: 72, borderRadius: 22, background: index % 2 ? 'rgba(0,196,255,0.13)' : 'rgba(0,255,136,0.13)', border: '1px solid rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center', fontSize: 28 }}>✦</div>
               <div>
                 <h3 style={{ margin: '22px 0 8px', fontSize: 22 }}>{item}</h3>
-                <p style={{ margin: 0, color: 'rgba(244,247,248,0.58)' }}>Logo-ready mockup style for fast embroidery quotes.</p>
+                <p style={{ margin: 0, color: 'rgba(244,247,248,0.58)' }}>Machine-aware preview and pricing logic for this product type.</p>
               </div>
             </div>
           ))}
@@ -321,29 +321,29 @@ export default function Home() {
       </section>
 
       <section id="pricing" style={sectionStyle}>
-        <SectionHeader eyebrow="Pricing" title="Transparent estimate before production" text="Start with a base cost, then calculate by stitch count and colors. Your current backend already does this automatically." />
+        <SectionHeader eyebrow="Pricing model" title="Cost based on garment, machine time and production" text="Pricing should reflect blank apparel, stitch count, machine wear, handling, margin and shipping separately." />
         <div style={{ maxWidth: 860, margin: '40px auto 0', ...glassCard }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-            <PriceBlock label="Base" value="€3.50" />
-            <PriceBlock label="Per 1k stitches" value="€1.00" />
-            <PriceBlock label="Color fee" value="€0.75" />
-            <PriceBlock label="Minimum" value="€10" highlight />
+            <PriceBlock label="Blank shirt" value="~€1.50" />
+            <PriceBlock label="Machine wear" value="€5.00" />
+            <PriceBlock label="Thread & handling" value="Variable" />
+            <PriceBlock label="Target price" value="≤ €15" highlight />
           </div>
-          <a href="#designer" style={{ ...primaryButton, display: 'block', textAlign: 'center', marginTop: 20 }}>Try the estimator →</a>
+          <a href="#designer" style={{ ...primaryButton, display: 'block', textAlign: 'center', marginTop: 20 }}>Try machine estimate →</a>
         </div>
       </section>
 
       <section style={{ padding: '92px 24px 120px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 940, margin: '0 auto', textAlign: 'center', padding: 38, borderRadius: 32, background: 'linear-gradient(135deg, rgba(0,255,136,0.14), rgba(0,196,255,0.08))', border: '1px solid rgba(0,255,136,0.18)', boxShadow: '0 34px 100px rgba(0,0,0,0.34)' }}>
-          <h2 style={{ fontSize: 'clamp(32px, 5vw, 62px)', lineHeight: 1.02, margin: '0 0 16px', letterSpacing: '-0.05em' }}>Ready to create your first custom tee?</h2>
-          <p style={{ color: 'rgba(244,247,248,0.72)', fontSize: 17, marginBottom: 24 }}>Upload a logo and get an instant embroidery quote now.</p>
+          <h2 style={{ fontSize: 'clamp(32px, 5vw, 62px)', lineHeight: 1.02, margin: '0 0 16px', letterSpacing: '-0.05em' }}>Ready to prepare your first embroidery order?</h2>
+          <p style={{ color: 'rgba(244,247,248,0.72)', fontSize: 17, marginBottom: 24 }}>Upload a design and see if it fits the machine-aware production workflow.</p>
           <a href="#designer" style={primaryButton}>Start Creating Now →</a>
         </div>
       </section>
 
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '34px 24px', position: 'relative', zIndex: 1, background: 'rgba(0,0,0,0.18)' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', color: 'rgba(244,247,248,0.66)', fontSize: 14 }}>
-          <div><strong style={{ color: '#f4f7f8' }}>Stitchra</strong> · AI embroidery platform</div>
+          <div><strong style={{ color: '#f4f7f8' }}>Stitchra</strong> · machine-aware embroidery platform</div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
             <a href="#how" style={footerLink}>How It Works</a>
             <a href="#pricing" style={footerLink}>Pricing</a>
