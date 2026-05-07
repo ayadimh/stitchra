@@ -821,4 +821,387 @@ function HoverCard({
         e.currentTarget.style.transform =
           'translateY(0px) scale(1)';
 
-        e.currentTarget.style.boxShadow
+        e.currentTarget.style.boxShadow =
+          style?.boxShadow ?? '';
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function BackgroundFX() {
+  return (
+    <>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+          backgroundSize: '72px 72px',
+          maskImage:
+            'radial-gradient(circle at 50% 20%, black, transparent 68%)',
+        }}
+      />
+      <div
+        style={{
+          position: 'fixed',
+          top: 100,
+          left: -120,
+          width: 440,
+          height: 440,
+          borderRadius: 999,
+          background: 'rgba(0,255,136,0.14)',
+          filter: 'blur(90px)',
+          pointerEvents: 'none',
+        }}
+      />
+    </>
+  );
+}
+
+function Pill({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 14px',
+        borderRadius: 100,
+        background: 'rgba(0,255,136,0.10)',
+        border: '1px solid rgba(0,255,136,0.28)',
+        fontSize: 12,
+        fontWeight: 600,
+        letterSpacing: '0.06em',
+        color: '#00ff88',
+        marginBottom: 16,
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 99,
+          background: '#00ff88',
+          display: 'inline-block',
+        }}
+      />
+      {text}
+    </div>
+  );
+}
+
+function GlowButton({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '13px 28px',
+        borderRadius: 12,
+        background:
+          'linear-gradient(135deg, #00ff88, #00c4ff)',
+        border: 'none',
+        color: '#050706',
+        fontWeight: 800,
+        fontSize: 14,
+        cursor: 'pointer',
+        letterSpacing: '0.02em',
+        transition: 'all 0.2s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform =
+          'translateY(-2px)';
+        e.currentTarget.style.boxShadow =
+          '0 12px 40px rgba(0,255,136,0.38)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform =
+          'translateY(0)';
+        e.currentTarget.style.boxShadow =
+          'none';
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SecondaryButton({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '13px 28px',
+        borderRadius: 12,
+        background: 'transparent',
+        border:
+          '1px solid rgba(255,255,255,0.20)',
+        color: 'rgba(255,255,255,0.82)',
+        fontWeight: 700,
+        fontSize: 14,
+        cursor: 'pointer',
+        letterSpacing: '0.02em',
+        transition: 'all 0.2s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor =
+          'rgba(0,255,136,0.50)';
+        e.currentTarget.style.color =
+          '#00ff88';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor =
+          'rgba(255,255,255,0.20)';
+        e.currentTarget.style.color =
+          'rgba(255,255,255,0.82)';
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function NavLink({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href="#"
+      style={{
+        color: 'rgba(255,255,255,0.68)',
+        textDecoration: 'none',
+        fontSize: 14,
+        fontWeight: 500,
+        transition: 'color 0.2s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color =
+          '#00ff88';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color =
+          'rgba(255,255,255,0.68)';
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function InteractiveToggle({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '10px 20px',
+        borderRadius: 10,
+        border: active
+          ? '1px solid rgba(0,255,136,0.55)'
+          : '1px solid rgba(255,255,255,0.12)',
+        background: active
+          ? 'rgba(0,255,136,0.12)'
+          : 'rgba(255,255,255,0.05)',
+        color: active
+          ? '#00ff88'
+          : 'rgba(255,255,255,0.68)',
+        fontWeight: active ? 700 : 500,
+        fontSize: 13,
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        background: 'rgba(255,255,255,0.05)',
+        border:
+          '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 12,
+        padding: '12px 14px',
+        textAlign: 'center',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 15,
+          fontWeight: 800,
+          color: '#00ff88',
+          marginBottom: 3,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.10em',
+          color: 'rgba(255,255,255,0.48)',
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div
+      style={{
+        background: 'rgba(0,255,136,0.06)',
+        border:
+          '1px solid rgba(0,255,136,0.18)',
+        borderRadius: 12,
+        padding: '12px 14px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 18,
+          fontWeight: 800,
+          color: '#00ff88',
+          marginBottom: 3,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          letterSpacing: '0.08em',
+          color: 'rgba(255,255,255,0.52)',
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+const heroCard: CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 28,
+  padding: '44px 40px',
+  backdropFilter: 'blur(20px)',
+  boxShadow: '0 24px 80px rgba(0,0,0,0.36)',
+};
+
+const glassCard: CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 24,
+  padding: '28px',
+  backdropFilter: 'blur(20px)',
+  boxShadow: '0 16px 60px rgba(0,0,0,0.28)',
+};
+
+const heroTitle: CSSProperties = {
+  fontSize: 'clamp(30px, 4vw, 56px)',
+  fontWeight: 1000,
+  lineHeight: 1.12,
+  letterSpacing: '-0.02em',
+  margin: '16px 0 18px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+};
+
+const greenText: CSSProperties = {
+  color: '#00ff88',
+};
+
+const heroText: CSSProperties = {
+  fontSize: 16,
+  lineHeight: 1.7,
+  color: 'rgba(244,247,248,0.72)',
+  marginBottom: 28,
+  maxWidth: 480,
+};
+
+const brandMark: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  background:
+    'linear-gradient(135deg, #00ff88, #00c4ff)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 1000,
+  fontSize: 22,
+  color: '#050706',
+};
+
+const label: CSSProperties = {
+  fontSize: 12,
+  letterSpacing: '0.10em',
+  color: 'rgba(255,255,255,0.5)',
+  textTransform: 'uppercase',
+  marginBottom: 6,
+  display: 'block',
+};
+
+const input: CSSProperties = {
+  width: '100%',
+  padding: '11px 14px',
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.07)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  color: '#f4f7f8',
+  fontSize: 14,
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
+const metricGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, 1fr)',
+  gap: 10,
+  marginTop: 8,
+};
