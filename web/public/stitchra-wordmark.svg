@@ -1,0 +1,11 @@
+<svg width="2200" height="560" viewBox="0 0 2200 560" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="text" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#FFFFFF"/>
+<stop offset=".55" stop-color="#BCFFCC"/>
+<stop offset="1" stop-color="#83FF9F"/>
+</linearGradient>
+</defs>
+<text x="40" y="310" font-family="Inter, Arial, sans-serif" font-size="245" font-weight="900" letter-spacing="-16" fill="url(#text)">Stitchra</text>
+<text x="54" y="415" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="700" letter-spacing="12" fill="#BCFFCC" opacity=".72">AI EMBROIDERY PLATFORM</text>
+</svg>
