@@ -517,6 +517,10 @@ export default function Home() {
               z-index: 2;
             }
 
+            .hero-placement-box.has-logo {
+              background: transparent;
+            }
+
             .hero-placement-box::before {
               content: "";
               position: absolute;
@@ -525,6 +529,12 @@ export default function Home() {
               background-size: 16px 16px;
               animation: heroAtelierThread 8s linear infinite;
               opacity: 0.22;
+              pointer-events: none;
+              z-index: 0;
+            }
+
+            .hero-placement-box.has-logo::before {
+              opacity: 0.10;
             }
 
             .hero-status-pill,
@@ -897,7 +907,7 @@ export default function Home() {
                   />
 
                   <div
-                    className="hero-placement-box"
+                    className={`hero-placement-box${preview ? ' has-logo' : ''}`}
                     style={{
                       left:
                         preset.label === 'Center front'
@@ -918,24 +928,79 @@ export default function Home() {
                     }}
                   >
                     {preview ? (
-                      <Image
-                        src={preview}
-                        alt="Logo preview"
-                        fill
-                        unoptimized
+                      <div
                         style={{
-                          objectFit: 'contain',
-                          mixBlendMode:
-                            teeColor === 'white'
-                              ? 'multiply'
-                              : 'screen',
-                          padding: 8,
-                          filter:
-                            teeColor === 'white'
-                              ? 'drop-shadow(0 0 8px rgba(0,0,0,0.18))'
-                              : 'drop-shadow(0 0 14px rgba(185,255,204,0.42))',
+                          position: 'absolute',
+                          inset: 4,
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          isolation: 'isolate',
+                          background: 'transparent',
+                          WebkitMaskImage:
+                            'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
+                          maskImage:
+                            'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
+                          zIndex: 1,
                         }}
-                      />
+                      >
+                        <Image
+                          src={preview}
+                          alt="Logo preview"
+                          fill
+                          unoptimized
+                          style={{
+                            objectFit: 'contain',
+                            mixBlendMode:
+                              teeColor === 'white'
+                                ? 'multiply'
+                                : 'screen',
+                            opacity:
+                              teeColor === 'white'
+                                ? 0.9
+                                : 0.86,
+                            padding: 6,
+                            filter:
+                              teeColor === 'white'
+                                ? 'contrast(1.18) saturate(1.08) brightness(1.03) drop-shadow(0 1px 3px rgba(0,0,0,0.24))'
+                                : 'contrast(1.65) saturate(1.25) brightness(0.82) drop-shadow(0 0 13px rgba(185,255,204,0.48))',
+                            background: 'transparent',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage:
+                              'repeating-linear-gradient(90deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, rgba(0,0,0,0.14) 0 1px, transparent 1px 6px)',
+                            mixBlendMode:
+                              teeColor === 'white'
+                                ? 'multiply'
+                                : 'screen',
+                            opacity:
+                              teeColor === 'white'
+                                ? 0.18
+                                : 0.16,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage:
+                              'repeating-linear-gradient(-18deg, rgba(185,255,204,0.16) 0 1px, transparent 1px 7px)',
+                            mixBlendMode:
+                              teeColor === 'white'
+                                ? 'multiply'
+                                : 'screen',
+                            opacity:
+                              teeColor === 'white'
+                                ? 0.14
+                                : 0.22,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      </div>
                     ) : (
                       <span
                         style={{
@@ -1882,8 +1947,9 @@ function MannequinPreview({
                 overflow: 'hidden',
                 boxShadow:
                   '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)',
-                background:
-                  'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
+                background: preview
+                  ? 'transparent'
+                  : 'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
                 animation:
                   'stitchraGlow 3.2s ease-in-out infinite',
               }}
@@ -1895,27 +1961,79 @@ function MannequinPreview({
                   backgroundImage:
                     'linear-gradient(45deg, rgba(124,240,212,0.18) 25%, transparent 25%, transparent 50%, rgba(124,240,212,0.18) 50%, rgba(124,240,212,0.18) 75%, transparent 75%, transparent)',
                   backgroundSize: '18px 18px',
-                  opacity: isWhite ? 0.24 : 0.34,
+                  opacity: preview
+                    ? isWhite
+                      ? 0.1
+                      : 0.12
+                    : isWhite
+                      ? 0.24
+                      : 0.34,
                   animation:
                     'stitchraThread 7s linear infinite',
+                  pointerEvents: 'none',
+                  zIndex: 0,
                 }}
               />
 
               {preview ? (
-                <Image
-                  src={preview}
-                  alt="logo"
-                  fill
-                  unoptimized
+                <div
                   style={{
-                    objectFit: 'contain',
-                    mixBlendMode: logoBlend,
-                    padding: 8,
-                    filter: isWhite
-                      ? 'drop-shadow(0 0 8px rgba(0,0,0,0.18))'
-                      : 'drop-shadow(0 0 16px rgba(124,240,212,0.55))',
+                    position: 'absolute',
+                    inset: 4,
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                    isolation: 'isolate',
+                    background: 'transparent',
+                    WebkitMaskImage:
+                      'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
+                    maskImage:
+                      'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
+                    zIndex: 1,
                   }}
-                />
+                >
+                  <Image
+                    src={preview}
+                    alt="logo"
+                    fill
+                    unoptimized
+                    style={{
+                      objectFit: 'contain',
+                      mixBlendMode: logoBlend,
+                      opacity: isWhite ? 0.9 : 0.86,
+                      padding: 6,
+                      filter: isWhite
+                        ? 'contrast(1.18) saturate(1.08) brightness(1.03) drop-shadow(0 1px 3px rgba(0,0,0,0.24))'
+                        : 'contrast(1.65) saturate(1.25) brightness(0.82) drop-shadow(0 0 14px rgba(124,240,212,0.50))',
+                      background: 'transparent',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundImage:
+                        'repeating-linear-gradient(90deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, rgba(0,0,0,0.14) 0 1px, transparent 1px 6px)',
+                      mixBlendMode: isWhite
+                        ? 'multiply'
+                        : 'screen',
+                      opacity: isWhite ? 0.18 : 0.16,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundImage:
+                        'repeating-linear-gradient(-18deg, rgba(124,240,212,0.16) 0 1px, transparent 1px 7px)',
+                      mixBlendMode: isWhite
+                        ? 'multiply'
+                        : 'screen',
+                      opacity: isWhite ? 0.14 : 0.22,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </div>
               ) : (
                 <span
                   style={{
