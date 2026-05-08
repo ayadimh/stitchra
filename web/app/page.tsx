@@ -275,7 +275,7 @@ export default function Home() {
         id="hero"
         style={{
           minHeight: '100vh',
-          padding: '128px 24px 92px',
+          padding: '132px 24px 96px',
           position: 'relative',
           zIndex: 1,
         }}
@@ -332,19 +332,20 @@ export default function Home() {
               max-width: 1320px;
               margin: 0 auto;
               display: grid;
-              grid-template-columns: minmax(0, 0.94fr) minmax(420px, 1.06fr);
-              gap: 48px;
+              grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
+              gap: 56px;
               align-items: center;
             }
 
             .hero-copy-panel {
               position: relative;
-              padding: clamp(32px, 4vw, 54px);
+              padding: clamp(30px, 4vw, 52px);
               border-radius: 30px;
               border: 1px solid rgba(255,255,255,0.10);
               background:
-                linear-gradient(145deg, rgba(17,18,18,0.88), rgba(6,7,7,0.94) 58%, rgba(18,20,18,0.82)),
-                radial-gradient(circle at 18% 14%, rgba(214,255,224,0.10), transparent 30%);
+                radial-gradient(circle at 16% 18%, rgba(0,255,136,0.14), transparent 32%),
+                radial-gradient(circle at 86% 86%, rgba(0,200,255,0.10), transparent 34%),
+                linear-gradient(145deg, rgba(17,19,20,0.72), rgba(6,7,7,0.90) 58%, rgba(14,16,18,0.72));
               box-shadow:
                 0 34px 110px rgba(0,0,0,0.48),
                 inset 0 1px 0 rgba(255,255,255,0.08);
@@ -358,7 +359,7 @@ export default function Home() {
               border-radius: inherit;
               pointer-events: none;
               background:
-                linear-gradient(120deg, rgba(255,255,255,0.12), transparent 24%, transparent 68%, rgba(177,255,202,0.08));
+                linear-gradient(120deg, rgba(255,255,255,0.14), transparent 24%, transparent 68%, rgba(0,200,255,0.10));
               opacity: 0.65;
             }
 
@@ -376,7 +377,7 @@ export default function Home() {
               border: 1px solid rgba(213,255,223,0.22);
               border-radius: 999px;
               background: rgba(255,255,255,0.045);
-              color: rgba(232,255,238,0.78);
+              color: rgba(214,255,229,0.88);
               font-size: 11px;
               font-weight: 750;
               letter-spacing: 0.14em;
@@ -394,17 +395,20 @@ export default function Home() {
             .hero-title {
               max-width: 720px;
               margin: 0 0 24px;
-              font-size: clamp(48px, 6.7vw, 88px);
+              font-size: clamp(54px, 7.2vw, 104px);
               line-height: 0.96;
               letter-spacing: -0.025em;
-              font-weight: 780;
+              font-weight: 920;
               color: #f6f3eb;
             }
 
             .hero-title-accent {
               display: block;
-              color: #b9ffcc;
-              text-shadow: 0 0 28px rgba(185,255,204,0.20);
+              color: transparent;
+              background: linear-gradient(90deg, #00ff88, #00d7ff 58%, #d36bff);
+              -webkit-background-clip: text;
+              background-clip: text;
+              text-shadow: 0 0 34px rgba(0,255,136,0.20);
             }
 
             .hero-subcopy {
@@ -459,7 +463,7 @@ export default function Home() {
               --hero-light-x: 46%;
               --hero-light-y: 18%;
               position: relative;
-              min-height: 672px;
+              min-height: 692px;
               overflow: visible;
               border: 1px solid rgba(255,255,255,0.11);
               border-radius: 36px;
@@ -517,7 +521,7 @@ export default function Home() {
 
             .hero-machine-frame {
               position: absolute;
-              inset: 76px 42px 122px;
+              inset: 76px 42px 128px;
               overflow: hidden;
               border-radius: 30px;
               border: 1px solid rgba(255,255,255,0.12);
@@ -545,7 +549,7 @@ export default function Home() {
                 url('/stitchra-machine-hero.jpg'),
                 linear-gradient(145deg, #f7f8f2 0%, #d7dad5 48%, #626a70 100%);
               background-size: cover;
-              background-position: center;
+              background-position: center 42%;
               box-shadow:
                 inset 0 0 0 1px rgba(255,255,255,0.08),
                 inset 0 -80px 120px rgba(0,0,0,0.70);
@@ -580,7 +584,8 @@ export default function Home() {
               inset: 18px;
               border-radius: 24px;
               overflow: hidden;
-              opacity: 0.62;
+              display: none;
+              opacity: 0;
               pointer-events: none;
             }
 
@@ -706,7 +711,7 @@ export default function Home() {
               left: 50%;
               bottom: 32px;
               transform: translateX(-50%);
-              min-width: 280px;
+              min-width: 292px;
               display: flex;
               align-items: center;
               gap: 13px;
@@ -1001,18 +1006,20 @@ export default function Home() {
           <div className="hero-copy-panel">
             <div className="hero-kicker">
               <span className="hero-kicker-dot" />
-              AI EMBROIDERY ATELIER
+              AI EMBROIDERY STUDIO
             </div>
 
             <h1 className="hero-title">
-              Design. Preview.
+              Design.
+              <br />
+              Preview.
               <span className="hero-title-accent">
-                stitch it right.
+                Stitch.
               </span>
             </h1>
 
             <p className="hero-subcopy">
-              Turn a logo idea into an embroidery-ready concept, review it in a production-style studio preview, and quote the job before the first sample is made.
+              Create custom embroidered T-shirts with AI. Upload your logo, preview it on a shirt, and get a clear price before production.
             </p>
 
             <div className="hero-actions">
@@ -1025,11 +1032,11 @@ export default function Home() {
               </a>
 
               <a
-                href="#how"
+                href="#designer"
                 className="lux-button"
                 style={secondaryButton}
               >
-                How It Works
+                See 3D Preview
               </a>
             </div>
 
@@ -1048,7 +1055,7 @@ export default function Home() {
                   Artwork
                 </div>
                 <div className="hero-proof-value">
-                  {preview ? 'Live preview' : 'AI or upload'}
+                  {preview ? 'Logo ready' : 'AI or upload'}
                 </div>
               </div>
 
@@ -1057,7 +1064,7 @@ export default function Home() {
                   Output
                 </div>
                 <div className="hero-proof-value">
-                  Instant quote
+                  Clear price
                 </div>
               </div>
             </div>
@@ -1156,7 +1163,7 @@ export default function Home() {
                     marginBottom: 2,
                   }}
                 >
-                  Logo generated
+                  AI Generated
                 </div>
                 <div
                   style={{
@@ -1164,7 +1171,7 @@ export default function Home() {
                     fontSize: 12,
                   }}
                 >
-                  Embroidery-ready preview
+                  Logo ready for stitching
                 </div>
               </div>
             </div>
@@ -1188,7 +1195,7 @@ export default function Home() {
                       fontWeight: 860,
                     }}
                   >
-                    Chest placement
+                  Chest Placement
                   </div>
                   <div
                     style={{
@@ -1197,7 +1204,7 @@ export default function Home() {
                       marginTop: 3,
                     }}
                   >
-                    {preset.size} · live stitch estimate
+                    {preset.size} · live preview
                   </div>
                 </div>
               </div>
@@ -1205,9 +1212,9 @@ export default function Home() {
 
             <div className="hero-spec-grid">
               {[
-                ['AI artwork', preview ? 'Ready' : 'Prompt or upload'],
-                ['Preview', 'Machine studio'],
-                ['Quote', 'Instant pricing'],
+                ['Ready to Stitch', preview ? 'Logo loaded' : 'AI artwork'],
+                ['Instant Quote', estimate ? `€${estimate.price_eur}` : 'From €10'],
+                ['Stitches', estimate ? estimate.stitches.toLocaleString() : '12,450'],
               ].map(([labelText, value]) => (
                 <div
                   key={labelText}
@@ -1275,7 +1282,7 @@ export default function Home() {
               }}
             >
               <label style={label}>
-                Placement
+                Choose placement
               </label>
 
               <select
@@ -1300,7 +1307,7 @@ export default function Home() {
               </select>
 
               <label style={label}>
-                T-shirt color
+                Choose T-shirt color
               </label>
 
               <div
@@ -1382,7 +1389,7 @@ export default function Home() {
               />
 
               <label style={label}>
-                Create a logo with AI
+                Create with AI
               </label>
 
               <div
@@ -1399,7 +1406,7 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  placeholder="simple green logo for my brand"
+                  placeholder="minimal green badge for a small brand"
                   style={{
                     ...input,
                     flex: 1,
@@ -1436,7 +1443,7 @@ export default function Home() {
                   ? 'Preparing logo...'
                   : isEstimating
                     ? 'Calculating...'
-                    : 'Get my price'}
+                    : 'Get instant price'}
               </button>
 
               {(status || error) && (
@@ -1555,120 +1562,122 @@ export default function Home() {
       <section id="how" style={sectionStyle}>
         <SectionHeader
           eyebrow="Simple process"
-          title="How It Works"
-          text="Design your custom T-shirt in 3 simple steps. No design skills required."
+          title="From idea to stitched tee"
+          text="Four clear steps. No design skills needed. Good for creators, students and small brands."
         />
 
-        <div style={threeGrid}>
-          <StepCard
-            number="01"
-            icon="TEE"
-            title="Choose Your Shirt"
-            text="Select your T-shirt color, size and placement. Start with a clean black or white canvas."
-          />
-
-          <StepCard
-            number="02"
-            icon="AI"
-            title="Generate AI Logo"
-            text="Describe your idea in plain English. Create a first logo concept or upload your own design."
-          />
-
-          <StepCard
-            number="03"
-            icon="€"
-            title="Preview & Order"
-            text="See the logo on the tee and get instant pricing based on stitches, colors and coverage."
-          />
+        <div style={fourGrid}>
+          {processSteps.map((step) => (
+            <StepCard
+              key={step.number}
+              number={step.number}
+              icon={step.icon}
+              title={step.title}
+              text={step.text}
+              accent={step.accent}
+            />
+          ))}
         </div>
       </section>
 
       <section id="features" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Features"
-          title="Everything needed for fast custom embroidery"
-          text="From visual preview to instant pricing, Stitchra gives customers confidence before ordering."
+          eyebrow="Powerful features"
+          title="Everything you need to sell custom embroidery"
+          text="Create, preview and price custom T-shirts before production. Clear enough for customers, fast enough for your shop."
         />
 
         <div style={fourGrid}>
           {features.map((feature) => (
-            <div
+            <FeatureCard
               key={feature.title}
-              className="glow-card"
-              onPointerMove={setGlowPosition}
-              onPointerLeave={resetGlowPosition}
-              style={featureCard}
-            >
-              <div style={iconBox}>{feature.icon}</div>
-
-              <h3 style={cardTitle}>
-                {feature.title}
-              </h3>
-
-              <p style={cardText}>
-                {feature.text}
-              </p>
-            </div>
+              icon={feature.icon}
+              title={feature.title}
+              text={feature.text}
+              accent={feature.accent}
+              footer={feature.footer}
+            />
           ))}
+        </div>
+      </section>
+
+      <section id="craft" style={sectionStyle}>
+        <div className="production-layout">
+          <div>
+            <div style={sectionEyebrow}>
+              Craft quality
+            </div>
+
+            <h2 style={sectionTitle}>
+              Built for real embroidery work
+            </h2>
+
+            <p style={sectionText}>
+              Stitchra is designed for real orders: chest logos, small brand badges, student merch and clean streetwear drops.
+            </p>
+
+            <div className="production-stat-grid">
+              {craftStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="glow-card production-stat-card"
+                  onPointerMove={setGlowPosition}
+                  onPointerLeave={resetGlowPosition}
+                >
+                  <span>{stat.value}</span>
+                  <small>{stat.label}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="glow-card production-photo-card"
+            onPointerMove={setGlowPosition}
+            onPointerLeave={resetGlowPosition}
+          >
+            <Image
+              src="/stitchra-machine-hero.jpg"
+              alt="Embroidery machine stitching a design"
+              fill
+              sizes="(max-width: 900px) 100vw, 560px"
+              style={{
+                objectFit: 'cover',
+              }}
+            />
+            <div className="production-photo-overlay" />
+            <div className="production-photo-badge">
+              <strong>Production studio</strong>
+              <span>Machine-ready artwork</span>
+            </div>
+          </div>
         </div>
       </section>
 
       <section id="gallery" style={sectionStyle}>
         <SectionHeader
           eyebrow="Gallery"
-          title="Made for modern creators"
-          text="A clean visual direction for brand badges, small chest logos, statement fronts and minimal streetwear."
+          title="Styles for modern creators"
+          text="Pick a direction, then let the AI create a first concept. Keep it simple, bold and embroidery-friendly."
         />
 
         <div style={galleryGrid}>
-          {galleryItems.map((item, index) => (
-            <div
-              key={item}
-              className="glow-card"
-              onPointerMove={setGlowPosition}
-              onPointerLeave={resetGlowPosition}
-              style={{
-                ...featureCard,
-                minHeight: 220,
-                display: 'grid',
-                alignContent: 'space-between',
-              }}
-            >
-              <div
-                style={{
-                  ...iconBox,
-                  width: 72,
-                  height: 72,
-                  borderRadius: 22,
-                  background:
-                    index % 2
-                      ? 'rgba(0,196,255,0.13)'
-                      : 'rgba(0,255,136,0.13)',
-                  fontSize: 28,
-                }}
-              >
-                ✦
-              </div>
-
-              <div>
-                <h3 style={cardTitle}>
-                  {item}
-                </h3>
-
-                <p style={cardText}>
-                  Logo-ready mockup style for fast embroidery quotes.
-                </p>
-              </div>
-            </div>
+          {galleryItems.map((item) => (
+            <GalleryCard
+              key={item.title}
+              title={item.title}
+              text={item.text}
+              accent={item.accent}
+            />
           ))}
         </div>
       </section>
 
       <section id="pricing" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Pricing"
-          title="Transparent estimate before production"
-          text="Start with a base cost, then calculate by stitch count and colors. Your current backend already does this automatically."
+          eyebrow="Clear pricing"
+          title="Know the price before production"
+          text="The estimate is based on real production factors: stitches, colors and coverage."
         />
 
         <div
@@ -1678,10 +1687,18 @@ export default function Home() {
           style={pricingPanel}
         >
           <div style={priceGrid}>
-            <PriceBlock label="Base" value="€3.50" />
+            <PriceBlock label="Base setup" value="€3.50" />
             <PriceBlock label="Per 1k stitches" value="€1.00" />
             <PriceBlock label="Color fee" value="€0.75" />
-            <PriceBlock label="Minimum" value="€10" highlight />
+            <PriceBlock label="Minimum order" value="€10" highlight />
+          </div>
+
+          <div className="pricing-example">
+            <div>
+              <strong>Example quote</strong>
+              <span>Small chest logo, 12k stitches, 3 colors</span>
+            </div>
+            <strong>{estimate ? `€${estimate.price_eur}` : '€22'}</strong>
           </div>
 
           <a
@@ -1689,24 +1706,49 @@ export default function Home() {
             className="lux-button"
             style={wideButton}
           >
-            Try the estimator →
+            Get instant price →
           </a>
+        </div>
+      </section>
+
+      <section id="faq" style={sectionStyle}>
+        <SectionHeader
+          eyebrow="FAQ"
+          title="Simple answers before you order"
+          text="The goal is clear: no confusion, no long messages, no surprise costs."
+        />
+
+        <div className="faq-grid">
+          {faqItems.map((item) => (
+            <div
+              key={item.question}
+              className="glow-card faq-card"
+              onPointerMove={setGlowPosition}
+              onPointerLeave={resetGlowPosition}
+            >
+              <h3>{item.question}</h3>
+              <p>{item.answer}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       <section style={ctaSection}>
         <div
-          className="glow-card"
+          className="glow-card final-cta-card"
           onPointerMove={setGlowPosition}
           onPointerLeave={resetGlowPosition}
-          style={ctaCard}
         >
+          <div style={sectionEyebrow}>
+            Ready
+          </div>
+
           <h2 style={ctaTitle}>
-            Ready to create your first custom tee?
+            Create your first custom embroidered T-shirt
           </h2>
 
           <p style={ctaText}>
-            Upload a logo and get an instant embroidery quote now.
+            Upload a logo or write an idea. Preview it on the shirt and get a clear price in seconds.
           </p>
 
           <a
@@ -1714,22 +1756,46 @@ export default function Home() {
             className="lux-button"
             style={primaryButton}
           >
-            Start Creating Now →
+            Start Designing →
           </a>
         </div>
       </section>
 
       <footer style={footerStyle}>
         <div style={footerInner}>
-          <div>
-            <strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · AI embroidery platform
-          </div>
+          <a
+            href="#hero"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              color: 'rgba(245,247,248,0.66)',
+              textDecoration: 'none',
+            }}
+          >
+            <Image
+              src="/stitchra-mark.svg"
+              alt=""
+              width={34}
+              height={34}
+            />
+            <span><strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · AI embroidery studio</span>
+          </a>
 
           <div style={footerLinks}>
-            <a href="#how" style={footerLink}>How It Works</a>
-            <a href="#pricing" style={footerLink}>Pricing</a>
+            <a href="#how" style={footerLink}>How it works</a>
             <a href="#features" style={footerLink}>Features</a>
+            <a href="#pricing" style={footerLink}>Pricing</a>
+            <a href="#faq" style={footerLink}>FAQ</a>
             <span>© 2026 Stitchra</span>
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Brother_Innov-is_V7_machine,_embroidering.jpg"
+              target="_blank"
+              rel="noreferrer"
+              style={footerLink}
+            >
+              Photo: Rwendland / CC BY-SA 4.0
+            </a>
           </div>
         </div>
       </footer>
@@ -2446,6 +2512,219 @@ function GlobalVisualStyles() {
           opacity: 1;
           transform: translateX(18%);
         }
+
+        .production-layout {
+          max-width: 1180px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+          gap: 34px;
+          align-items: center;
+        }
+
+        .production-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 32px;
+        }
+
+        .production-stat-card {
+          min-height: 116px;
+          padding: 22px;
+          border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background:
+            radial-gradient(circle at 24% 18%, rgba(0,255,136,0.13), transparent 34%),
+            rgba(255,255,255,0.04);
+        }
+
+        .production-stat-card span {
+          display: block;
+          color: #f5f7f8;
+          font-size: 30px;
+          font-weight: 950;
+          letter-spacing: 0;
+        }
+
+        .production-stat-card small {
+          display: block;
+          margin-top: 8px;
+          color: rgba(245,247,248,0.58);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+
+        .production-photo-card {
+          position: relative;
+          min-height: 520px;
+          overflow: hidden !important;
+          border-radius: 34px;
+          border: 1px solid rgba(0,215,255,0.20);
+          background: rgba(255,255,255,0.04);
+          box-shadow:
+            0 44px 130px rgba(0,0,0,0.52),
+            inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+
+        .production-photo-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.74)),
+            radial-gradient(circle at 70% 18%, rgba(0,215,255,0.18), transparent 34%),
+            radial-gradient(circle at 28% 82%, rgba(0,255,136,0.16), transparent 34%);
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .production-photo-badge {
+          position: absolute;
+          left: 24px;
+          right: 24px;
+          bottom: 24px;
+          z-index: 2;
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          align-items: center;
+          padding: 18px 20px;
+          border-radius: 22px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(5,6,7,0.72);
+          backdrop-filter: blur(18px);
+        }
+
+        .production-photo-badge strong {
+          color: #f5f7f8;
+          font-size: 18px;
+        }
+
+        .production-photo-badge span {
+          color: rgba(245,247,248,0.60);
+          font-size: 13px;
+        }
+
+        .gallery-card {
+          min-height: 260px;
+          padding: 30px;
+          border-radius: 28px;
+          display: grid;
+          align-content: space-between;
+          overflow: hidden !important;
+        }
+
+        .gallery-card::before {
+          opacity: 0.34;
+        }
+
+        .gallery-mark {
+          width: 78px;
+          height: 78px;
+          display: grid;
+          place-items: center;
+          border-radius: 26px;
+          border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .gallery-mark span {
+          font-size: 30px;
+          line-height: 1;
+        }
+
+        .pricing-example {
+          margin-top: 18px;
+          padding: 18px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.09);
+          background:
+            linear-gradient(90deg, rgba(0,255,136,0.10), rgba(0,215,255,0.08), rgba(255,40,214,0.08));
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          align-items: center;
+        }
+
+        .pricing-example strong {
+          color: #f5f7f8;
+          font-size: 18px;
+        }
+
+        .pricing-example span {
+          display: block;
+          margin-top: 4px;
+          color: rgba(245,247,248,0.58);
+          font-size: 13px;
+        }
+
+        .faq-grid {
+          max-width: 980px;
+          margin: 40px auto 0;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .faq-card {
+          min-height: 174px;
+          padding: 26px;
+          border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(255,255,255,0.04);
+        }
+
+        .faq-card h3 {
+          margin: 0 0 12px;
+          color: #f5f7f8;
+          font-size: 18px;
+        }
+
+        .faq-card p {
+          margin: 0;
+          color: rgba(245,247,248,0.62);
+          line-height: 1.65;
+        }
+
+        .final-cta-card {
+          max-width: 980px;
+          margin: 0 auto;
+          padding: clamp(34px, 5vw, 58px);
+          text-align: center;
+          border-radius: 36px;
+          border: 1px solid rgba(0,255,136,0.22);
+          background:
+            radial-gradient(circle at 22% 10%, rgba(0,255,136,0.18), transparent 34%),
+            radial-gradient(circle at 82% 84%, rgba(0,215,255,0.16), transparent 34%),
+            rgba(255,255,255,0.04);
+          box-shadow:
+            0 44px 130px rgba(0,0,0,0.46),
+            inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+
+        @media (max-width: 900px) {
+          .production-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .production-photo-card {
+            min-height: 420px;
+          }
+
+          .faq-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .production-stat-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .pricing-example {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+        }
       `}
     </style>
   );
@@ -2553,25 +2832,46 @@ function StepCard({
   icon,
   title,
   text,
+  accent = 'green',
 }: {
   number: string;
   icon: string;
   title: string;
   text: string;
+  accent?: Accent;
 }) {
+  const colors = accentStyles[accent];
+
   return (
     <div
       className="glow-card"
       onPointerMove={setGlowPosition}
       onPointerLeave={resetGlowPosition}
-      style={stepCard}
+      style={{
+        ...stepCard,
+        border: `1px solid ${colors.border}`,
+        background: colors.surface,
+      }}
     >
       <div style={stepTop}>
-        <div style={stepNumber}>
+        <div
+          style={{
+            ...stepNumber,
+            background: colors.soft,
+            color: colors.main,
+            boxShadow: `0 0 34px ${colors.glow}`,
+          }}
+        >
           {number}
         </div>
 
-        <div style={iconBox}>
+        <div
+          style={{
+            ...iconBox,
+            background: colors.icon,
+            color: colors.main,
+          }}
+        >
           {icon}
         </div>
       </div>
@@ -2583,6 +2883,108 @@ function StepCard({
       <p style={cardText}>
         {text}
       </p>
+    </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  text,
+  accent,
+  footer,
+}: {
+  icon: string;
+  title: string;
+  text: string;
+  accent: Accent;
+  footer: string;
+}) {
+  const colors = accentStyles[accent];
+
+  return (
+    <div
+      className="glow-card"
+      onPointerMove={setGlowPosition}
+      onPointerLeave={resetGlowPosition}
+      style={{
+        ...featureCard,
+        border: `1px solid ${colors.border}`,
+        background: colors.surface,
+      }}
+    >
+      <div
+        style={{
+          ...iconBox,
+          width: 62,
+          height: 62,
+          borderRadius: 20,
+          background: colors.icon,
+          color: colors.main,
+        }}
+      >
+        {icon}
+      </div>
+
+      <h3 style={cardTitle}>
+        {title}
+      </h3>
+
+      <p style={cardText}>
+        {text}
+      </p>
+
+      <div
+        style={{
+          marginTop: 22,
+          paddingTop: 16,
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          color: colors.main,
+          fontSize: 13,
+          fontWeight: 850,
+        }}
+      >
+        {footer}
+      </div>
+    </div>
+  );
+}
+
+function GalleryCard({
+  title,
+  text,
+  accent,
+}: {
+  title: string;
+  text: string;
+  accent: Accent;
+}) {
+  const colors = accentStyles[accent];
+
+  return (
+    <div
+      className="glow-card gallery-card"
+      onPointerMove={setGlowPosition}
+      onPointerLeave={resetGlowPosition}
+      style={{
+        border: `1px solid ${colors.border}`,
+        background: colors.surface,
+      }}
+    >
+      <div
+        className="gallery-mark"
+        style={{
+          background: colors.icon,
+          boxShadow: `0 0 42px ${colors.glow}`,
+        }}
+      >
+        <span style={{ color: colors.main }}>✦</span>
+      </div>
+
+      <div>
+        <h3 style={cardTitle}>{title}</h3>
+        <p style={cardText}>{text}</p>
+      </div>
     </div>
   );
 }
@@ -2627,41 +3029,188 @@ function PriceBlock({
   );
 }
 
+type Accent = 'green' | 'cyan' | 'purple' | 'pink';
+
+const accentStyles: Record<
+  Accent,
+  {
+    main: string;
+    soft: string;
+    border: string;
+    glow: string;
+    icon: string;
+    surface: string;
+  }
+> = {
+  green: {
+    main: '#00ff88',
+    soft: 'rgba(0,255,136,0.13)',
+    border: 'rgba(0,255,136,0.26)',
+    glow: 'rgba(0,255,136,0.26)',
+    icon: 'linear-gradient(135deg, rgba(0,255,136,0.30), rgba(0,200,160,0.12))',
+    surface:
+      'radial-gradient(circle at 18% 22%, rgba(0,255,136,0.16), transparent 34%), rgba(5,9,10,0.78)',
+  },
+  cyan: {
+    main: '#00d7ff',
+    soft: 'rgba(0,215,255,0.14)',
+    border: 'rgba(0,215,255,0.22)',
+    glow: 'rgba(0,215,255,0.24)',
+    icon: 'linear-gradient(135deg, rgba(0,215,255,0.30), rgba(70,120,255,0.16))',
+    surface:
+      'radial-gradient(circle at 28% 16%, rgba(0,215,255,0.14), transparent 36%), rgba(5,9,12,0.78)',
+  },
+  purple: {
+    main: '#a879ff',
+    soft: 'rgba(168,121,255,0.14)',
+    border: 'rgba(168,121,255,0.24)',
+    glow: 'rgba(168,121,255,0.24)',
+    icon: 'linear-gradient(135deg, rgba(168,121,255,0.32), rgba(255,40,214,0.14))',
+    surface:
+      'radial-gradient(circle at 22% 24%, rgba(168,121,255,0.15), transparent 34%), rgba(8,7,12,0.78)',
+  },
+  pink: {
+    main: '#ff28d6',
+    soft: 'rgba(255,40,214,0.13)',
+    border: 'rgba(255,40,214,0.22)',
+    glow: 'rgba(255,40,214,0.24)',
+    icon: 'linear-gradient(135deg, rgba(255,40,214,0.34), rgba(255,206,0,0.16))',
+    surface:
+      'radial-gradient(circle at 22% 24%, rgba(255,40,214,0.14), transparent 34%), rgba(10,7,10,0.78)',
+  },
+};
+
 const navItems = [
   { label: 'How It Works', href: '#how' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Gallery', href: '#gallery' },
   { label: 'Features', href: '#features' },
+  { label: 'FAQ', href: '#faq' },
+];
+
+const processSteps: Array<{
+  number: string;
+  icon: string;
+  title: string;
+  text: string;
+  accent: Accent;
+}> = [
+  {
+    number: '01',
+    icon: 'TEE',
+    title: 'Choose your shirt',
+    text: 'Pick black or white, choose placement and start with a clean T-shirt preview.',
+    accent: 'green',
+  },
+  {
+    number: '02',
+    icon: 'AI',
+    title: 'Create a logo',
+    text: 'Describe your idea in simple words or upload your own artwork.',
+    accent: 'cyan',
+  },
+  {
+    number: '03',
+    icon: '3D',
+    title: 'Preview it',
+    text: 'See the design on the chest before you spend money on production.',
+    accent: 'purple',
+  },
+  {
+    number: '04',
+    icon: '€',
+    title: 'Get the price',
+    text: 'Check stitches, colors and cost so customers can decide fast.',
+    accent: 'pink',
+  },
 ];
 
 const features = [
   {
     icon: 'AI',
-    title: 'AI logo generator',
-    text: 'Describe a logo idea and create a clean embroidery-style concept instantly.',
-  },
-  {
-    icon: 'ST',
-    title: 'Stitch estimator',
-    text: 'Upload artwork and get an instant stitch, coverage, color and price estimate.',
+    title: 'AI Logo Generator',
+    text: 'Type a short idea and get a clean logo direction for embroidery.',
+    footer: 'Instant concept',
+    accent: 'green' as const,
   },
   {
     icon: '3D',
-    title: '3D tee preview',
-    text: 'Preview chest placement on a dark or light tee before producing the design.',
+    title: 'Real T-shirt Preview',
+    text: 'Place the logo on a dark or light shirt and see it before ordering.',
+    footer: 'Chest mockup',
+    accent: 'cyan' as const,
+  },
+  {
+    icon: 'PNG',
+    title: 'Logo Cleanup',
+    text: 'Uploaded logos are analyzed and converted into a cleaner transparent preview.',
+    footer: 'Better upload',
+    accent: 'purple' as const,
   },
   {
     icon: '€',
-    title: 'Fast quoting',
-    text: 'Customers see cost, placement and production readiness immediately.',
+    title: 'Instant Pricing',
+    text: 'Show a clear quote based on stitches, colors and coverage.',
+    footer: 'No surprise cost',
+    accent: 'pink' as const,
   },
 ];
 
-const galleryItems = [
-  'Monogram',
-  'Streetwear',
-  'Badge',
-  'Minimal',
+const galleryItems: Array<{
+  title: string;
+  text: string;
+  accent: Accent;
+}> = [
+  {
+    title: 'Monogram',
+    text: 'Clean initials for small chest branding.',
+    accent: 'green',
+  },
+  {
+    title: 'Streetwear',
+    text: 'Bold marks for drops, clubs and creator merch.',
+    accent: 'cyan',
+  },
+  {
+    title: 'Badge',
+    text: 'Round patches and simple symbol logos.',
+    accent: 'purple',
+  },
+  {
+    title: 'Minimal',
+    text: 'Low-detail artwork that stitches cleanly.',
+    accent: 'pink',
+  },
+];
+
+const craftStats = [
+  { value: '60s', label: 'Fast first concept' },
+  { value: '500+', label: 'Thread color options' },
+  { value: '3-5 days', label: 'Typical production' },
+  { value: '100%', label: 'Preview before order' },
+];
+
+const faqItems = [
+  {
+    question: 'Can I upload my own logo?',
+    answer:
+      'Yes. Upload a logo, remove simple backgrounds, preview it on the shirt and get an instant price.',
+  },
+  {
+    question: 'Can AI create a logo idea?',
+    answer:
+      'Yes. Write a simple prompt like “minimal green logo for a coffee brand” and generate a first concept.',
+  },
+  {
+    question: 'Is the price final?',
+    answer:
+      'It is a clear estimate based on stitch count, colors and coverage. Final production can be confirmed before payment.',
+  },
+  {
+    question: 'Who is this for?',
+    answer:
+      'Small brands, students, creators, teams and shops that need fast custom T-shirt quotes.',
+  },
 ];
 
 const heroCard: CSSProperties = {
@@ -2714,15 +3263,6 @@ const sectionText: CSSProperties = {
   color: 'rgba(245,247,248,0.66)',
   fontSize: 16,
   lineHeight: 1.7,
-};
-
-const threeGrid: CSSProperties = {
-  maxWidth: 1180,
-  margin: '40px auto 0',
-  display: 'grid',
-  gridTemplateColumns:
-    'repeat(auto-fit, minmax(260px, 1fr))',
-  gap: 22,
 };
 
 const fourGrid: CSSProperties = {
@@ -2836,18 +3376,6 @@ const ctaSection: CSSProperties = {
   padding: '92px 24px 120px',
   position: 'relative',
   zIndex: 1,
-};
-
-const ctaCard: CSSProperties = {
-  maxWidth: 940,
-  margin: '0 auto',
-  textAlign: 'center',
-  padding: 38,
-  borderRadius: 32,
-  background:
-    'linear-gradient(135deg, rgba(0,255,136,0.14), rgba(0,196,255,0.08))',
-  border: '1px solid rgba(0,255,136,0.18)',
-  boxShadow: '0 34px 100px rgba(0,0,0,0.34)',
 };
 
 const ctaTitle: CSSProperties = {
