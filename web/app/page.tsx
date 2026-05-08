@@ -200,7 +200,7 @@ export default function Home() {
           <HoverCard style={heroCard}>
             <div style={badge}>
               <span style={badgeDot} />
-              MACHINE-AWARE EMBROIDERY PLATFORM
+              AI EMBROIDERY STUDIO
             </div>
 
             <h1
@@ -213,7 +213,7 @@ export default function Home() {
                 fontWeight: 1000,
               }}
             >
-              Build your own
+              Turn your idea into
               <span
                 style={{
                   display: 'block',
@@ -222,7 +222,7 @@ export default function Home() {
                     '0 0 25px rgba(0,255,136,0.35)',
                 }}
               >
-                3D embroidery fit
+                real embroidery
               </span>
             </h1>
 
@@ -236,12 +236,7 @@ export default function Home() {
                 maxWidth: 620,
               }}
             >
-              Create embroidery-ready
-              streetwear previews with AI.
-              Generate logos, preview
-              placement on a 3D mannequin
-              and calculate production cost
-              instantly.
+              Create a logo with AI, upload your own design and preview it on a 3D model. See the embroidery placement and get a clear price before production starts.
             </p>
 
             <div
@@ -256,14 +251,14 @@ export default function Home() {
                 href="#designer"
                 style={primaryButton}
               >
-                Start 3D Preview →
+                Start Designing →
               </a>
 
               <a
                 href="#designer"
                 style={secondaryButton}
               >
-                Explore Workflow
+                How It Works
               </a>
             </div>
 
@@ -312,8 +307,7 @@ export default function Home() {
               </div>
 
               <span>
-                Built for creators &
-                embroidery studios
+                For creators, brands and custom embroidery orders
               </span>
             </div>
           </HoverCard>
@@ -353,17 +347,17 @@ export default function Home() {
             >
               <Stat
                 label="Production"
-                value="Machine Ready"
+                value="Ready to Stitch"
               />
 
               <Stat
                 label="Pricing"
-                value="Instant"
+                value="Clear Price"
               />
 
               <Stat
                 label="Preview"
-                value="3D Live"
+                value="Live Mockup"
               />
             </div>
 
@@ -399,7 +393,7 @@ export default function Home() {
               </select>
 
               <label style={label}>
-                Upload logo
+                Upload your logo
               </label>
 
               <input
@@ -412,7 +406,7 @@ export default function Home() {
               />
 
               <label style={label}>
-                Generate with AI
+                Create a logo with AI
               </label>
 
               <div
@@ -429,7 +423,7 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  placeholder="minimal green streetwear logo"
+                  placeholder="simple green logo for my brand"
                   style={{
                     ...input,
                     flex: 1,
@@ -462,7 +456,7 @@ export default function Home() {
               >
                 {isEstimating
                   ? 'Calculating...'
-                  : 'Estimate stitches & price'}
+                  : 'Get my price'}
               </button>
 
               {(status || error) && (
@@ -598,7 +592,7 @@ function Header() {
                   'rgba(255,255,255,0.5)',
               }}
             >
-              MACHINE-AWARE STUDIO
+              AI EMBROIDERY STUDIO
             </div>
           </div>
         </div>
