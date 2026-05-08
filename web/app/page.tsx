@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import type { CSSProperties, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
 const API =
@@ -764,4 +765,209 @@ function MannequinPreview({
                     'screen',
                 }}
               />
+            ) : (
+              <span
+                style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: 13,
+                }}
+              >
+                Logo
+              </span>
             )
+            }
+          </div>
+        </div>
+      </div>
+    </HoverCard>
+  );
+}
+
+function DesignerPreview({
+  preview,
+  preset,
+}: {
+  preview: string | null;
+  preset: {
+    label: string;
+    size: string;
+  };
+}) {
+  return (
+    <MannequinPreview
+      preview={preview}
+      preset={preset}
+    />
+  );
+}
+
+function BackgroundEffects() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        backgroundImage:
+          'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)',
+        backgroundSize: '96px 96px',
+        maskImage:
+          'linear-gradient(to bottom, black, transparent 86%)',
+      }}
+    />
+  );
+}
+
+function HoverCard({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        transition:
+          'transform 180ms ease, border-color 180ms ease',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div style={statCard}>
+      <div style={statLabel}>{label}</div>
+      <div style={statValue}>{value}</div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div style={metricCard}>
+      <div style={statLabel}>{label}</div>
+      <div style={statValue}>{value}</div>
+    </div>
+  );
+}
+
+const heroCard: CSSProperties = {
+  padding: 48,
+  borderRadius: 32,
+  background:
+    'linear-gradient(145deg,rgba(11,18,22,0.82),rgba(7,10,12,0.92))',
+  border: '1px solid rgba(255,255,255,0.1)',
+  boxShadow: '0 40px 120px rgba(0,0,0,0.42)',
+  backdropFilter: 'blur(22px)',
+};
+
+const glassCard: CSSProperties = {
+  ...heroCard,
+  padding: 28,
+  borderRadius: 28,
+};
+
+const badge: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '10px 14px',
+  borderRadius: 999,
+  marginBottom: 24,
+  border: '1px solid rgba(0,255,136,0.34)',
+  color: '#9dffc4',
+  background: 'rgba(0,255,136,0.08)',
+  fontSize: 12,
+  fontWeight: 800,
+};
+
+const badgeDot: CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: '#00ff88',
+  boxShadow: '0 0 18px rgba(0,255,136,0.8)',
+};
+
+const primaryButton: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 52,
+  padding: '0 22px',
+  borderRadius: 16,
+  color: '#06100a',
+  background: 'linear-gradient(135deg,#00ff88,#00c8ff)',
+  textDecoration: 'none',
+  fontWeight: 900,
+  cursor: 'pointer',
+  boxShadow: '0 18px 50px rgba(0,200,255,0.2)',
+};
+
+const secondaryButton: CSSProperties = {
+  ...primaryButton,
+  color: '#f5f7f8',
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.14)',
+  boxShadow: 'none',
+};
+
+const input: CSSProperties = {
+  minHeight: 52,
+  borderRadius: 14,
+  border: '1px solid rgba(255,255,255,0.14)',
+  background: 'rgba(255,255,255,0.05)',
+  color: '#f5f7f8',
+  padding: '0 16px',
+  outline: 'none',
+  width: '100%',
+};
+
+const label: CSSProperties = {
+  color: 'rgba(255,255,255,0.72)',
+  fontSize: 14,
+  fontWeight: 800,
+};
+
+const statCard: CSSProperties = {
+  padding: 16,
+  minHeight: 88,
+  borderRadius: 16,
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(255,255,255,0.045)',
+};
+
+const metricCard: CSSProperties = {
+  ...statCard,
+  minHeight: 76,
+};
+
+const statLabel: CSSProperties = {
+  color: 'rgba(255,255,255,0.55)',
+  fontSize: 12,
+  marginBottom: 6,
+};
+
+const statValue: CSSProperties = {
+  color: '#f5f7f8',
+  fontSize: 18,
+  fontWeight: 900,
+};
