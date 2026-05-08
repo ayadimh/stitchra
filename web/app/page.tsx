@@ -191,72 +191,480 @@ export default function Home() {
         id="hero"
         style={{
           minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          padding: '120px 24px 80px',
+          padding: '128px 24px 92px',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
+        <style>
+          {`
+            @keyframes heroAtelierFloat {
+              0%, 100% { transform: translate3d(0, 0, 0); }
+              50% { transform: translate3d(0, -10px, 0); }
+            }
+
+            @keyframes heroAtelierBreath {
+              0%, 100% { transform: translateX(-50%) translateZ(62px) scale3d(1, 1, 1); filter: brightness(1); }
+              50% { transform: translateX(-50%) translateZ(62px) scale3d(1.008, 1.006, 1); filter: brightness(1.035); }
+            }
+
+            @keyframes heroAtelierSheen {
+              0%, 100% { opacity: 0.18; transform: translateX(-34px) skewX(-10deg); }
+              50% { opacity: 0.36; transform: translateX(36px) skewX(-10deg); }
+            }
+
+            @keyframes heroAtelierThread {
+              from { background-position: 0 0; }
+              to { background-position: 64px 64px; }
+            }
+
+            @keyframes heroAtelierPulse {
+              0%, 100% { box-shadow: 0 0 18px rgba(177,255,202,0.28), 0 0 58px rgba(177,255,202,0.10), inset 0 0 22px rgba(255,255,255,0.08); }
+              50% { box-shadow: 0 0 26px rgba(177,255,202,0.38), 0 0 72px rgba(177,255,202,0.14), inset 0 0 28px rgba(255,255,255,0.11); }
+            }
+
+            .hero-atelier {
+              position: relative;
+              max-width: 1320px;
+              margin: 0 auto;
+              display: grid;
+              grid-template-columns: minmax(0, 0.94fr) minmax(420px, 1.06fr);
+              gap: 48px;
+              align-items: center;
+            }
+
+            .hero-copy-panel {
+              position: relative;
+              padding: clamp(32px, 4vw, 54px);
+              border-radius: 30px;
+              border: 1px solid rgba(255,255,255,0.10);
+              background:
+                linear-gradient(145deg, rgba(17,18,18,0.88), rgba(6,7,7,0.94) 58%, rgba(18,20,18,0.82)),
+                radial-gradient(circle at 18% 14%, rgba(214,255,224,0.10), transparent 30%);
+              box-shadow:
+                0 34px 110px rgba(0,0,0,0.48),
+                inset 0 1px 0 rgba(255,255,255,0.08);
+              backdrop-filter: blur(24px);
+            }
+
+            .hero-copy-panel::before {
+              content: "";
+              position: absolute;
+              inset: 1px;
+              border-radius: inherit;
+              pointer-events: none;
+              background:
+                linear-gradient(120deg, rgba(255,255,255,0.12), transparent 24%, transparent 68%, rgba(177,255,202,0.08));
+              opacity: 0.65;
+            }
+
+            .hero-copy-panel > * {
+              position: relative;
+              z-index: 1;
+            }
+
+            .hero-kicker {
+              display: inline-flex;
+              align-items: center;
+              gap: 10px;
+              padding: 9px 13px;
+              margin-bottom: 24px;
+              border: 1px solid rgba(213,255,223,0.22);
+              border-radius: 999px;
+              background: rgba(255,255,255,0.045);
+              color: rgba(232,255,238,0.78);
+              font-size: 11px;
+              font-weight: 750;
+              letter-spacing: 0.14em;
+              text-transform: uppercase;
+            }
+
+            .hero-kicker-dot {
+              width: 7px;
+              height: 7px;
+              border-radius: 999px;
+              background: #b9ffcc;
+              box-shadow: 0 0 18px rgba(185,255,204,0.72);
+            }
+
+            .hero-title {
+              max-width: 720px;
+              margin: 0 0 24px;
+              font-size: clamp(48px, 6.7vw, 88px);
+              line-height: 0.96;
+              letter-spacing: -0.025em;
+              font-weight: 780;
+              color: #f6f3eb;
+            }
+
+            .hero-title-accent {
+              display: block;
+              color: #b9ffcc;
+              text-shadow: 0 0 28px rgba(185,255,204,0.20);
+            }
+
+            .hero-subcopy {
+              max-width: 620px;
+              margin: 0 0 34px;
+              color: rgba(246,243,235,0.68);
+              font-size: 18px;
+              line-height: 1.7;
+            }
+
+            .hero-actions {
+              display: flex;
+              gap: 14px;
+              flex-wrap: wrap;
+              margin-bottom: 30px;
+            }
+
+            .hero-proof-strip {
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 10px;
+            }
+
+            .hero-proof-item {
+              min-height: 72px;
+              padding: 14px;
+              border-radius: 18px;
+              border: 1px solid rgba(255,255,255,0.09);
+              background: rgba(255,255,255,0.045);
+              box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+            }
+
+            .hero-proof-label {
+              margin-bottom: 6px;
+              color: rgba(246,243,235,0.48);
+              font-size: 11px;
+              letter-spacing: 0.09em;
+              text-transform: uppercase;
+            }
+
+            .hero-proof-value {
+              color: rgba(246,243,235,0.88);
+              font-size: 14px;
+              font-weight: 720;
+            }
+
+            .hero-preview-card {
+              --hero-rotate-x: 0deg;
+              --hero-rotate-y: 0deg;
+              --hero-shift-x: 0px;
+              --hero-shift-y: 0px;
+              --hero-light-x: 46%;
+              --hero-light-y: 18%;
+              position: relative;
+              min-height: 672px;
+              overflow: hidden;
+              border: 1px solid rgba(255,255,255,0.11);
+              border-radius: 36px;
+              background:
+                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(255,250,232,0.20), transparent 19%),
+                radial-gradient(circle at 62% 68%, rgba(185,255,204,0.08), transparent 34%),
+                linear-gradient(145deg, rgba(12,13,13,0.98), rgba(4,5,5,0.98) 52%, rgba(18,19,18,0.98));
+              box-shadow:
+                0 50px 150px rgba(0,0,0,0.68),
+                inset 0 1px 0 rgba(255,255,255,0.09);
+              isolation: isolate;
+              perspective: 1200px;
+              transition:
+                border-color 220ms ease,
+                box-shadow 220ms ease,
+                background 220ms ease;
+            }
+
+            .hero-preview-card:hover {
+              border-color: rgba(226,255,235,0.22);
+              box-shadow:
+                0 58px 165px rgba(0,0,0,0.72),
+                0 0 86px rgba(185,255,204,0.09),
+                inset 0 1px 0 rgba(255,255,255,0.11);
+            }
+
+            .hero-preview-card::before {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background:
+                linear-gradient(115deg, rgba(255,255,255,0.10), transparent 24%, transparent 62%, rgba(185,255,204,0.06)),
+                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+              background-size: auto, 52px 52px, 52px 52px;
+              mask-image: radial-gradient(circle at 52% 44%, black, transparent 76%);
+              transform: translate3d(var(--hero-shift-x), var(--hero-shift-y), 0);
+              transition: transform 160ms ease-out;
+              pointer-events: none;
+              z-index: 0;
+            }
+
+            .hero-preview-card::after {
+              content: "";
+              position: absolute;
+              left: 14%;
+              right: 14%;
+              bottom: 74px;
+              height: 86px;
+              border-radius: 50%;
+              background: radial-gradient(ellipse at center, rgba(0,0,0,0.78), transparent 68%);
+              filter: blur(18px);
+              opacity: 0.9;
+              pointer-events: none;
+              z-index: 1;
+            }
+
+            .hero-stage {
+              position: absolute;
+              left: 50%;
+              top: 74px;
+              width: min(452px, 88%);
+              height: 536px;
+              transform: translateX(-50%) rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
+              transform-style: preserve-3d;
+              transition: transform 180ms ease-out;
+              z-index: 2;
+            }
+
+            .hero-float {
+              position: absolute;
+              inset: 0;
+              animation: heroAtelierFloat 7s ease-in-out infinite;
+              transform-style: preserve-3d;
+            }
+
+            .hero-sleeve-left,
+            .hero-sleeve-right {
+              position: absolute;
+              top: 126px;
+              width: 130px;
+              height: 258px;
+              box-shadow:
+                inset 18px 22px 32px rgba(255,255,255,0.07),
+                inset -24px -32px 48px rgba(0,0,0,0.48),
+                0 32px 72px rgba(0,0,0,0.44);
+            }
+
+            .hero-sleeve-left {
+              left: 16px;
+              border-radius: 54px 22px 44px 70px;
+              clip-path: polygon(42% 0, 100% 15%, 78% 100%, 18% 91%, 0 24%);
+              transform: rotate(6deg) translateZ(18px);
+            }
+
+            .hero-sleeve-right {
+              right: 16px;
+              border-radius: 22px 54px 70px 44px;
+              clip-path: polygon(0 15%, 58% 0, 100% 24%, 82% 91%, 22% 100%);
+              transform: rotate(-6deg) translateZ(18px);
+            }
+
+            .hero-shirt-body {
+              position: absolute;
+              left: 50%;
+              top: 62px;
+              width: 344px;
+              height: 448px;
+              overflow: hidden;
+              border-radius: 94px 94px 42px 42px / 88px 88px 34px 34px;
+              clip-path: polygon(17% 0, 35% 0, 42% 12%, 58% 12%, 65% 0, 83% 0, 98% 22%, 87% 100%, 13% 100%, 2% 22%);
+              animation: heroAtelierBreath 6.4s ease-in-out infinite;
+            }
+
+            .hero-shirt-body::before {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background-image:
+                linear-gradient(104deg, transparent 0%, rgba(255,255,255,0.15) 17%, transparent 32%),
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.032) 0 1px, transparent 1px 8px),
+                repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 10px);
+              animation: heroAtelierSheen 9s ease-in-out infinite;
+              pointer-events: none;
+            }
+
+            .hero-shirt-body::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background: radial-gradient(circle at 36% 20%, rgba(255,255,255,0.18), transparent 24%), radial-gradient(circle at 78% 78%, rgba(0,0,0,0.34), transparent 38%);
+              pointer-events: none;
+            }
+
+            .hero-collar {
+              position: absolute;
+              left: 50%;
+              top: 0;
+              width: 112px;
+              height: 64px;
+              transform: translateX(-50%);
+              border-radius: 0 0 999px 999px;
+              background: linear-gradient(180deg, rgba(0,0,0,0.78), rgba(0,0,0,0.36));
+              box-shadow:
+                0 10px 24px rgba(0,0,0,0.40),
+                inset 0 -9px 16px rgba(255,255,255,0.05);
+            }
+
+            .hero-placement-box {
+              position: absolute;
+              transform: translateX(-50%);
+              display: grid;
+              place-items: center;
+              overflow: hidden;
+              border: 1px solid rgba(185,255,204,0.78);
+              border-radius: 16px;
+              background: linear-gradient(135deg, rgba(185,255,204,0.10), rgba(0,0,0,0.10));
+              animation: heroAtelierPulse 3.8s ease-in-out infinite;
+              z-index: 2;
+            }
+
+            .hero-placement-box::before {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background-image: linear-gradient(45deg, rgba(185,255,204,0.14) 25%, transparent 25%, transparent 50%, rgba(185,255,204,0.14) 50%, rgba(185,255,204,0.14) 75%, transparent 75%, transparent);
+              background-size: 16px 16px;
+              animation: heroAtelierThread 8s linear infinite;
+              opacity: 0.22;
+            }
+
+            .hero-status-pill,
+            .hero-material-pill {
+              position: absolute;
+              z-index: 4;
+              display: inline-flex;
+              align-items: center;
+              gap: 10px;
+              border: 1px solid rgba(255,255,255,0.10);
+              background: rgba(5,6,6,0.56);
+              color: rgba(246,243,235,0.76);
+              box-shadow: 0 18px 48px rgba(0,0,0,0.34);
+              backdrop-filter: blur(16px);
+            }
+
+            .hero-status-pill {
+              top: 22px;
+              right: 22px;
+              padding: 10px 15px;
+              border-radius: 16px;
+              font-size: 13px;
+            }
+
+            .hero-material-pill {
+              top: 22px;
+              left: 22px;
+              padding: 10px 14px;
+              border-radius: 999px;
+              font-size: 13px;
+            }
+
+            .hero-swatch {
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+            }
+
+            .hero-spec-grid {
+              position: absolute;
+              left: 28px;
+              right: 28px;
+              bottom: 24px;
+              z-index: 4;
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 12px;
+            }
+
+            .hero-spec-card {
+              padding: 14px 12px;
+              border: 1px solid rgba(255,255,255,0.09);
+              border-radius: 16px;
+              background: rgba(5,6,6,0.48);
+              text-align: center;
+              backdrop-filter: blur(14px);
+            }
+
+            .hero-spec-label {
+              margin-bottom: 4px;
+              color: rgba(246,243,235,0.48);
+              font-size: 11px;
+            }
+
+            .hero-spec-value {
+              color: #f6f3eb;
+              font-size: 13px;
+              font-weight: 760;
+            }
+
+            @media (max-width: 980px) {
+              .hero-atelier {
+                grid-template-columns: 1fr;
+              }
+
+              .hero-preview-card {
+                min-height: 640px;
+              }
+            }
+
+            @media (max-width: 560px) {
+              .hero-copy-panel {
+                padding: 28px;
+                border-radius: 24px;
+              }
+
+              .hero-title {
+                font-size: clamp(42px, 13vw, 58px);
+              }
+
+              .hero-proof-strip,
+              .hero-spec-grid {
+                grid-template-columns: 1fr;
+              }
+
+              .hero-preview-card {
+                min-height: 600px;
+                border-radius: 28px;
+              }
+
+              .hero-status-pill {
+                left: 22px;
+                right: auto;
+                top: 70px;
+              }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              .hero-float,
+              .hero-shirt-body,
+              .hero-shirt-body::before,
+              .hero-placement-box,
+              .hero-placement-box::before {
+                animation: none;
+              }
+            }
+          `}
+        </style>
+
         <div
-          style={{
-            width: '100%',
-            maxWidth: 1280,
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(auto-fit,minmax(380px,1fr))',
-            gap: 42,
-            alignItems: 'center',
-          }}
+          className="hero-atelier"
         >
-          <HoverCard style={heroCard}>
-            <div style={badge}>
-              <span style={badgeDot} />
-              AI EMBROIDERY STUDIO
+          <div className="hero-copy-panel">
+            <div className="hero-kicker">
+              <span className="hero-kicker-dot" />
+              AI EMBROIDERY ATELIER
             </div>
 
-            <h1
-              style={{
-                fontSize:
-                  'clamp(46px,7vw,86px)',
-                lineHeight: 0.94,
-                letterSpacing: '-0.04em',
-                margin: '0 0 22px',
-                fontWeight: 900,
-              }}
-            >
-              Turn your idea into
-              <span
-                style={{
-                  display: 'block',
-                  color: '#00ff88',
-                  textShadow:
-                    '0 0 25px rgba(0,255,136,0.35)',
-                }}
-              >
-                real embroidery
+            <h1 className="hero-title">
+              Build the next
+              <span className="hero-title-accent">
+                streetwear mark
               </span>
             </h1>
 
-            <p
-              style={{
-                fontSize: 18,
-                lineHeight: 1.7,
-                color:
-                  'rgba(245,247,248,0.70)',
-                marginBottom: 32,
-                maxWidth: 620,
-              }}
-            >
-              Create a logo with AI, upload your own design and preview it on a premium front-chest T-shirt mockup. See the embroidery placement and get a clear price before production starts.
+            <p className="hero-subcopy">
+              Generate or upload artwork, place it on a premium tee, and get a production-ready embroidery quote before the first sample is made.
             </p>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 16,
-                flexWrap: 'wrap',
-                marginBottom: 28,
-              }}
-            >
+            <div className="hero-actions">
               <a
                 href="#designer"
                 className="lux-button"
@@ -274,58 +682,38 @@ export default function Home() {
               </a>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 16,
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                color:
-                  'rgba(255,255,255,0.72)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                }}
-              >
-                {['S', 'M', 'A'].map(
-                  (letter, i) => (
-                    <div
-                      key={letter}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        marginLeft: i ? -8 : 0,
-                        display: 'grid',
-                        placeItems: 'center',
-                        background:
-                          i === 0
-                            ? '#00ff88'
-                            : i === 1
-                            ? '#00d4ff'
-                            : '#ff38d4',
-                        color: '#06100a',
-                        fontWeight: 900,
-                        border:
-                          '2px solid #050607',
-                      }}
-                    >
-                      {letter}
-                    </div>
-                  )
-                )}
+            <div className="hero-proof-strip">
+              <div className="hero-proof-item">
+                <div className="hero-proof-label">
+                  Placement
+                </div>
+                <div className="hero-proof-value">
+                  {preset.label}
+                </div>
               </div>
 
-              <span>
-                For creators, brands and custom embroidery orders
-              </span>
+              <div className="hero-proof-item">
+                <div className="hero-proof-label">
+                  Artwork
+                </div>
+                <div className="hero-proof-value">
+                  {preview ? 'Live preview' : 'AI or upload'}
+                </div>
+              </div>
+
+              <div className="hero-proof-item">
+                <div className="hero-proof-label">
+                  Output
+                </div>
+                <div className="hero-proof-value">
+                  Instant quote
+                </div>
+              </div>
             </div>
-          </HoverCard>
+          </div>
 
           <div
-            className="hero-premium-card"
+            className="hero-preview-card"
             onPointerMove={(event) => {
               const rect =
                 event.currentTarget.getBoundingClientRect();
@@ -340,27 +728,27 @@ export default function Home() {
 
               event.currentTarget.style.setProperty(
                 '--hero-rotate-x',
-                `${y * -5}deg`
+                `${y * -4}deg`
               );
               event.currentTarget.style.setProperty(
                 '--hero-rotate-y',
-                `${x * 7}deg`
+                `${x * 6}deg`
               );
               event.currentTarget.style.setProperty(
                 '--hero-shift-x',
-                `${x * -14}px`
+                `${x * -10}px`
               );
               event.currentTarget.style.setProperty(
                 '--hero-shift-y',
-                `${y * -12}px`
+                `${y * -9}px`
               );
               event.currentTarget.style.setProperty(
                 '--hero-light-x',
-                `${50 + x * 18}%`
+                `${46 + x * 16}%`
               );
               event.currentTarget.style.setProperty(
                 '--hero-light-y',
-                `${30 + y * 14}%`
+                `${18 + y * 12}%`
               );
             }}
             onPointerLeave={(event) => {
@@ -382,11 +770,11 @@ export default function Home() {
               );
               event.currentTarget.style.setProperty(
                 '--hero-light-x',
-                '50%'
+                '46%'
               );
               event.currentTarget.style.setProperty(
                 '--hero-light-y',
-                '30%'
+                '18%'
               );
             }}
             style={
@@ -395,228 +783,31 @@ export default function Home() {
                 '--hero-rotate-y': '0deg',
                 '--hero-shift-x': '0px',
                 '--hero-shift-y': '0px',
-                '--hero-light-x': '50%',
-                '--hero-light-y': '30%',
+                '--hero-light-x': '46%',
+                '--hero-light-y': '18%',
               } as CSSProperties
             }
           >
-            <style>
-              {`
-                @keyframes heroTorsoFloat {
-                  0%, 100% { transform: translate3d(0, 0, 0); }
-                  50% { transform: translate3d(0, -16px, 0); }
-                }
-
-                @keyframes heroFabricBreath {
-                  0%, 100% { transform: translateX(-50%) translateZ(64px) scale3d(1, 1, 1); filter: brightness(1); }
-                  50% { transform: translateX(-50%) translateZ(64px) scale3d(1.016, 1.01, 1); filter: brightness(1.055); }
-                }
-
-                @keyframes heroPlacementGlow {
-                  0%, 100% { box-shadow: 0 0 28px rgba(124,240,212,0.52), 0 0 76px rgba(0,200,255,0.18), inset 0 0 24px rgba(124,240,212,0.12); }
-                  50% { box-shadow: 0 0 42px rgba(124,240,212,0.78), 0 0 110px rgba(0,200,255,0.28), inset 0 0 36px rgba(124,240,212,0.18); }
-                }
-
-                @keyframes heroThreadMove {
-                  from { background-position: 0 0; }
-                  to { background-position: 72px 72px; }
-                }
-
-                @keyframes heroGlossSweep {
-                  0%, 100% { opacity: 0.18; transform: translateX(-28px); }
-                  50% { opacity: 0.42; transform: translateX(28px); }
-                }
-
-                .hero-premium-card {
-                  position: relative;
-                  min-height: 650px;
-                  border-radius: 38px;
-                  overflow: hidden;
-                  border: 1px solid rgba(255,255,255,0.10);
-                  background:
-                    radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(124,240,212,0.24), transparent 20%),
-                    radial-gradient(circle at 72% 78%, rgba(0,196,255,0.10), transparent 30%),
-                    linear-gradient(145deg, rgba(3,5,7,0.98), rgba(10,18,20,0.94) 48%, rgba(2,3,5,0.98));
-                  box-shadow: 0 44px 130px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.08);
-                  isolation: isolate;
-                  perspective: 1200px;
-                  transition: background 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-                }
-
-                .hero-premium-card:hover {
-                  border-color: rgba(124,240,212,0.26);
-                  box-shadow: 0 54px 150px rgba(0,0,0,0.68), 0 0 72px rgba(0,255,136,0.10), inset 0 1px 0 rgba(255,255,255,0.10);
-                }
-
-                .hero-premium-grid {
-                  position: absolute;
-                  inset: 0;
-                  background-image:
-                    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-                  background-size: 44px 44px;
-                  mask-image: radial-gradient(circle at 50% 45%, black, transparent 78%);
-                  transform: translate3d(var(--hero-shift-x), var(--hero-shift-y), 0);
-                  transition: transform 120ms ease;
-                }
-
-                .hero-stage {
-                  position: absolute;
-                  left: 50%;
-                  top: 72px;
-                  width: min(440px, 88%);
-                  height: 520px;
-                  transform: translateX(-50%) rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
-                  transform-style: preserve-3d;
-                  transition: transform 150ms ease-out;
-                }
-
-                .hero-float {
-                  position: absolute;
-                  inset: 0;
-                  animation: heroTorsoFloat 6s ease-in-out infinite;
-                  transform-style: preserve-3d;
-                }
-
-                .hero-sleeve-left,
-                .hero-sleeve-right {
-                  position: absolute;
-                  top: 122px;
-                  width: 128px;
-                  height: 255px;
-                  box-shadow: inset 18px 22px 32px rgba(255,255,255,0.08), inset -24px -30px 46px rgba(0,0,0,0.42), 0 34px 70px rgba(0,0,0,0.42);
-                }
-
-                .hero-sleeve-left {
-                  left: 14px;
-                  border-radius: 52px 22px 44px 68px;
-                  clip-path: polygon(42% 0, 100% 15%, 78% 100%, 18% 91%, 0 24%);
-                  transform: rotate(7deg) translateZ(18px);
-                }
-
-                .hero-sleeve-right {
-                  right: 14px;
-                  border-radius: 22px 52px 68px 44px;
-                  clip-path: polygon(0 15%, 58% 0, 100% 24%, 82% 91%, 22% 100%);
-                  transform: rotate(-7deg) translateZ(18px);
-                }
-
-                .hero-shirt-body {
-                  position: absolute;
-                  left: 50%;
-                  top: 62px;
-                  width: 340px;
-                  height: 440px;
-                  border-radius: 92px 92px 42px 42px / 86px 86px 34px 34px;
-                  clip-path: polygon(17% 0, 35% 0, 42% 12%, 58% 12%, 65% 0, 83% 0, 98% 22%, 87% 100%, 13% 100%, 2% 22%);
-                  overflow: hidden;
-                  animation: heroFabricBreath 5.8s ease-in-out infinite;
-                }
-
-                .hero-shirt-body::before {
-                  content: "";
-                  position: absolute;
-                  inset: 0;
-                  background-image:
-                    linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.18) 18%, transparent 34%),
-                    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 7px),
-                    repeating-linear-gradient(0deg, rgba(0,0,0,0.035) 0 1px, transparent 1px 9px);
-                  animation: heroGlossSweep 8s ease-in-out infinite;
-                  pointer-events: none;
-                }
-
-                .hero-collar {
-                  position: absolute;
-                  left: 50%;
-                  top: 0;
-                  transform: translateX(-50%);
-                  width: 112px;
-                  height: 64px;
-                  border-radius: 0 0 999px 999px;
-                  background: linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0.34));
-                  box-shadow: 0 10px 24px rgba(0,0,0,0.38), inset 0 -9px 16px rgba(255,255,255,0.05);
-                }
-
-                .hero-placement-box {
-                  position: absolute;
-                  transform: translateX(-50%);
-                  border: 1px solid rgba(124,240,212,0.96);
-                  border-radius: 18px;
-                  display: grid;
-                  place-items: center;
-                  overflow: hidden;
-                  background: linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08));
-                  animation: heroPlacementGlow 3.2s ease-in-out infinite;
-                }
-
-                .hero-placement-box::before {
-                  content: "";
-                  position: absolute;
-                  inset: 0;
-                  background-image: linear-gradient(45deg, rgba(124,240,212,0.18) 25%, transparent 25%, transparent 50%, rgba(124,240,212,0.18) 50%, rgba(124,240,212,0.18) 75%, transparent 75%, transparent);
-                  background-size: 18px 18px;
-                  animation: heroThreadMove 7s linear infinite;
-                  opacity: 0.28;
-                }
-              `}
-            </style>
-
-            <div className="hero-premium-grid" />
-
             <div
               style={{
                 position: 'absolute',
-                inset: '14% 5% 7%',
+                inset: '12% 8% 12%',
                 background:
-                  'radial-gradient(ellipse at center, rgba(124,240,212,0.20), transparent 55%)',
-                filter: 'blur(30px)',
-                opacity: 0.72,
+                  'radial-gradient(ellipse at center, rgba(246,243,235,0.13), transparent 58%)',
+                filter: 'blur(34px)',
+                opacity: 0.82,
+                zIndex: 1,
               }}
             />
 
-            <div
-              style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                padding: '10px 16px',
-                borderRadius: 16,
-                background: 'rgba(0,0,0,0.45)',
-                border:
-                  '1px solid rgba(255,255,255,0.08)',
-                fontSize: 13,
-                zIndex: 4,
-                boxShadow:
-                  '0 18px 45px rgba(0,0,0,0.32)',
-              }}
-            >
-              Premium chest mockup · {preset.label} · {preset.size}
+            <div className="hero-status-pill">
+              Production mockup · {preset.size}
             </div>
 
-            <div
-              style={{
-                position: 'absolute',
-                top: 22,
-                left: 22,
-                display: 'flex',
-                gap: 10,
-                alignItems: 'center',
-                padding: '10px 14px',
-                borderRadius: 999,
-                background:
-                  'rgba(255,255,255,0.055)',
-                border:
-                  '1px solid rgba(255,255,255,0.09)',
-                color: 'rgba(245,247,248,0.76)',
-                fontSize: 13,
-                zIndex: 4,
-              }}
-            >
+            <div className="hero-material-pill">
               <span
+                className="hero-swatch"
                 style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: '50%',
                   background:
                     teeColor === 'white'
                       ? '#f5f1e8'
@@ -657,7 +848,7 @@ export default function Home() {
                     background:
                       teeColor === 'white'
                         ? 'linear-gradient(145deg,#fbf7ec,#d6d2c8 54%,#f5f1e8)'
-                        : 'linear-gradient(145deg,#0b1011,#18201f 55%,#030404)',
+                        : 'linear-gradient(145deg,#090b0b,#171b19 55%,#020303)',
                   }}
                 />
 
@@ -667,7 +858,7 @@ export default function Home() {
                     background:
                       teeColor === 'white'
                         ? 'linear-gradient(145deg,#fbf7ec,#d6d2c8 54%,#f5f1e8)'
-                        : 'linear-gradient(145deg,#0b1011,#18201f 55%,#030404)',
+                        : 'linear-gradient(145deg,#090b0b,#171b19 55%,#020303)',
                   }}
                 />
 
@@ -676,12 +867,12 @@ export default function Home() {
                   style={{
                     background:
                       teeColor === 'white'
-                        ? 'radial-gradient(circle at 38% 18%, rgba(255,255,255,0.92), transparent 18%), linear-gradient(145deg,#fffdf7 0%,#dedbd2 46%,#f7f3ea 100%)'
-                        : 'radial-gradient(circle at 38% 18%, rgba(255,255,255,0.12), transparent 18%), linear-gradient(145deg,#101719 0%,#111514 45%,#030404 100%)',
+                        ? 'radial-gradient(circle at 34% 16%, rgba(255,255,255,0.96), transparent 20%), linear-gradient(145deg,#fffdf7 0%,#ddd9cf 48%,#f5f0e5 100%)'
+                        : 'radial-gradient(circle at 34% 16%, rgba(255,255,255,0.13), transparent 20%), linear-gradient(145deg,#101211 0%,#141715 47%,#030404 100%)',
                     boxShadow:
                       teeColor === 'white'
-                        ? 'inset 24px 22px 38px rgba(255,255,255,0.70), inset -36px -42px 60px rgba(120,112,98,0.34), 0 56px 115px rgba(0,0,0,0.48), 0 0 74px rgba(124,240,212,0.13)'
-                        : 'inset 24px 22px 42px rgba(255,255,255,0.055), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
+                        ? 'inset 26px 24px 40px rgba(255,255,255,0.74), inset -38px -46px 62px rgba(112,103,89,0.34), 0 58px 118px rgba(0,0,0,0.50), 0 0 60px rgba(185,255,204,0.08)'
+                        : 'inset 26px 24px 42px rgba(255,255,255,0.055), inset -40px -50px 68px rgba(0,0,0,0.68), 0 58px 118px rgba(0,0,0,0.60), 0 0 64px rgba(185,255,204,0.08)',
                   }}
                 >
                   <div className="hero-collar" />
@@ -742,7 +933,7 @@ export default function Home() {
                           filter:
                             teeColor === 'white'
                               ? 'drop-shadow(0 0 8px rgba(0,0,0,0.18))'
-                              : 'drop-shadow(0 0 16px rgba(124,240,212,0.55))',
+                              : 'drop-shadow(0 0 14px rgba(185,255,204,0.42))',
                         }}
                       />
                     ) : (
@@ -751,9 +942,9 @@ export default function Home() {
                           color:
                             teeColor === 'white'
                               ? 'rgba(8,12,14,0.48)'
-                              : 'rgba(224,255,244,0.72)',
+                              : 'rgba(232,255,238,0.70)',
                           fontSize: 13,
-                          fontWeight: 850,
+                          fontWeight: 760,
                           letterSpacing: 0,
                           textTransform:
                             'uppercase',
@@ -777,62 +968,28 @@ export default function Home() {
                     height: 30,
                     borderRadius: '50%',
                     background:
-                      'linear-gradient(90deg, transparent, rgba(124,240,212,0.24), transparent)',
+                      'linear-gradient(90deg, transparent, rgba(185,255,204,0.18), transparent)',
                     filter: 'blur(20px)',
-                    opacity: 0.8,
+                    opacity: 0.72,
                   }}
                 />
               </div>
             </div>
 
-            <div
-              style={{
-                position: 'absolute',
-                left: 28,
-                right: 28,
-                bottom: 24,
-                display: 'grid',
-                gridTemplateColumns:
-                  'repeat(3,minmax(0,1fr))',
-                gap: 12,
-                zIndex: 4,
-              }}
-            >
+            <div className="hero-spec-grid">
               {[
-                ['Finish', 'Gloss cotton'],
+                ['Finish', 'Heavy cotton'],
                 ['Placement', preset.label],
                 ['Artwork', preview ? 'Live logo' : 'Ready'],
               ].map(([labelText, value]) => (
                 <div
                   key={labelText}
-                  style={{
-                    padding: '14px 12px',
-                    borderRadius: 16,
-                    background:
-                      'rgba(0,0,0,0.34)',
-                    border:
-                      '1px solid rgba(255,255,255,0.08)',
-                    textAlign: 'center',
-                    backdropFilter: 'blur(12px)',
-                  }}
+                  className="hero-spec-card"
                 >
-                  <div
-                    style={{
-                      color:
-                        'rgba(245,247,248,0.52)',
-                      fontSize: 11,
-                      marginBottom: 4,
-                    }}
-                  >
+                  <div className="hero-spec-label">
                     {labelText}
                   </div>
-                  <div
-                    style={{
-                      color: '#f5f7f8',
-                      fontSize: 13,
-                      fontWeight: 850,
-                    }}
-                  >
+                  <div className="hero-spec-value">
                     {value}
                   </div>
                 </div>
@@ -2392,28 +2549,6 @@ const footerLinks: CSSProperties = {
   display: 'flex',
   gap: 18,
   flexWrap: 'wrap',
-};
-
-const badge: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 10,
-  padding: '10px 14px',
-  borderRadius: 999,
-  marginBottom: 24,
-  border: '1px solid rgba(0,255,136,0.34)',
-  color: '#9dffc4',
-  background: 'rgba(0,255,136,0.08)',
-  fontSize: 12,
-  fontWeight: 800,
-};
-
-const badgeDot: CSSProperties = {
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  background: '#00ff88',
-  boxShadow: '0 0 18px rgba(0,255,136,0.8)',
 };
 
 const primaryButton: CSSProperties = {
