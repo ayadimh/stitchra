@@ -1,3 +1,4 @@
+import base64
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -67,6 +68,327 @@ PRODUCT_PRESETS = {
         "max_height_mm": 120,
     },
 }
+
+
+def rgb_to_hex(rgb: np.ndarray | list[int] | tuple[int, int, int]) -> str:
+    """Return a #rrggbb string from RGB values."""
+    red, green, blue = [int(value) for value in rgb[:3]]
+    return f"#{red:02x}{green:02x}{blue:02x}"
+
+
+def image_to_png_data_url(image: Image.Image) -> str:
+    """Encode a PIL image as a PNG data URL."""
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def resize_for_analysis(image: Image.Image, max_dimension: int = 1400) -> Image.Image:
+    """Keep analysis fast while preserving enough detail for preview cleanup."""
+    image = image.convert("RGBA")
+    if max(image.size) <= max_dimension:
+        return image
+
+    resized = image.copy()
+    resized.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+    return resized
+
+
+def detect_background(image: Image.Image) -> dict:
+    """Detect whether an image has transparent, white, black, solid, or complex background."""
+    rgba = np.array(image.convert("RGBA"))
+    rgb = rgba[:, :, :3].astype(np.int16)
+    alpha = rgba[:, :, 3]
+    height, width = alpha.shape
+
+    transparent_ratio = float(np.mean(alpha < 245))
+    border_rgb = np.concatenate(
+        [
+            rgb[0, :, :],
+            rgb[height - 1, :, :],
+            rgb[:, 0, :],
+            rgb[:, width - 1, :],
+        ],
+        axis=0,
+    )
+    border_alpha = np.concatenate(
+        [
+            alpha[0, :],
+            alpha[height - 1, :],
+            alpha[:, 0],
+            alpha[:, width - 1],
+        ],
+        axis=0,
+    )
+
+    if transparent_ratio > 0.02 and float(np.mean(border_alpha < 245)) > 0.10:
+        return {
+            "type": "transparent",
+            "color": [0, 0, 0],
+            "solid": False,
+            "variation": 0.0,
+        }
+
+    opaque_border = border_rgb[border_alpha > 220]
+    if opaque_border.size == 0:
+        opaque_border = border_rgb
+
+    background_color = np.median(opaque_border, axis=0)
+    distances = np.linalg.norm(opaque_border - background_color, axis=1)
+    variation = float(np.percentile(distances, 90))
+    brightness = float(np.mean(background_color))
+    solid = variation < 34
+
+    if solid and brightness > 232:
+        background_type = "white"
+    elif solid and brightness < 35:
+        background_type = "black"
+    elif solid:
+        background_type = "solid"
+    else:
+        background_type = "complex"
+
+    return {
+        "type": background_type,
+        "color": [int(value) for value in background_color],
+        "solid": solid,
+        "variation": round(variation, 2),
+    }
+
+
+def remove_simple_background(image: Image.Image, background: dict) -> tuple[Image.Image, bool]:
+    """Remove simple solid background connected to image borders."""
+    if background["type"] in {"transparent", "complex"} or not background["solid"]:
+        return image.convert("RGBA"), False
+
+    rgba = np.array(image.convert("RGBA"))
+    rgb = rgba[:, :, :3].astype(np.int16)
+    alpha = rgba[:, :, 3]
+    background_color = np.array(background["color"], dtype=np.int16)
+    distances = np.linalg.norm(rgb - background_color, axis=2)
+    tolerance = max(30, min(72, int(background["variation"]) + 34))
+
+    if background["type"] == "white":
+        candidate_mask = (distances <= tolerance) | np.all(rgb > 236, axis=2)
+    elif background["type"] == "black":
+        candidate_mask = (distances <= tolerance) | np.all(rgb < 28, axis=2)
+    else:
+        candidate_mask = distances <= tolerance
+
+    candidate_mask &= alpha > 0
+    label_count, labels = cv2.connectedComponents(candidate_mask.astype(np.uint8), 8)
+    if label_count <= 1:
+        return Image.fromarray(rgba, "RGBA"), False
+
+    border_labels = set(labels[0, :])
+    border_labels.update(labels[-1, :])
+    border_labels.update(labels[:, 0])
+    border_labels.update(labels[:, -1])
+    border_labels.discard(0)
+
+    if not border_labels:
+        return Image.fromarray(rgba, "RGBA"), False
+
+    remove_mask = np.isin(labels, list(border_labels))
+    removed_ratio = float(np.mean(remove_mask))
+    if removed_ratio < 0.01:
+        return Image.fromarray(rgba, "RGBA"), False
+
+    blurred_mask = cv2.GaussianBlur(
+        remove_mask.astype(np.float32),
+        (0, 0),
+        sigmaX=0.85,
+        sigmaY=0.85,
+    )
+    new_alpha = alpha.astype(np.float32) * (1.0 - np.clip(blurred_mask, 0.0, 1.0))
+    new_alpha[remove_mask] = 0
+    rgba[:, :, 3] = np.clip(new_alpha, 0, 255).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA"), True
+
+
+def crop_transparent_borders(image: Image.Image, padding: int = 14) -> tuple[Image.Image, list[int]]:
+    """Crop transparent or empty borders around visible artwork."""
+    rgba = np.array(image.convert("RGBA"))
+    alpha = rgba[:, :, 3]
+    visible_y, visible_x = np.where(alpha > 12)
+
+    if len(visible_x) == 0 or len(visible_y) == 0:
+        width, height = image.size
+        return image.convert("RGBA"), [0, 0, width, height]
+
+    left = max(0, int(visible_x.min()) - padding)
+    top = max(0, int(visible_y.min()) - padding)
+    right = min(image.width, int(visible_x.max()) + padding + 1)
+    bottom = min(image.height, int(visible_y.max()) + padding + 1)
+    return image.crop((left, top, right, bottom)).convert("RGBA"), [left, top, right, bottom]
+
+
+def dominant_logo_colors(image: Image.Image) -> tuple[int, list[dict]]:
+    """Return practical embroidery color count and dominant visible colors."""
+    rgba = np.array(image.convert("RGBA"))
+    rgb = rgba[:, :, :3]
+    alpha = rgba[:, :, 3]
+    visible_rgb = rgb[alpha > 40]
+
+    if len(visible_rgb) == 0:
+        return 0, []
+
+    sample_step = max(1, len(visible_rgb) // 30000)
+    samples = visible_rgb[::sample_step]
+    rounded_unique = np.unique((samples // 24) * 24, axis=0)
+    cluster_count = int(max(1, min(8, len(rounded_unique), len(samples))))
+
+    if cluster_count <= 1:
+        color = np.mean(samples, axis=0).astype(int)
+        return 1, [{"hex": rgb_to_hex(color), "rgb": [int(value) for value in color], "percentage": 1.0}]
+
+    sample_float = samples.astype(np.float32)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 24, 0.8)
+    _, labels, centers = cv2.kmeans(
+        sample_float,
+        cluster_count,
+        None,
+        criteria,
+        4,
+        cv2.KMEANS_PP_CENTERS,
+    )
+    counts = np.bincount(labels.ravel(), minlength=cluster_count)
+    order = np.argsort(counts)[::-1]
+    total = float(counts.sum())
+    dominant_colors = []
+
+    for index in order[:6]:
+        percentage = float(counts[index] / total) if total else 0.0
+        if percentage < 0.015:
+            continue
+
+        center = np.clip(centers[index], 0, 255).astype(int)
+        dominant_colors.append(
+            {
+                "hex": rgb_to_hex(center),
+                "rgb": [int(value) for value in center],
+                "percentage": round(percentage, 3),
+            }
+        )
+
+    colors_count = int(np.sum((counts / total) >= 0.02)) if total else 0
+    return max(colors_count, len(dominant_colors)), dominant_colors
+
+
+def relative_luminance(rgb_values: np.ndarray) -> np.ndarray:
+    """Calculate relative luminance from RGB values."""
+    normalized = rgb_values.astype(np.float32) / 255.0
+    linear = np.where(
+        normalized <= 0.03928,
+        normalized / 12.92,
+        ((normalized + 0.055) / 1.055) ** 2.4,
+    )
+    return (
+        0.2126 * linear[..., 0]
+        + 0.7152 * linear[..., 1]
+        + 0.0722 * linear[..., 2]
+    )
+
+
+def calculate_contrast_score(image: Image.Image, tee_color: str) -> int:
+    """Score logo contrast against black or white shirt."""
+    rgba = np.array(image.convert("RGBA"))
+    visible_rgb = rgba[:, :, :3][rgba[:, :, 3] > 40]
+    if len(visible_rgb) == 0:
+        return 0
+
+    logo_luminance = float(np.median(relative_luminance(visible_rgb)))
+    shirt_rgb = np.array([245, 241, 232] if tee_color == "white" else [5, 6, 7])
+    shirt_luminance = float(relative_luminance(shirt_rgb))
+    contrast_ratio = (max(logo_luminance, shirt_luminance) + 0.05) / (
+        min(logo_luminance, shirt_luminance) + 0.05
+    )
+    return int(round(max(0, min(100, ((contrast_ratio - 1) / 6.0) * 100))))
+
+
+def logo_detail_metrics(image: Image.Image) -> dict:
+    """Measure detail density and tiny separated pieces."""
+    rgba = np.array(image.convert("RGBA"))
+    alpha = rgba[:, :, 3]
+    visible_mask = alpha > 40
+    visible_pixels = int(np.sum(visible_mask))
+
+    if visible_pixels == 0:
+        return {
+            "edge_density": 0.0,
+            "tiny_components": 0,
+            "visible_ratio": 0.0,
+        }
+
+    gray = cv2.cvtColor(rgba[:, :, :3], cv2.COLOR_RGB2GRAY)
+    edges = cv2.Canny(gray, 60, 150)
+    edge_density = float(np.mean(edges[visible_mask] > 0))
+    _, _, stats, _ = cv2.connectedComponentsWithStats(visible_mask.astype(np.uint8), 8)
+    tiny_limit = max(12, int(visible_pixels * 0.0012))
+    tiny_components = int(np.sum(stats[1:, cv2.CC_STAT_AREA] < tiny_limit))
+    visible_ratio = float(visible_pixels / visible_mask.size)
+
+    return {
+        "edge_density": round(edge_density, 3),
+        "tiny_components": tiny_components,
+        "visible_ratio": round(visible_ratio, 3),
+    }
+
+
+def build_logo_guidance(
+    image: Image.Image,
+    colors_count: int,
+    contrast_score: int,
+    detail_metrics: dict,
+    background_removed: bool,
+    background_type: str,
+) -> tuple[bool, list[str], list[str]]:
+    """Create embroidery readiness warnings and recommendations."""
+    warnings = []
+    recommendations = []
+
+    if background_type == "complex" and not background_removed:
+        warnings.append("Background is complex and could not be removed automatically.")
+        recommendations.append("Upload a PNG with transparency or a logo on a plain white/black background.")
+
+    if colors_count > 6:
+        warnings.append("Logo has more than 6 practical thread colors.")
+        recommendations.append("Simplify the logo to 3–6 solid colors for cleaner embroidery.")
+
+    if contrast_score < 42:
+        warnings.append("Logo contrast is low on the selected T-shirt color.")
+        recommendations.append("Use brighter colors on black shirts or darker colors on white shirts.")
+
+    if min(image.size) < 90:
+        warnings.append("Logo resolution is low after cropping.")
+        recommendations.append("Upload a higher resolution logo for sharper stitch planning.")
+
+    if detail_metrics["edge_density"] > 0.24:
+        warnings.append("Logo has dense detail that may not stitch cleanly.")
+        recommendations.append("Use thicker lines and fewer tiny details.")
+
+    if detail_metrics["tiny_components"] > 28:
+        warnings.append("Logo contains many tiny isolated details or possible small text.")
+        recommendations.append("Avoid very small text; embroidery needs readable shapes.")
+
+    if detail_metrics["visible_ratio"] < 0.025:
+        warnings.append("Visible logo area is very small after cleanup.")
+        recommendations.append("Crop tighter or use a larger, bolder mark.")
+
+    if not warnings:
+        recommendations.append("Logo is suitable for a clean embroidery preview.")
+
+    embroidery_ready = (
+        colors_count <= 6
+        and contrast_score >= 42
+        and detail_metrics["edge_density"] <= 0.24
+        and min(image.size) >= 90
+        and detail_metrics["visible_ratio"] >= 0.025
+        and background_type != "complex"
+    )
+
+    return embroidery_ready, warnings, recommendations
 
 
 def kmeans_quantize(image_bgr: np.ndarray, k: int) -> np.ndarray:
@@ -213,6 +535,53 @@ async def estimate(
         "compatible_area": compatible_area,
         "warnings": warnings,
         "price_breakdown": price_breakdown,
+    }
+
+
+@app.post("/analyze_logo")
+async def analyze_logo(
+    file: UploadFile = File(...),
+    tee_color: str = Form("black"),
+):
+    """Clean logo background and return embroidery-readiness analysis."""
+    data = await file.read()
+    original = resize_for_analysis(Image.open(BytesIO(data)))
+    background = detect_background(original)
+    cleaned, background_removed = remove_simple_background(original, background)
+    cropped, crop_box = crop_transparent_borders(cleaned)
+
+    if max(cropped.size) > 900:
+        cropped.thumbnail((900, 900), Image.Resampling.LANCZOS)
+
+    colors_count, dominant_colors = dominant_logo_colors(cropped)
+    normalized_tee_color = "white" if tee_color == "white" else "black"
+    contrast_score = calculate_contrast_score(cropped, normalized_tee_color)
+    detail_metrics = logo_detail_metrics(cropped)
+    embroidery_ready, warnings, recommendations = build_logo_guidance(
+        cropped,
+        colors_count,
+        contrast_score,
+        detail_metrics,
+        background_removed,
+        background["type"],
+    )
+
+    return {
+        "processed_png": image_to_png_data_url(cropped),
+        "background_type": background["type"],
+        "background_color": {
+            "hex": rgb_to_hex(background["color"]),
+            "rgb": background["color"],
+        },
+        "background_removed": background_removed,
+        "crop_box": crop_box,
+        "colors_count": colors_count,
+        "dominant_colors": dominant_colors,
+        "contrast_score": contrast_score,
+        "embroidery_ready": embroidery_ready,
+        "warnings": warnings,
+        "recommendations": recommendations,
+        "detail_metrics": detail_metrics,
     }
 
 

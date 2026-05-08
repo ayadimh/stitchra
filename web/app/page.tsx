@@ -21,6 +21,20 @@ type Estimate = {
   height_mm: number;
 };
 
+type LogoAnalysis = {
+  processed_png: string;
+  colors_count: number;
+  dominant_colors: Array<{
+    hex: string;
+    rgb: number[];
+    percentage: number;
+  }>;
+  contrast_score: number;
+  embroidery_ready: boolean;
+  warnings: string[];
+  recommendations: string[];
+};
+
 type Placement = 'left' | 'center';
 type TeeColor = 'black' | 'white';
 
@@ -35,6 +49,25 @@ const placementPresets = {
   },
 } as const;
 
+async function dataUrlToFile(
+  dataUrl: string,
+  originalName: string
+) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const baseName =
+    originalName.replace(/\.[^/.]+$/, '') ||
+    'logo';
+
+  return new File(
+    [blob],
+    `${baseName}-processed.png`,
+    {
+      type: 'image/png',
+    }
+  );
+}
+
 export default function Home() {
   const [placement, setPlacement] = useState<Placement>('left');
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
@@ -42,6 +75,8 @@ export default function Home() {
   const [preview, setPreview] = useState<string | null>(null);
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [logoAnalysis, setLogoAnalysis] =
+    useState<LogoAnalysis | null>(null);
 
   const [logoPrompt, setLogoPrompt] = useState('');
   const [status, setStatus] = useState('');
@@ -49,6 +84,7 @@ export default function Home() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const bg = useMemo(
     () =>
@@ -64,18 +100,65 @@ export default function Home() {
 
   const preset = placementPresets[placement];
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
+  const onFile = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const selectedFile = event.target.files?.[0] ?? null;
 
-    setFile(f);
+    setFile(selectedFile);
     setEstimate(null);
-
-    if (f) {
-      setPreview(URL.createObjectURL(f));
-    }
-
+    setLogoAnalysis(null);
     setStatus('');
     setError('');
+
+    if (!selectedFile) {
+      setPreview(null);
+      return;
+    }
+
+    setPreview(URL.createObjectURL(selectedFile));
+    setIsAnalyzing(true);
+    setStatus('Analyzing logo...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('tee_color', teeColor);
+
+      const response = await fetch(`${API}/analyze_logo`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        setStatus(
+          'Logo uploaded — automatic cleanup unavailable.'
+        );
+        return;
+      }
+
+      const analysis =
+        (await response.json()) as LogoAnalysis;
+      const processedFile = await dataUrlToFile(
+        analysis.processed_png,
+        selectedFile.name
+      );
+
+      setFile(processedFile);
+      setPreview(analysis.processed_png);
+      setLogoAnalysis(analysis);
+      setStatus(
+        analysis.embroidery_ready
+          ? 'Logo cleaned and embroidery-ready.'
+          : 'Logo cleaned — review the recommendations.'
+      );
+    } catch {
+      setStatus(
+        'Logo uploaded — automatic cleanup unavailable.'
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const generateLogo = async () => {
@@ -111,6 +194,7 @@ export default function Home() {
 
       setFile(generatedFile);
       setPreview(URL.createObjectURL(blob));
+      setLogoAnalysis(null);
 
       setStatus('AI logo generated.');
     } catch {
@@ -1262,7 +1346,7 @@ export default function Home() {
 
               <button
                 onClick={estimatePrice}
-                disabled={isEstimating}
+                disabled={isEstimating || isAnalyzing}
                 className="lux-button"
                 style={{
                   ...primaryButton,
@@ -1270,9 +1354,11 @@ export default function Home() {
                   width: '100%',
                 }}
               >
-                {isEstimating
-                  ? 'Calculating...'
-                  : 'Get my price'}
+                {isAnalyzing
+                  ? 'Preparing logo...'
+                  : isEstimating
+                    ? 'Calculating...'
+                    : 'Get my price'}
               </button>
 
               {(status || error) && (
@@ -1285,6 +1371,61 @@ export default function Home() {
                   }}
                 >
                   {error || status}
+                </div>
+              )}
+
+              {logoAnalysis && !error && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 8,
+                    padding: 14,
+                    borderRadius: 18,
+                    border:
+                      '1px solid rgba(255,255,255,0.10)',
+                    background:
+                      'rgba(255,255,255,0.045)',
+                    color: 'rgba(245,247,248,0.78)',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <strong
+                      style={{
+                        color:
+                          logoAnalysis.embroidery_ready
+                            ? '#9dffc4'
+                            : '#ffe083',
+                      }}
+                    >
+                      {logoAnalysis.embroidery_ready
+                        ? 'Embroidery-ready'
+                        : 'Needs review'}
+                    </strong>
+                    <span>
+                      {logoAnalysis.colors_count} colors
+                    </span>
+                    <span>
+                      Contrast {logoAnalysis.contrast_score}
+                      /100
+                    </span>
+                  </div>
+
+                  {logoAnalysis.warnings.length > 0 && (
+                    <div>
+                      {logoAnalysis.warnings
+                        .slice(0, 2)
+                        .join(' ')}
+                    </div>
+                  )}
                 </div>
               )}
 
