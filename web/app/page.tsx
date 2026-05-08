@@ -307,6 +307,26 @@ export default function Home() {
               50% { box-shadow: 0 0 26px rgba(177,255,202,0.38), 0 0 72px rgba(177,255,202,0.14), inset 0 0 28px rgba(255,255,255,0.11); }
             }
 
+            @keyframes heroMachineFloat {
+              0%, 100% { transform: translate3d(0, 0, 0) rotateX(0deg); }
+              50% { transform: translate3d(0, -12px, 0) rotateX(1.2deg); }
+            }
+
+            @keyframes heroMachineNeedle {
+              0%, 100% { transform: translate3d(-50%, 0, 0); }
+              45% { transform: translate3d(-50%, 11px, 0); }
+            }
+
+            @keyframes heroMachineThread {
+              from { background-position: 0 0; }
+              to { background-position: 80px 80px; }
+            }
+
+            @keyframes heroMachineLight {
+              0%, 100% { transform: translateX(-34%) rotate(14deg); opacity: 0.15; }
+              50% { transform: translateX(34%) rotate(14deg); opacity: 0.38; }
+            }
+
             .hero-atelier {
               position: relative;
               max-width: 1320px;
@@ -440,13 +460,11 @@ export default function Home() {
               --hero-light-y: 18%;
               position: relative;
               min-height: 672px;
-              overflow: hidden;
+              overflow: visible;
               border: 1px solid rgba(255,255,255,0.11);
               border-radius: 36px;
               background:
-                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(255,250,232,0.20), transparent 19%),
-                radial-gradient(circle at 62% 68%, rgba(185,255,204,0.08), transparent 34%),
-                linear-gradient(145deg, rgba(12,13,13,0.98), rgba(4,5,5,0.98) 52%, rgba(18,19,18,0.98));
+                linear-gradient(145deg, rgba(18,20,21,0.94), rgba(5,6,7,0.98) 58%, rgba(8,18,17,0.96));
               box-shadow:
                 0 50px 150px rgba(0,0,0,0.68),
                 inset 0 1px 0 rgba(255,255,255,0.09);
@@ -462,39 +480,249 @@ export default function Home() {
               border-color: rgba(226,255,235,0.22);
               box-shadow:
                 0 58px 165px rgba(0,0,0,0.72),
-                0 0 86px rgba(185,255,204,0.09),
                 inset 0 1px 0 rgba(255,255,255,0.11);
             }
 
             .hero-preview-card::before {
               content: "";
               position: absolute;
-              inset: 0;
+              inset: -32px;
               background:
-                linear-gradient(115deg, rgba(255,255,255,0.10), transparent 24%, transparent 62%, rgba(185,255,204,0.06)),
-                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-              background-size: auto, 52px 52px, 52px 52px;
-              mask-image: radial-gradient(circle at 52% 44%, black, transparent 76%);
+                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(0,255,136,0.28), transparent 30%),
+                radial-gradient(circle at 74% 74%, rgba(0,200,255,0.16), transparent 36%),
+                radial-gradient(circle at 20% 82%, rgba(255,55,212,0.11), transparent 35%);
+              filter: blur(26px);
+              opacity: 0.78;
               transform: translate3d(var(--hero-shift-x), var(--hero-shift-y), 0);
               transition: transform 160ms ease-out;
               pointer-events: none;
-              z-index: 0;
+              z-index: -1;
             }
 
             .hero-preview-card::after {
               content: "";
               position: absolute;
-              left: 14%;
-              right: 14%;
-              bottom: 74px;
-              height: 86px;
-              border-radius: 50%;
-              background: radial-gradient(ellipse at center, rgba(0,0,0,0.78), transparent 68%);
-              filter: blur(18px);
-              opacity: 0.9;
+              inset: 0;
+              border-radius: inherit;
+              background:
+                linear-gradient(120deg, rgba(255,255,255,0.10), transparent 22%, transparent 62%, rgba(0,255,136,0.08)),
+                linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px);
+              background-size: auto, 50px 50px, 50px 50px;
+              mask-image: radial-gradient(circle at 52% 45%, black, transparent 78%);
+              opacity: 0.82;
               pointer-events: none;
-              z-index: 1;
+              z-index: 0;
+            }
+
+            .hero-machine-frame {
+              position: absolute;
+              inset: 76px 42px 122px;
+              overflow: hidden;
+              border-radius: 30px;
+              border: 1px solid rgba(255,255,255,0.12);
+              background:
+                linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)),
+                rgba(5,7,8,0.72);
+              box-shadow:
+                0 34px 90px rgba(0,0,0,0.52),
+                inset 0 1px 0 rgba(255,255,255,0.12);
+              transform: rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
+              transform-style: preserve-3d;
+              transition: transform 180ms ease-out;
+              z-index: 2;
+              animation: heroMachineFloat 7s ease-in-out infinite;
+            }
+
+            .hero-machine-photo {
+              position: absolute;
+              inset: 18px;
+              overflow: hidden;
+              border-radius: 24px;
+              background-image:
+                linear-gradient(180deg, rgba(5,6,8,0.04) 0%, rgba(5,6,8,0.28) 58%, rgba(5,6,8,0.88) 100%),
+                radial-gradient(circle at 30% 18%, rgba(255,255,255,0.75), transparent 18%),
+                url('/stitchra-machine-hero.jpg'),
+                linear-gradient(145deg, #f7f8f2 0%, #d7dad5 48%, #626a70 100%);
+              background-size: cover;
+              background-position: center;
+              box-shadow:
+                inset 0 0 0 1px rgba(255,255,255,0.08),
+                inset 0 -80px 120px rgba(0,0,0,0.70);
+            }
+
+            .hero-machine-photo::before {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background:
+                linear-gradient(112deg, rgba(255,255,255,0.34), transparent 21%, transparent 66%, rgba(0,200,255,0.10));
+              mix-blend-mode: overlay;
+              animation: heroMachineLight 9s ease-in-out infinite;
+              pointer-events: none;
+            }
+
+            .hero-machine-photo::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              background:
+                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(255,255,255,0.18), transparent 28%),
+                radial-gradient(circle at 68% 70%, rgba(0,255,136,0.16), transparent 30%),
+                linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.020) 1px, transparent 1px);
+              background-size: auto, auto, 42px 42px, 42px 42px;
+              pointer-events: none;
+            }
+
+            .hero-machine-fallback {
+              position: absolute;
+              inset: 18px;
+              border-radius: 24px;
+              overflow: hidden;
+              opacity: 0.62;
+              pointer-events: none;
+            }
+
+            .hero-machine-head {
+              position: absolute;
+              left: 44%;
+              top: 16%;
+              width: 50%;
+              height: 34%;
+              border-radius: 46% 46% 28% 28%;
+              background:
+                radial-gradient(circle at 32% 28%, rgba(255,255,255,0.52), transparent 10%),
+                linear-gradient(145deg, rgba(247,250,247,0.82), rgba(165,174,176,0.92) 56%, rgba(31,40,43,0.84));
+              filter: blur(0.2px);
+              transform: rotate(-7deg);
+              box-shadow: 0 28px 72px rgba(0,0,0,0.34);
+            }
+
+            .hero-machine-arm {
+              position: absolute;
+              left: 31%;
+              top: 32%;
+              width: 13%;
+              height: 48%;
+              border-radius: 999px;
+              background:
+                linear-gradient(180deg, rgba(25,29,31,0.30), rgba(8,10,11,0.86));
+              transform: rotate(6deg);
+              box-shadow: 0 18px 36px rgba(0,0,0,0.32);
+            }
+
+            .hero-machine-needle {
+              position: absolute;
+              left: 48%;
+              top: 40%;
+              width: 12px;
+              height: 172px;
+              transform: translateX(-50%);
+              background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(125,139,147,0.72), rgba(0,0,0,0.82));
+              border-radius: 999px;
+              box-shadow: 0 0 24px rgba(0,200,255,0.18);
+              animation: heroMachineNeedle 1.8s ease-in-out infinite;
+            }
+
+            .hero-machine-hoop {
+              position: absolute;
+              left: 29%;
+              bottom: 20%;
+              width: 40%;
+              height: 18%;
+              border: 2px solid rgba(0,255,136,0.44);
+              border-radius: 50%;
+              background:
+                repeating-linear-gradient(45deg, rgba(0,255,136,0.11) 0 2px, transparent 2px 10px);
+              box-shadow:
+                0 0 34px rgba(0,255,136,0.24),
+                inset 0 0 28px rgba(0,200,255,0.12);
+              animation: heroMachineThread 8s linear infinite;
+            }
+
+            .hero-ai-badge,
+            .hero-machine-toolbar,
+            .hero-placement-callout {
+              position: absolute;
+              z-index: 5;
+              border: 1px solid rgba(255,255,255,0.12);
+              background: rgba(6,7,8,0.68);
+              box-shadow: 0 22px 68px rgba(0,0,0,0.42);
+              backdrop-filter: blur(18px);
+            }
+
+            .hero-ai-badge {
+              top: 28px;
+              right: 28px;
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              padding: 12px 14px;
+              border-radius: 18px;
+            }
+
+            .hero-ai-icon {
+              width: 36px;
+              height: 36px;
+              display: grid;
+              place-items: center;
+              border-radius: 13px;
+              background: linear-gradient(135deg, #00ff88, #00c8ff 58%, #ff28d6);
+              color: #04100a;
+              font-weight: 900;
+            }
+
+            .hero-machine-toolbar {
+              top: 28px;
+              left: 28px;
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+              padding: 10px 12px;
+              border-radius: 999px;
+              color: rgba(245,247,248,0.72);
+              font-size: 12px;
+              font-weight: 760;
+            }
+
+            .hero-window-dot {
+              width: 9px;
+              height: 9px;
+              border-radius: 999px;
+              background: #00ff88;
+              box-shadow: 0 0 16px currentColor;
+            }
+
+            .hero-window-dot:nth-child(2) {
+              background: #00c8ff;
+            }
+
+            .hero-window-dot:nth-child(3) {
+              background: #ff28d6;
+            }
+
+            .hero-placement-callout {
+              left: 50%;
+              bottom: 32px;
+              transform: translateX(-50%);
+              min-width: 280px;
+              display: flex;
+              align-items: center;
+              gap: 13px;
+              padding: 14px 16px;
+              border-radius: 20px;
+            }
+
+            .hero-callout-icon {
+              width: 44px;
+              height: 44px;
+              display: grid;
+              place-items: center;
+              border-radius: 15px;
+              background: linear-gradient(135deg, rgba(0,255,136,0.94), rgba(0,200,255,0.94));
+              color: #04100a;
+              font-weight: 950;
             }
 
             .hero-stage {
@@ -697,6 +925,10 @@ export default function Home() {
               .hero-preview-card {
                 min-height: 640px;
               }
+
+              .hero-machine-frame {
+                inset: 82px 24px 124px;
+              }
             }
 
             @media (max-width: 560px) {
@@ -724,6 +956,27 @@ export default function Home() {
                 right: auto;
                 top: 70px;
               }
+
+              .hero-machine-frame {
+                inset: 88px 16px 130px;
+                border-radius: 24px;
+              }
+
+              .hero-ai-badge {
+                left: 20px;
+                right: 20px;
+                top: 20px;
+              }
+
+              .hero-machine-toolbar {
+                top: 72px;
+                left: 20px;
+              }
+
+              .hero-placement-callout {
+                min-width: 0;
+                width: calc(100% - 40px);
+              }
             }
 
             @media (prefers-reduced-motion: reduce) {
@@ -731,7 +984,11 @@ export default function Home() {
               .hero-shirt-body,
               .hero-shirt-body::before,
               .hero-placement-box,
-              .hero-placement-box::before {
+              .hero-placement-box::before,
+              .hero-machine-frame,
+              .hero-machine-photo::before,
+              .hero-machine-needle,
+              .hero-machine-hoop {
                 animation: none;
               }
             }
@@ -748,14 +1005,14 @@ export default function Home() {
             </div>
 
             <h1 className="hero-title">
-              Build the next
+              Design. Preview.
               <span className="hero-title-accent">
-                streetwear mark
+                stitch it right.
               </span>
             </h1>
 
             <p className="hero-subcopy">
-              Generate or upload artwork, place it on a premium tee, and get a production-ready embroidery quote before the first sample is made.
+              Turn a logo idea into an embroidery-ready concept, review it in a production-style studio preview, and quote the job before the first sample is made.
             </p>
 
             <div className="hero-actions">
@@ -882,254 +1139,75 @@ export default function Home() {
               } as CSSProperties
             }
           >
-            <div
-              style={{
-                position: 'absolute',
-                inset: '12% 8% 12%',
-                background:
-                  'radial-gradient(ellipse at center, rgba(246,243,235,0.13), transparent 58%)',
-                filter: 'blur(34px)',
-                opacity: 0.82,
-                zIndex: 1,
-              }}
-            />
-
-            <div className="hero-status-pill">
-              Production mockup · {preset.size}
+            <div className="hero-machine-toolbar">
+              <span className="hero-window-dot" />
+              <span className="hero-window-dot" />
+              <span className="hero-window-dot" />
+              Production studio
             </div>
 
-            <div className="hero-material-pill">
-              <span
-                className="hero-swatch"
-                style={{
-                  background:
-                    teeColor === 'white'
-                      ? '#f5f1e8'
-                      : '#050607',
-                  border:
-                    teeColor === 'white'
-                      ? '1px solid rgba(0,0,0,0.18)'
-                      : '1px solid rgba(255,255,255,0.20)',
-                }}
-              />
-              {teeColor === 'white'
-                ? 'White tee'
-                : 'Black tee'}
-            </div>
-
-            <div className="hero-stage">
-              <div className="hero-float">
+            <div className="hero-ai-badge">
+              <div className="hero-ai-icon">AI</div>
+              <div>
                 <div
                   style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: 10,
-                    transform:
-                      'translateX(-50%) translateZ(-42px)',
-                    width: 320,
-                    height: 58,
-                    borderRadius: '50%',
-                    background:
-                      'radial-gradient(ellipse at center, rgba(0,0,0,0.68), transparent 68%)',
-                    filter: 'blur(12px)',
-                    opacity: 0.9,
-                  }}
-                />
-
-                <div
-                  className="hero-sleeve-left"
-                  style={{
-                    background:
-                      teeColor === 'white'
-                        ? 'linear-gradient(145deg,#fbf7ec,#d6d2c8 54%,#f5f1e8)'
-                        : 'linear-gradient(145deg,#090b0b,#171b19 55%,#020303)',
-                  }}
-                />
-
-                <div
-                  className="hero-sleeve-right"
-                  style={{
-                    background:
-                      teeColor === 'white'
-                        ? 'linear-gradient(145deg,#fbf7ec,#d6d2c8 54%,#f5f1e8)'
-                        : 'linear-gradient(145deg,#090b0b,#171b19 55%,#020303)',
-                  }}
-                />
-
-                <div
-                  className="hero-shirt-body"
-                  style={{
-                    background:
-                      teeColor === 'white'
-                        ? 'radial-gradient(circle at 34% 16%, rgba(255,255,255,0.96), transparent 20%), linear-gradient(145deg,#fffdf7 0%,#ddd9cf 48%,#f5f0e5 100%)'
-                        : 'radial-gradient(circle at 34% 16%, rgba(255,255,255,0.13), transparent 20%), linear-gradient(145deg,#101211 0%,#141715 47%,#030404 100%)',
-                    boxShadow:
-                      teeColor === 'white'
-                        ? 'inset 26px 24px 40px rgba(255,255,255,0.74), inset -38px -46px 62px rgba(112,103,89,0.34), 0 58px 118px rgba(0,0,0,0.50), 0 0 60px rgba(185,255,204,0.08)'
-                        : 'inset 26px 24px 42px rgba(255,255,255,0.055), inset -40px -50px 68px rgba(0,0,0,0.68), 0 58px 118px rgba(0,0,0,0.60), 0 0 64px rgba(185,255,204,0.08)',
+                    color: '#f5f7f8',
+                    fontWeight: 860,
+                    marginBottom: 2,
                   }}
                 >
-                  <div className="hero-collar" />
-
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: 46,
-                      transform: 'translateX(-50%)',
-                      width: 152,
-                      height: 1,
-                      background:
-                        teeColor === 'white'
-                          ? 'rgba(35,31,26,0.14)'
-                          : 'rgba(255,255,255,0.10)',
-                      boxShadow:
-                        teeColor === 'white'
-                          ? '0 22px 0 rgba(35,31,26,0.14)'
-                          : '0 22px 0 rgba(255,255,255,0.10)',
-                    }}
-                  />
-
-                  <div
-                    className={`hero-placement-box${preview ? ' has-logo' : ''}`}
-                    style={{
-                      left:
-                        preset.label === 'Center front'
-                          ? '50%'
-                          : '60%',
-                      top:
-                        preset.label === 'Center front'
-                          ? 190
-                          : 128,
-                      width:
-                        preset.label === 'Center front'
-                          ? 190
-                          : 112,
-                      height:
-                        preset.label === 'Center front'
-                          ? 148
-                          : 72,
-                    }}
-                  >
-                    {preview ? (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: 4,
-                          borderRadius: 12,
-                          overflow: 'hidden',
-                          isolation: 'isolate',
-                          background: 'transparent',
-                          WebkitMaskImage:
-                            'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
-                          maskImage:
-                            'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
-                          zIndex: 1,
-                        }}
-                      >
-                        <Image
-                          src={preview}
-                          alt="Logo preview"
-                          fill
-                          unoptimized
-                          style={{
-                            objectFit: 'contain',
-                            mixBlendMode:
-                              teeColor === 'white'
-                                ? 'multiply'
-                                : 'screen',
-                            opacity:
-                              teeColor === 'white'
-                                ? 0.9
-                                : 0.86,
-                            padding: 6,
-                            filter:
-                              teeColor === 'white'
-                                ? 'contrast(1.18) saturate(1.08) brightness(1.03) drop-shadow(0 1px 3px rgba(0,0,0,0.24))'
-                                : 'contrast(1.65) saturate(1.25) brightness(0.82) drop-shadow(0 0 13px rgba(185,255,204,0.48))',
-                            background: 'transparent',
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundImage:
-                              'repeating-linear-gradient(90deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, rgba(0,0,0,0.14) 0 1px, transparent 1px 6px)',
-                            mixBlendMode:
-                              teeColor === 'white'
-                                ? 'multiply'
-                                : 'screen',
-                            opacity:
-                              teeColor === 'white'
-                                ? 0.18
-                                : 0.16,
-                            pointerEvents: 'none',
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundImage:
-                              'repeating-linear-gradient(-18deg, rgba(185,255,204,0.16) 0 1px, transparent 1px 7px)',
-                            mixBlendMode:
-                              teeColor === 'white'
-                                ? 'multiply'
-                                : 'screen',
-                            opacity:
-                              teeColor === 'white'
-                                ? 0.14
-                                : 0.22,
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <span
-                        style={{
-                          color:
-                            teeColor === 'white'
-                              ? 'rgba(8,12,14,0.48)'
-                              : 'rgba(232,255,238,0.70)',
-                          fontSize: 13,
-                          fontWeight: 760,
-                          letterSpacing: 0,
-                          textTransform:
-                            'uppercase',
-                          zIndex: 1,
-                        }}
-                      >
-                        Logo
-                      </span>
-                    )}
-                  </div>
+                  Logo generated
                 </div>
-
                 <div
                   style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: -2,
-                    transform:
-                      'translateX(-50%) translateZ(40px)',
-                    width: 285,
-                    height: 30,
-                    borderRadius: '50%',
-                    background:
-                      'linear-gradient(90deg, transparent, rgba(185,255,204,0.18), transparent)',
-                    filter: 'blur(20px)',
-                    opacity: 0.72,
+                    color: 'rgba(245,247,248,0.56)',
+                    fontSize: 12,
                   }}
-                />
+                >
+                  Embroidery-ready preview
+                </div>
+              </div>
+            </div>
+
+            <div className="hero-machine-frame">
+              <div className="hero-machine-photo" />
+
+              <div className="hero-machine-fallback">
+                <div className="hero-machine-head" />
+                <div className="hero-machine-arm" />
+                <div className="hero-machine-needle" />
+                <div className="hero-machine-hoop" />
+              </div>
+
+              <div className="hero-placement-callout">
+                <div className="hero-callout-icon">👕</div>
+                <div>
+                  <div
+                    style={{
+                      color: '#f5f7f8',
+                      fontWeight: 860,
+                    }}
+                  >
+                    Chest placement
+                  </div>
+                  <div
+                    style={{
+                      color: 'rgba(245,247,248,0.58)',
+                      fontSize: 13,
+                      marginTop: 3,
+                    }}
+                  >
+                    {preset.size} · live stitch estimate
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="hero-spec-grid">
               {[
-                ['Finish', 'Heavy cotton'],
-                ['Placement', preset.label],
-                ['Artwork', preview ? 'Live logo' : 'Ready'],
+                ['AI artwork', preview ? 'Ready' : 'Prompt or upload'],
+                ['Preview', 'Machine studio'],
+                ['Quote', 'Instant pricing'],
               ].map(([labelText, value]) => (
                 <div
                   key={labelText}
@@ -1687,55 +1765,47 @@ function Header() {
           padding: '0 24px',
         }}
       >
-        <div
+        <a
+          href="#hero"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 14,
+            textDecoration: 'none',
           }}
         >
-          <HoverCard
+          <Image
+            src="/stitchra-mark.svg"
+            alt="Stitchra"
+            width={58}
+            height={58}
             style={{
               width: 58,
               height: 58,
               borderRadius: 20,
-              background:
-                'linear-gradient(135deg,#00ff88,#00c8ff)',
-              display: 'grid',
-              placeItems: 'center',
-              fontWeight: 900,
-              fontSize: 32,
-              color: '#05100a',
               boxShadow:
                 '0 0 45px rgba(0,255,136,0.35)',
             }}
-          >
-            S
-          </HoverCard>
+            priority
+          />
 
           <div>
-            <div
+            <Image
+              src="/stitchra-wordmark.svg"
+              alt="Stitchra AI embroidery platform"
+              width={188}
+              height={48}
               style={{
-                fontSize: 30,
-                fontWeight: 900,
-                letterSpacing: '-0.03em',
+                display: 'block',
+                width: 188,
+                height: 'auto',
+                filter:
+                  'drop-shadow(0 0 18px rgba(0,255,136,0.20))',
               }}
-            >
-              Stitchra
-            </div>
-
-            <div
-              style={{
-                fontSize: 11,
-                letterSpacing: '0.18em',
-                color:
-                  'rgba(255,255,255,0.5)',
-              }}
-            >
-              AI EMBROIDERY STUDIO
-            </div>
+              priority
+            />
           </div>
-        </div>
+        </a>
 
         <div
           style={{
@@ -2278,7 +2348,7 @@ function GlobalVisualStyles() {
           --glow-x: 50%;
           --glow-y: 50%;
           position: relative;
-          overflow: hidden;
+          overflow: visible !important;
           isolation: isolate;
           transition:
             transform 220ms ease,
@@ -2290,14 +2360,17 @@ function GlobalVisualStyles() {
         .glow-card::before {
           content: "";
           position: absolute;
-          inset: -1px;
+          inset: -34px;
           pointer-events: none;
-          z-index: 0;
+          z-index: -1;
           opacity: 0;
           background:
-            radial-gradient(circle at var(--glow-x) var(--glow-y), rgba(0,255,136,0.30), rgba(0,212,255,0.17) 22%, rgba(255,56,212,0.10) 40%, transparent 62%);
-          mix-blend-mode: screen;
-          transition: opacity 220ms ease;
+            radial-gradient(circle at var(--glow-x) var(--glow-y), rgba(0,255,136,0.36), rgba(0,212,255,0.22) 25%, rgba(255,56,212,0.13) 46%, transparent 68%);
+          filter: blur(28px);
+          transform: translateZ(0);
+          transition:
+            opacity 220ms ease,
+            filter 220ms ease;
         }
 
         .glow-card::after {
@@ -2307,9 +2380,15 @@ function GlobalVisualStyles() {
           pointer-events: none;
           z-index: 0;
           border-radius: inherit;
+          padding: 1px;
           background:
-            linear-gradient(135deg, rgba(255,255,255,0.10), transparent 28%, rgba(0,200,255,0.08));
-          opacity: 0.26;
+            linear-gradient(135deg, rgba(255,255,255,0.10), transparent 28%, rgba(0,200,255,0.10));
+          opacity: 0.34;
+          -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
         }
 
         .glow-card:hover {
@@ -2317,13 +2396,11 @@ function GlobalVisualStyles() {
           border-color: rgba(124,240,212,0.34) !important;
           box-shadow:
             0 34px 105px rgba(0,0,0,0.52),
-            0 0 72px rgba(0,255,136,0.14),
-            0 0 92px rgba(0,200,255,0.10),
             inset 0 1px 0 rgba(255,255,255,0.12) !important;
         }
 
         .glow-card:hover::before {
-          opacity: 1;
+          opacity: 0.78;
         }
 
         .glow-card > * {
@@ -2561,7 +2638,7 @@ const features = [
   {
     icon: 'AI',
     title: 'AI logo generator',
-    text: 'Describe a logo idea and create a quick embroidery-style concept instantly.',
+    text: 'Describe a logo idea and create a clean embroidery-style concept instantly.',
   },
   {
     icon: 'ST',
@@ -2571,12 +2648,12 @@ const features = [
   {
     icon: '3D',
     title: '3D tee preview',
-    text: 'Preview placement on a dark or light T-shirt before producing the design.',
+    text: 'Preview chest placement on a dark or light tee before producing the design.',
   },
   {
     icon: '€',
     title: 'Fast quoting',
-    text: 'Customers understand cost and placement immediately.',
+    text: 'Customers see cost, placement and production readiness immediately.',
   },
 ];
 
@@ -2696,17 +2773,19 @@ const stepNumber: CSSProperties = {
 };
 
 const iconBox: CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
+  width: 54,
+  height: 54,
+  borderRadius: 17,
   background:
-    'linear-gradient(135deg, rgba(0,255,136,0.18), rgba(0,196,255,0.12))',
-  border: '1px solid rgba(255,255,255,0.08)',
+    'linear-gradient(135deg, rgba(0,255,136,0.28), rgba(0,196,255,0.18))',
+  border: '1px solid rgba(185,255,204,0.16)',
+  boxShadow:
+    '0 14px 36px rgba(0,0,0,0.30), 0 0 28px rgba(0,255,136,0.10)',
   display: 'grid',
   placeItems: 'center',
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 900,
-  letterSpacing: '0.02em',
+  letterSpacing: '0.01em',
 };
 
 const cardTitle: CSSProperties = {
