@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import type {
   CSSProperties,
-  PointerEvent,
   ReactNode,
 } from 'react';
 import { useMemo, useState } from 'react';
@@ -1096,6 +1095,233 @@ export default function Home() {
               }
             }
 
+
+            /* Stable premium visual card: no mouse-follow spotlight or overlap. */
+            .hero-preview-card {
+              min-height: auto;
+              overflow: hidden;
+              display: grid;
+              grid-template-columns: minmax(0, 1fr) auto;
+              grid-template-areas:
+                "toolbar badge"
+                "stage stage"
+                "callout quote"
+                "specs specs";
+              gap: 18px;
+              padding: clamp(18px, 2.4vw, 28px);
+              border-color: rgba(180,255,222,0.16);
+              background:
+                radial-gradient(circle at 72% 12%, rgba(0,215,255,0.10), transparent 30%),
+                radial-gradient(circle at 18% 92%, rgba(0,255,136,0.12), transparent 32%),
+                linear-gradient(145deg, rgba(16,20,21,0.82), rgba(4,6,7,0.94));
+            }
+
+            .hero-preview-card:hover {
+              transform: translateY(-3px);
+              border-color: rgba(124,240,212,0.24);
+              box-shadow:
+                0 52px 150px rgba(0,0,0,0.62),
+                0 0 58px rgba(0,215,255,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.11);
+            }
+
+            .hero-preview-card::before {
+              inset: -18px;
+              filter: blur(34px);
+              opacity: 0.34;
+              background:
+                radial-gradient(circle at 22% 8%, rgba(0,255,136,0.15), transparent 34%),
+                radial-gradient(circle at 78% 18%, rgba(0,215,255,0.12), transparent 34%);
+            }
+
+            .hero-preview-card::after {
+              opacity: 0.46;
+              mask-image: none;
+            }
+
+            .hero-studio-toolbar,
+            .hero-ai-badge,
+            .hero-placement-callout,
+            .hero-floating-quote {
+              position: relative;
+              top: auto;
+              right: auto;
+              bottom: auto;
+              left: auto;
+              transform: none;
+              z-index: 3;
+              min-width: 0;
+              background: rgba(5,8,9,0.58);
+              border-color: rgba(199,255,225,0.13);
+            }
+
+            .hero-studio-toolbar {
+              grid-area: toolbar;
+              justify-self: start;
+              max-width: 100%;
+            }
+
+            .hero-ai-badge {
+              grid-area: badge;
+              justify-self: end;
+              max-width: min(260px, 100%);
+            }
+
+            .hero-editorial-stage {
+              position: relative;
+              inset: auto;
+              grid-area: stage;
+              display: grid;
+              grid-template-columns: minmax(260px, 1.35fr) minmax(180px, 0.65fr);
+              min-height: 470px;
+              gap: 16px;
+              transform: none;
+              animation: none;
+            }
+
+            .hero-photo-panel {
+              grid-row: 1 / span 2;
+              min-height: 470px;
+              border-radius: 30px;
+            }
+
+            .hero-side-stack {
+              display: grid;
+              grid-template-rows: repeat(2, minmax(0, 1fr));
+              gap: 16px;
+              min-height: 0;
+            }
+
+            .hero-mini-photo-card {
+              min-height: 0;
+              border-radius: 24px;
+            }
+
+            .hero-fabric-note {
+              grid-column: 1 / -1;
+              min-height: auto;
+              padding: 18px 20px;
+            }
+
+            .hero-placement-callout {
+              grid-area: callout;
+              width: auto;
+              display: flex;
+              align-items: center;
+              gap: 13px;
+            }
+
+            .hero-floating-quote {
+              grid-area: quote;
+              justify-self: end;
+              min-width: 170px;
+            }
+
+            .hero-spec-grid {
+              position: relative;
+              left: auto;
+              right: auto;
+              bottom: auto;
+              grid-area: specs;
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 12px;
+            }
+
+            .hero-photo-caption,
+            .hero-mini-copy,
+            .production-photo-badge,
+            .production-mini-copy {
+              background: rgba(3,5,6,0.66);
+              border: 1px solid rgba(213,255,230,0.13);
+              border-radius: 18px;
+              padding: 14px 16px;
+              backdrop-filter: blur(16px);
+            }
+
+            @media (max-width: 980px) {
+              .hero-preview-card {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                  "toolbar"
+                  "badge"
+                  "stage"
+                  "callout"
+                  "quote"
+                  "specs";
+              }
+
+              .hero-ai-badge,
+              .hero-floating-quote {
+                justify-self: stretch;
+              }
+
+              .hero-editorial-stage {
+                grid-template-columns: minmax(0, 1fr) minmax(180px, 0.46fr);
+                min-height: 420px;
+              }
+
+              .hero-photo-panel {
+                min-height: 420px;
+              }
+            }
+
+            @media (max-width: 640px) {
+              #hero {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+              }
+
+              .hero-atelier,
+              .hero-preview-card,
+              .hero-copy-panel {
+                width: 100%;
+                max-width: 100%;
+              }
+
+              .hero-preview-card {
+                padding: 16px;
+                border-radius: 26px;
+                gap: 14px;
+              }
+
+              .hero-editorial-stage {
+                grid-template-columns: 1fr;
+                min-height: auto;
+              }
+
+              .hero-photo-panel,
+              .hero-mini-photo-card {
+                grid-row: auto;
+                min-height: 300px;
+              }
+
+              .hero-side-stack {
+                display: grid;
+                grid-template-columns: 1fr;
+              }
+
+              .hero-mini-photo-card {
+                min-height: 190px;
+              }
+
+              .hero-fabric-note {
+                display: block;
+              }
+
+              .hero-spec-grid {
+                grid-template-columns: 1fr;
+              }
+
+              .hero-ai-badge {
+                display: flex;
+              }
+
+              .hero-placement-callout {
+                width: auto;
+              }
+            }
+
             @media (prefers-reduced-motion: reduce) {
               .hero-float,
               .hero-shirt-body,
@@ -1179,87 +1405,12 @@ export default function Home() {
             </div>
           </div>
 
-          <div
-            className="hero-preview-card"
-            onPointerMove={(event) => {
-              const rect =
-                event.currentTarget.getBoundingClientRect();
-              const x =
-                (event.clientX - rect.left) /
-                  rect.width -
-                0.5;
-              const y =
-                (event.clientY - rect.top) /
-                  rect.height -
-                0.5;
-
-              event.currentTarget.style.setProperty(
-                '--hero-rotate-x',
-                `${y * -4}deg`
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-rotate-y',
-                `${x * 6}deg`
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-shift-x',
-                `${x * -10}px`
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-shift-y',
-                `${y * -9}px`
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-light-x',
-                `${46 + x * 16}%`
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-light-y',
-                `${18 + y * 12}%`
-              );
-            }}
-            onPointerLeave={(event) => {
-              event.currentTarget.style.setProperty(
-                '--hero-rotate-x',
-                '0deg'
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-rotate-y',
-                '0deg'
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-shift-x',
-                '0px'
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-shift-y',
-                '0px'
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-light-x',
-                '46%'
-              );
-              event.currentTarget.style.setProperty(
-                '--hero-light-y',
-                '18%'
-              );
-            }}
-            style={
-              {
-                '--hero-rotate-x': '0deg',
-                '--hero-rotate-y': '0deg',
-                '--hero-shift-x': '0px',
-                '--hero-shift-y': '0px',
-                '--hero-light-x': '46%',
-                '--hero-light-y': '18%',
-              } as CSSProperties
-            }
-          >
+          <div className="hero-preview-card">
             <div className="hero-studio-toolbar">
               <span className="hero-window-dot" />
               <span className="hero-window-dot" />
               <span className="hero-window-dot" />
-              Textile studio
+              Embroidery detail
             </div>
 
             <div className="hero-ai-badge">
@@ -1280,7 +1431,7 @@ export default function Home() {
                     fontSize: 12,
                   }}
                 >
-                  Premium embroidery-ready artwork
+                  Artwork preview ready
                 </div>
               </div>
             </div>
@@ -1355,8 +1506,8 @@ export default function Home() {
                     }}
                   />
                   <div className="hero-mini-copy">
-                    <span>Thread palette</span>
-                    <strong>Color directions for every idea.</strong>
+                    <span>Thread detail</span>
+                    <strong>Curated tones for a premium stitched finish.</strong>
                   </div>
                 </div>
               </div>
@@ -1378,7 +1529,7 @@ export default function Home() {
                     fontWeight: 860,
                   }}
                 >
-                  Chest Placement
+                  Artwork preview
                 </div>
                 <div
                   style={{
@@ -1387,13 +1538,13 @@ export default function Home() {
                     marginTop: 3,
                   }}
                 >
-                  {preset.size} · live preview
+                  {preset.size} · ready for production
                 </div>
               </div>
             </div>
 
             <div className="hero-floating-quote">
-              <span>Instant quote</span>
+              <span>Clear price before stitching</span>
               <strong>{estimate ? `€${estimate.price_eur}` : '€22'}</strong>
             </div>
 
@@ -1401,7 +1552,7 @@ export default function Home() {
               {[
                 ['Artwork', preview ? 'Logo loaded' : 'AI-ready'],
                 ['Colors', estimate ? String(estimate.colors) : 'Auto'],
-                ['Stitches', estimate ? estimate.stitches.toLocaleString() : '12,450'],
+                ['Thread detail', estimate ? estimate.stitches.toLocaleString() : '12,450'],
               ].map(([labelText, value]) => (
                 <div
                   key={labelText}
@@ -1450,7 +1601,7 @@ export default function Home() {
             >
               <Stat
                 label="Finish"
-                value="Ready to Stitch"
+                value="Ready for production"
               />
 
               <Stat
@@ -1634,7 +1785,7 @@ export default function Home() {
                   ? 'Preparing logo...'
                   : isEstimating
                     ? 'Calculating...'
-                    : 'Get instant price'}
+                    : 'Get clear price'}
               </button>
 
               {(status || error) && (
@@ -1728,7 +1879,7 @@ export default function Home() {
                   }}
                 >
                   <Metric
-                    label="Stitches"
+                    label="Thread detail"
                     value={estimate.stitches.toLocaleString()}
                   />
 
@@ -1807,17 +1958,17 @@ export default function Home() {
 
       <section id="craft" style={sectionStyle}>
         <div className="production-layout">
-          <div>
+          <div className="craft-copy-panel">
             <div style={sectionEyebrow}>
               Craft quality
             </div>
 
             <h2 style={sectionTitle}>
-              Built around fabric, thread and finish
+              A premium stitched finish, shown in close detail
             </h2>
 
             <p style={sectionText}>
-              Premium embroidery starts with clean artwork. Stitchra helps customers understand how a logo will feel on cotton, how many colors it needs and whether the design is ready for a stitched finish.
+              Stitchra keeps the customer focused on the final result: embroidery detail, fabric texture, thread detail and a clear price before stitching. The visual system is built for confident artwork preview and ready for production decisions.
             </p>
 
             <div className="production-stat-grid">
@@ -1825,8 +1976,6 @@ export default function Home() {
                 <div
                   key={stat.label}
                   className="glow-card production-stat-card"
-                  onPointerMove={setGlowPosition}
-                  onPointerLeave={resetGlowPosition}
                 >
                   <span>{stat.value}</span>
                   <small>{stat.label}</small>
@@ -1836,16 +1985,13 @@ export default function Home() {
           </div>
 
           <div className="production-bento">
-            <div
-              className="glow-card production-photo-card production-photo-main"
-              onPointerMove={setGlowPosition}
-              onPointerLeave={resetGlowPosition}
-            >
+            <div className="glow-card production-photo-card production-photo-main">
               <Image
                 src={stitchraImages.craftMain}
-                alt="Close-up of detailed stitching and texture"
+                alt="Close-up embroidery detail with fabric texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 620px"
+                className="production-image"
                 style={{
                   objectFit: 'cover',
                   objectPosition: 'center',
@@ -1853,21 +1999,18 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-photo-badge">
-                <strong>Stitch detail</strong>
-                <span>Readable artwork, clean texture</span>
+                <strong>Premium stitched finish</strong>
+                <span>Close detail, clean embroidery result</span>
               </div>
             </div>
 
-            <div
-              className="glow-card production-mini-card production-thread-card"
-              onPointerMove={setGlowPosition}
-              onPointerLeave={resetGlowPosition}
-            >
+            <div className="glow-card production-mini-card production-thread-card">
               <Image
                 src={stitchraImages.craftDetail}
-                alt="Close-up embroidery detail on dark fabric"
+                alt="Close-up thread detail and fabric texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
                 style={{
                   objectFit: 'cover',
                   objectPosition: 'center',
@@ -1875,19 +2018,28 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-mini-copy">
-                <span>Fabric and thread detail</span>
-                <strong>Clean stitch finish, close-up.</strong>
+                <span>Thread detail</span>
+                <strong>Refined color and texture cues.</strong>
               </div>
             </div>
 
-            <div
-              className="glow-card production-mini-card production-proof-card"
-              onPointerMove={setGlowPosition}
-              onPointerLeave={resetGlowPosition}
-            >
-              <div className="proof-card-orbit" />
-              <span>Material story</span>
-              <strong>Use fabric and thread cues to build trust before checkout.</strong>
+            <div className="glow-card production-mini-card production-gallery-card">
+              <Image
+                src={stitchraImages.galleryExtra}
+                alt="Abstract close-up fabric texture for artwork preview"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>Artwork preview</span>
+                <strong>Ready for production with a clear price before stitching.</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -1917,18 +2069,16 @@ export default function Home() {
         <SectionHeader
           eyebrow="Clear pricing"
           title="Know the cost before stitching"
-          text="No surprise messages. The estimate is based on stitches, colors and coverage."
+          text="No surprise messages. The estimate is based on artwork detail, colors and coverage."
         />
 
         <div
           className="glow-card"
-          onPointerMove={setGlowPosition}
-          onPointerLeave={resetGlowPosition}
           style={pricingPanel}
         >
           <div style={priceGrid}>
             <PriceBlock label="Base setup" value="€3.50" />
-            <PriceBlock label="Per 1k stitches" value="€1.00" />
+            <PriceBlock label="Artwork detail" value="€1.00" />
             <PriceBlock label="Color fee" value="€0.75" />
             <PriceBlock label="Minimum order" value="€10" highlight />
           </div>
@@ -1936,7 +2086,7 @@ export default function Home() {
           <div className="pricing-example">
             <div>
               <strong>Example quote</strong>
-              <span>Small chest logo, 12k stitches, 3 colors</span>
+              <span>Small chest logo, refined detail, 3 colors</span>
             </div>
             <strong>{estimate ? `€${estimate.price_eur}` : '€22'}</strong>
           </div>
@@ -1946,7 +2096,7 @@ export default function Home() {
             className="lux-button"
             style={wideButton}
           >
-            Get instant price →
+            Get clear price →
           </a>
         </div>
       </section>
@@ -1963,8 +2113,6 @@ export default function Home() {
             <div
               key={item.question}
               className="glow-card faq-card"
-              onPointerMove={setGlowPosition}
-              onPointerLeave={resetGlowPosition}
             >
               <h3>{item.question}</h3>
               <p>{item.answer}</p>
@@ -1976,8 +2124,6 @@ export default function Home() {
       <section style={ctaSection}>
         <div
           className="glow-card final-cta-card"
-          onPointerMove={setGlowPosition}
-          onPointerLeave={resetGlowPosition}
         >
           <div style={sectionEyebrow}>
             Ready
@@ -2050,7 +2196,7 @@ export default function Home() {
               rel="noreferrer"
               style={footerLink}
             >
-              Stitch photo: Wikimedia Commons
+              Detail photo: Wikimedia Commons
             </a>
           </div>
         </div>
@@ -2638,39 +2784,6 @@ function DesignerPreview({
   );
 }
 
-function setGlowPosition<T extends HTMLElement>(
-  event: PointerEvent<T>
-) {
-  const rect =
-    event.currentTarget.getBoundingClientRect();
-  const x =
-    ((event.clientX - rect.left) / rect.width) * 100;
-  const y =
-    ((event.clientY - rect.top) / rect.height) * 100;
-
-  event.currentTarget.style.setProperty(
-    '--glow-x',
-    `${x}%`
-  );
-  event.currentTarget.style.setProperty(
-    '--glow-y',
-    `${y}%`
-  );
-}
-
-function resetGlowPosition<T extends HTMLElement>(
-  event: PointerEvent<T>
-) {
-  event.currentTarget.style.setProperty(
-    '--glow-x',
-    '50%'
-  );
-  event.currentTarget.style.setProperty(
-    '--glow-y',
-    '50%'
-  );
-}
-
 function GlobalVisualStyles() {
   return (
     <style>
@@ -2722,8 +2835,6 @@ function GlobalVisualStyles() {
         }
 
         .glow-card {
-          --glow-x: 50%;
-          --glow-y: 50%;
           --card-glow: rgba(0,255,136,0.12);
           position: relative;
           overflow: visible !important;
@@ -2833,9 +2944,13 @@ function GlobalVisualStyles() {
           max-width: 1220px;
           margin: 0 auto;
           display: grid;
-          grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-          gap: 42px;
+          grid-template-columns: minmax(300px, 0.86fr) minmax(420px, 1.14fr);
+          gap: clamp(28px, 5vw, 56px);
           align-items: center;
+        }
+
+        .craft-copy-panel {
+          min-width: 0;
         }
 
         .production-stat-grid {
@@ -2849,16 +2964,17 @@ function GlobalVisualStyles() {
           min-height: 116px;
           padding: 22px;
           border-radius: 24px;
-          border: 1px solid rgba(255,255,255,0.10);
+          border: 1px solid rgba(213,255,230,0.12);
           background:
-            radial-gradient(circle at 24% 18%, rgba(0,255,136,0.13), transparent 34%),
-            rgba(255,255,255,0.04);
+            radial-gradient(circle at 24% 18%, rgba(0,255,136,0.12), transparent 34%),
+            linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
+          overflow: hidden !important;
         }
 
         .production-stat-card span {
           display: block;
           color: #f5f7f8;
-          font-size: 30px;
+          font-size: clamp(24px, 3vw, 30px);
           font-weight: 950;
           letter-spacing: 0;
         }
@@ -2866,78 +2982,60 @@ function GlobalVisualStyles() {
         .production-stat-card small {
           display: block;
           margin-top: 8px;
-          color: rgba(245,247,248,0.58);
+          color: rgba(245,247,248,0.62);
           font-size: 13px;
           line-height: 1.45;
         }
 
-        .production-photo-card {
-          position: relative;
-          overflow: hidden !important;
-          min-width: 0;
-          border-radius: 34px;
-          border: 1px solid rgba(0,215,255,0.20);
-          background: rgba(255,255,255,0.04);
-          box-shadow:
-            0 44px 130px rgba(0,0,0,0.52),
-            inset 0 1px 0 rgba(255,255,255,0.10);
-        }
-
         .production-bento {
           display: grid;
-          grid-template-columns: 1.15fr 0.85fr;
-          grid-template-rows: minmax(260px, 0.54fr) minmax(230px, 0.46fr);
+          grid-template-columns: minmax(280px, 1.2fr) minmax(190px, 0.8fr);
+          grid-auto-rows: minmax(220px, auto);
           gap: 16px;
           min-width: 0;
         }
 
-        .production-photo-main {
-          min-height: 520px;
-          grid-row: 1 / span 2;
-        }
-
+        .production-photo-card,
         .production-mini-card {
           position: relative;
           overflow: hidden !important;
           min-width: 0;
-          border-radius: 28px;
-          border: 1px solid rgba(255,255,255,0.10);
+          border: 1px solid rgba(213,255,230,0.12);
           background: rgba(255,255,255,0.04);
           box-shadow:
-            0 30px 90px rgba(0,0,0,0.42),
-            inset 0 1px 0 rgba(255,255,255,0.09);
+            0 34px 110px rgba(0,0,0,0.44),
+            0 0 54px rgba(0,215,255,0.06),
+            inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+
+        .production-photo-card {
+          border-radius: 34px;
+        }
+
+        .production-photo-main {
+          min-height: 520px;
+          grid-row: span 2;
+        }
+
+        .production-mini-card {
+          min-height: 252px;
+          border-radius: 28px;
         }
 
         .production-thread-card {
-          --card-glow: rgba(0,215,255,0.26);
+          --card-glow: rgba(0,215,255,0.16);
         }
 
-        .production-proof-card {
-          --card-glow: rgba(255,40,214,0.22);
-          padding: 26px;
-          display: grid;
-          align-content: end;
-          gap: 10px;
-          min-height: 0;
-          background:
-            radial-gradient(circle at 70% 18%, rgba(255,40,214,0.16), transparent 32%),
-            radial-gradient(circle at 22% 82%, rgba(0,255,136,0.12), transparent 34%),
-            rgba(255,255,255,0.04);
+        .production-gallery-card {
+          --card-glow: rgba(0,255,136,0.14);
         }
 
-        .proof-card-orbit {
-          position: absolute;
-          top: 24px;
-          right: 24px;
-          width: 82px;
-          height: 82px;
-          border-radius: 50%;
-          border: 1px solid rgba(124,240,212,0.30);
-          box-shadow: 0 0 45px rgba(124,240,212,0.16);
+        .production-image {
+          filter: saturate(0.88) contrast(1.08) brightness(0.82);
+          transform: scale(1.015);
         }
 
-        .production-mini-card span,
-        .production-proof-card span {
+        .production-mini-card span {
           color: #00d7ff;
           font-size: clamp(10px, 1vw, 12px);
           font-weight: 850;
@@ -2946,21 +3044,20 @@ function GlobalVisualStyles() {
           overflow-wrap: anywhere;
         }
 
-        .production-mini-card strong,
-        .production-proof-card strong {
+        .production-mini-card strong {
           display: block;
           color: #f5f7f8;
-          font-size: clamp(17px, 1.45vw, 21px);
-          line-height: 1.18;
+          font-size: clamp(16px, 1.35vw, 20px);
+          line-height: 1.22;
           overflow-wrap: anywhere;
           hyphens: auto;
         }
 
         .production-mini-copy {
           position: absolute;
-          left: 22px;
-          right: 22px;
-          bottom: 22px;
+          left: 18px;
+          right: 18px;
+          bottom: 18px;
           z-index: 2;
           display: grid;
           gap: 6px;
@@ -2970,9 +3067,9 @@ function GlobalVisualStyles() {
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.74)),
-            radial-gradient(circle at 70% 18%, rgba(0,215,255,0.18), transparent 34%),
-            radial-gradient(circle at 28% 82%, rgba(0,255,136,0.16), transparent 34%);
+            linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.74)),
+            radial-gradient(circle at 70% 18%, rgba(0,215,255,0.16), transparent 34%),
+            radial-gradient(circle at 28% 82%, rgba(0,255,136,0.14), transparent 34%);
           pointer-events: none;
           z-index: 1;
         }
@@ -2985,7 +3082,7 @@ function GlobalVisualStyles() {
           z-index: 2;
           display: grid;
           gap: 5px;
-          padding: 15px 16px;
+          padding: 16px 18px;
           border-radius: 18px;
           border: 1px solid rgba(255,255,255,0.12);
           background: rgba(5,6,7,0.72);
@@ -2994,13 +3091,13 @@ function GlobalVisualStyles() {
 
         .production-photo-badge strong {
           color: #f5f7f8;
-          font-size: 18px;
+          font-size: clamp(18px, 1.7vw, 22px);
           line-height: 1.15;
           overflow-wrap: anywhere;
         }
 
         .production-photo-badge span {
-          color: rgba(245,247,248,0.60);
+          color: rgba(245,247,248,0.64);
           font-size: 13px;
           line-height: 1.35;
           overflow-wrap: anywhere;
@@ -3269,8 +3366,6 @@ function HoverCard({
   return (
     <div
       className="glow-card"
-      onPointerMove={setGlowPosition}
-      onPointerLeave={resetGlowPosition}
       style={{
         transition:
           'transform 180ms ease, border-color 180ms ease',
@@ -3369,8 +3464,6 @@ function StepCard({
   return (
     <div
       className="glow-card"
-      onPointerMove={setGlowPosition}
-      onPointerLeave={resetGlowPosition}
       style={{
         ...stepCard,
         '--card-glow': colors.glow,
@@ -3430,8 +3523,6 @@ function FeatureCard({
   return (
     <div
       className="glow-card"
-      onPointerMove={setGlowPosition}
-      onPointerLeave={resetGlowPosition}
       style={{
         ...featureCard,
         '--card-glow': colors.glow,
@@ -3492,8 +3583,6 @@ function GalleryCard({
   return (
     <div
       className={`glow-card gallery-card${image ? ' gallery-card-with-image' : ''}`}
-      onPointerMove={setGlowPosition}
-      onPointerLeave={resetGlowPosition}
       style={{
         '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
@@ -3545,8 +3634,6 @@ function PriceBlock({
   return (
     <div
       className="glow-card"
-      onPointerMove={setGlowPosition}
-      onPointerLeave={resetGlowPosition}
       style={{
         ...priceBlock,
         border: highlight
@@ -3664,7 +3751,7 @@ const processSteps: Array<{
     number: '04',
     icon: '€',
     title: 'Quote with confidence',
-    text: 'Show stitches, colors and cost before the first sample is made.',
+    text: 'Show artwork detail, colors and cost before the first sample is made.',
     accent: 'pink',
   },
 ];
@@ -3693,8 +3780,8 @@ const features = [
   },
   {
     icon: '€',
-    title: 'Instant quote',
-    text: 'Estimate price from stitch count, color count and logo coverage.',
+    title: 'Clear price before stitching',
+    text: 'Preview cost from artwork detail, color count and logo coverage.',
     footer: 'Clear cost',
     accent: 'pink' as const,
   },
@@ -3740,7 +3827,7 @@ const faqItems = [
   {
     question: 'Can I upload my own logo?',
     answer:
-      'Yes. Upload a logo, remove simple backgrounds, preview it on the shirt and get an instant price.',
+      'Yes. Upload a logo, remove simple backgrounds, preview it on the shirt and get a clear price.',
   },
   {
     question: 'Can AI create a logo idea?',
@@ -3750,7 +3837,7 @@ const faqItems = [
   {
     question: 'Is the price final?',
     answer:
-      'It is a clear estimate based on stitch count, colors and coverage. Final details can be confirmed before payment.',
+      'It is a clear estimate based on artwork detail, colors and coverage. Final details can be confirmed before payment.',
   },
   {
     question: 'Who is this for?',
