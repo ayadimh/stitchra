@@ -321,7 +321,7 @@ export default function Home() {
               50% { box-shadow: 0 0 26px rgba(177,255,202,0.38), 0 0 72px rgba(177,255,202,0.14), inset 0 0 28px rgba(255,255,255,0.11); }
             }
 
-            @keyframes heroMachineFloat {
+            @keyframes heroCardFloat {
               0%, 100% { transform: translate3d(0, 0, 0) rotateX(0deg); }
               50% { transform: translate3d(0, -12px, 0) rotateX(1.2deg); }
             }
@@ -529,7 +529,7 @@ export default function Home() {
               transform-style: preserve-3d;
               transition: transform 180ms ease-out;
               z-index: 2;
-              animation: heroMachineFloat 7s ease-in-out infinite;
+              animation: heroCardFloat 7s ease-in-out infinite;
             }
 
             .hero-photo-panel,
@@ -1173,7 +1173,7 @@ export default function Home() {
                   Quote
                 </div>
                 <div className="hero-proof-value">
-                  Clear before production
+                  Clear before checkout
                 </div>
               </div>
             </div>
@@ -1280,7 +1280,7 @@ export default function Home() {
                     fontSize: 12,
                   }}
                 >
-                  Clean preview for production
+                  Premium embroidery-ready artwork
                 </div>
               </div>
             </div>
@@ -1289,7 +1289,7 @@ export default function Home() {
               <div className="hero-photo-panel">
                 <Image
                   src={stitchraImages.heroMain}
-                  alt="Macro view of embroidery needles and fabric"
+                  alt="Cinematic close-up of embroidery texture and fabric"
                   fill
                   priority
                   sizes="(max-width: 980px) 90vw, 560px"
@@ -1318,9 +1318,9 @@ export default function Home() {
                 ) : null}
 
                 <div className="hero-photo-caption">
-                  <span>Macro production view</span>
+                  <span>Fabric and thread detail</span>
                   <strong>
-                    Needle, thread and fabric detail before the order starts.
+                    Premium artwork prepared for a stitched finish.
                   </strong>
                 </div>
               </div>
@@ -1449,7 +1449,7 @@ export default function Home() {
               }}
             >
               <Stat
-                label="Production"
+                label="Finish"
                 value="Ready to Stitch"
               />
 
@@ -1702,8 +1702,9 @@ export default function Home() {
                       fontSize: 12,
                     }}
                   >
-                    Our multi-needle machines support up to 15
-                    thread colors per design.
+                    Embroidery designs work best with a clear
+                    color palette. Up to 15 thread colors can be
+                    used depending on the artwork.
                   </div>
 
                   {logoAnalysis.warnings.length > 0 && (
@@ -1734,7 +1735,7 @@ export default function Home() {
                   <Metric
                     label="Colors"
                     value={estimate.colors}
-                    helper={`Up to ${PRACTICAL_THREAD_COLOR_LIMIT} colors run as normal production.`}
+                    helper={`Up to ${PRACTICAL_THREAD_COLOR_LIMIT} thread colors can be used depending on the artwork.`}
                   />
 
                   <Metric
@@ -1766,7 +1767,7 @@ export default function Home() {
         <SectionHeader
           eyebrow="Simple process"
           title="From idea to finished piece"
-          text="A calm flow for creators, students, clubs and small brands. Start with an idea, preview the shirt and quote before production."
+          text="A calm flow for creators, students, clubs and small brands. Start with an idea, preview the shirt and get a clear quote before checkout."
         />
 
         <div style={fourGrid}>
@@ -1816,7 +1817,7 @@ export default function Home() {
             </h2>
 
             <p style={sectionText}>
-              Premium embroidery starts before production. Stitchra helps customers understand how a logo will feel on cotton, how many colors it needs and whether the design is ready to stitch.
+              Premium embroidery starts with clean artwork. Stitchra helps customers understand how a logo will feel on cotton, how many colors it needs and whether the design is ready for a stitched finish.
             </p>
 
             <div className="production-stat-grid">
@@ -1864,7 +1865,7 @@ export default function Home() {
             >
               <Image
                 src={stitchraImages.craftDetail}
-                alt="Macro embroidery needle detail"
+                alt="Close-up embroidery detail on dark fabric"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
                 style={{
@@ -1874,8 +1875,8 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-mini-copy">
-                <span>Needle detail</span>
-                <strong>Industrial precision, close-up.</strong>
+                <span>Fabric and thread detail</span>
+                <strong>Clean stitch finish, close-up.</strong>
               </div>
             </div>
 
@@ -1953,7 +1954,7 @@ export default function Home() {
       <section id="faq" style={sectionStyle}>
         <SectionHeader
           eyebrow="FAQ"
-          title="Simple answers before production"
+          title="Simple answers before checkout"
           text="Clear for international creators and small teams before they place an order."
         />
 
@@ -1987,7 +1988,7 @@ export default function Home() {
           </h2>
 
           <p style={ctaText}>
-            Upload a logo or write an idea. See it on fabric and get a clear price before production.
+            Upload a logo or write an idea. See it on fabric and get a clear price before you order.
           </p>
 
           <a
@@ -2036,12 +2037,12 @@ export default function Home() {
               Thread photo: Wikimedia Commons
             </a>
             <a
-              href="https://commons.wikimedia.org/wiki/File:Macro_sewing_machine_needles.jpg"
+              href="https://commons.wikimedia.org/"
               target="_blank"
               rel="noreferrer"
               style={footerLink}
             >
-              Needle photo: Wikimedia Commons
+              Detail photo: Wikimedia Commons
             </a>
             <a
               href="https://commons.wikimedia.org/wiki/File:Sequin_stitching-16986196536.jpg"
@@ -3731,8 +3732,8 @@ const galleryItems: Array<{
 const craftStats = [
   { value: '60s', label: 'First concept direction' },
   { value: '500+', label: 'Thread color possibilities' },
-  { value: '3-5 days', label: 'Typical production window' },
-  { value: '100%', label: 'Preview before production' },
+  { value: '3-5 days', label: 'Typical order window' },
+  { value: '100%', label: 'Preview before checkout' },
 ];
 
 const faqItems = [
@@ -3749,7 +3750,7 @@ const faqItems = [
   {
     question: 'Is the price final?',
     answer:
-      'It is a clear estimate based on stitch count, colors and coverage. Final production can be confirmed before payment.',
+      'It is a clear estimate based on stitch count, colors and coverage. Final details can be confirmed before payment.',
   },
   {
     question: 'Who is this for?',
