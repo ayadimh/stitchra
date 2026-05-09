@@ -12,6 +12,8 @@ const API =
   process.env.NEXT_PUBLIC_API_URL ??
   'https://stitchra-production.up.railway.app';
 
+const PRACTICAL_THREAD_COLOR_LIMIT = 15;
+
 const stitchraImages = {
   heroMain: '/stitchra-box-01.jpg',
   heroDetail: '/stitchra-box-02.jpg',
@@ -157,9 +159,9 @@ export default function Home() {
       setPreview(analysis.processed_png);
       setLogoAnalysis(analysis);
       setStatus(
-        analysis.embroidery_ready
-          ? 'Logo cleaned and embroidery-ready.'
-          : 'Logo cleaned — review the recommendations.'
+        analysis.colors_count <= PRACTICAL_THREAD_COLOR_LIMIT
+          ? 'Logo cleaned and ready for embroidery.'
+          : 'Logo cleaned — manual color review may be needed.'
       );
     } catch {
       setStatus(
@@ -239,7 +241,10 @@ export default function Home() {
         placement === 'left' ? '60' : '200'
       );
 
-      fd.append('colors', '3');
+      fd.append(
+        'colors',
+        String(Math.max(1, logoAnalysis?.colors_count ?? 3))
+      );
 
       const res = await fetch(`${API}/estimate`, {
         method: 'POST',
@@ -1672,13 +1677,15 @@ export default function Home() {
                     <strong
                       style={{
                         color:
-                          logoAnalysis.embroidery_ready
+                          logoAnalysis.colors_count <=
+                          PRACTICAL_THREAD_COLOR_LIMIT
                             ? '#9dffc4'
                             : '#ffe083',
                       }}
                     >
-                      {logoAnalysis.embroidery_ready
-                        ? 'Embroidery-ready'
+                      {logoAnalysis.colors_count <=
+                      PRACTICAL_THREAD_COLOR_LIMIT
+                        ? 'Ready for embroidery'
                         : 'Needs review'}
                     </strong>
                     <span>
@@ -1688,6 +1695,15 @@ export default function Home() {
                       Contrast {logoAnalysis.contrast_score}
                       /100
                     </span>
+                  </div>
+                  <div
+                    style={{
+                      color: 'rgba(157,255,196,0.74)',
+                      fontSize: 12,
+                    }}
+                  >
+                    Our multi-needle machines support up to 15
+                    thread colors per design.
                   </div>
 
                   {logoAnalysis.warnings.length > 0 && (
@@ -1718,6 +1734,7 @@ export default function Home() {
                   <Metric
                     label="Colors"
                     value={estimate.colors}
+                    helper={`Up to ${PRACTICAL_THREAD_COLOR_LIMIT} colors run as normal production.`}
                   />
 
                   <Metric
@@ -3282,14 +3299,27 @@ function Stat({
 function Metric({
   label,
   value,
+  helper,
 }: {
   label: string;
   value: string | number;
+  helper?: string;
 }) {
   return (
     <div style={metricCard}>
       <div style={statLabel}>{label}</div>
       <div style={statValue}>{value}</div>
+      {helper && (
+        <div
+          style={{
+            color: 'rgba(157,255,196,0.64)',
+            fontSize: 11,
+            lineHeight: 1.35,
+          }}
+        >
+          {helper}
+        </div>
+      )}
     </div>
   );
 }

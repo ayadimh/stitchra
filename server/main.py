@@ -32,6 +32,7 @@ app.add_middleware(
 MACHINE_SPEED_SPM = 900  # realistic average stitches per minute, not max advertised speed
 THREAD_CHANGE_SECONDS = 20
 SETUP_MINUTES = 4
+PRACTICAL_THREAD_COLOR_LIMIT = 15
 PACKAGING_EUR = 1.00
 HANDLING_EUR = 1.00
 MACHINE_WEAR_EUR = 5.00
@@ -352,9 +353,11 @@ def build_logo_guidance(
         warnings.append("Background is complex and could not be removed automatically.")
         recommendations.append("Upload a PNG with transparency or a logo on a plain white/black background.")
 
-    if colors_count > 6:
-        warnings.append("Logo has more than 6 practical thread colors.")
-        recommendations.append("Simplify the logo to 3–6 solid colors for cleaner embroidery.")
+    if colors_count > PRACTICAL_THREAD_COLOR_LIMIT:
+        warnings.append(
+            "Logo has more than 15 thread colors. Manual review or color reduction may be needed."
+        )
+        recommendations.append("Reduce the palette to 15 thread colors or fewer for normal production.")
 
     if contrast_score < 42:
         warnings.append("Logo contrast is low on the selected T-shirt color.")
@@ -380,9 +383,8 @@ def build_logo_guidance(
         recommendations.append("Logo is suitable for a clean embroidery preview.")
 
     embroidery_ready = (
-        colors_count <= 6
+        colors_count <= PRACTICAL_THREAD_COLOR_LIMIT
         and contrast_score >= 42
-        and detail_metrics["edge_density"] <= 0.24
         and min(image.size) >= 90
         and detail_metrics["visible_ratio"] >= 0.025
         and background_type != "complex"
@@ -405,9 +407,17 @@ def estimate_complexity(stitches: int, colors: int, coverage: float) -> tuple[st
 
     if stitches < 8000 and colors <= 3 and coverage <= 0.35:
         complexity = "Easy"
-    elif stitches < 25000 and colors <= 6 and coverage <= 0.55:
+    elif (
+        stitches < 25000
+        and colors <= PRACTICAL_THREAD_COLOR_LIMIT
+        and coverage <= 0.55
+    ):
         complexity = "Medium"
-    elif stitches < 60000 and colors <= 6 and coverage <= 0.75:
+    elif (
+        stitches < 60000
+        and colors <= PRACTICAL_THREAD_COLOR_LIMIT
+        and coverage <= 0.75
+    ):
         complexity = "Advanced"
     else:
         complexity = "Heavy"
@@ -416,8 +426,10 @@ def estimate_complexity(stitches: int, colors: int, coverage: float) -> tuple[st
         warnings.append("High stitch count. Production time and risk of thread breaks increase.")
     if coverage > 0.75:
         warnings.append("High coverage. Design may feel heavy on fabric.")
-    if colors > 6:
-        warnings.append("Too many colors for the current V1 workflow. Simplify the design.")
+    if colors > PRACTICAL_THREAD_COLOR_LIMIT:
+        warnings.append(
+            "Logo has more than 15 thread colors. Manual review or color reduction may be needed."
+        )
     if stitches < 1000:
         warnings.append("Very low stitch count. The design may be too small or too empty.")
 
@@ -491,7 +503,8 @@ async def estimate(
     img = Image.open(BytesIO(data)).convert("RGB")
     img_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
-    k = max(1, min(6, int(colors)))
+    reported_colors = max(1, int(colors))
+    k = max(1, min(PRACTICAL_THREAD_COLOR_LIMIT, reported_colors))
     labelmap = kmeans_quantize(img_bgr, k)
 
     counts = np.bincount(labelmap.ravel())
@@ -502,24 +515,33 @@ async def estimate(
     STITCHES_PER_IN2 = 1800
     stitches = int(area_in2 * coverage * STITCHES_PER_IN2)
 
-    machine_time_minutes = calculate_machine_time_minutes(stitches, k)
-    complexity, warnings = estimate_complexity(stitches, k, coverage)
+    machine_time_minutes = calculate_machine_time_minutes(
+        stitches, reported_colors
+    )
+    complexity, warnings = estimate_complexity(stitches, reported_colors, coverage)
     price, price_breakdown = calculate_price(stitches, width_mm, product_type)
 
     product = PRODUCT_PRESETS.get(product_type, PRODUCT_PRESETS["tshirt"])
-    compatible_area = width_mm <= product["max_width_mm"] and height_mm <= product["max_height_mm"]
+    compatible_area = (
+        width_mm <= product["max_width_mm"]
+        and height_mm <= product["max_height_mm"]
+    )
 
     if not compatible_area:
         warnings.append(
             f"Design area is too large for {product['label']} preset. Reduce size or choose another product."
         )
 
-    machine_status = "Machine-ready estimate" if compatible_area and complexity != "Heavy" else "Needs review"
+    machine_status = (
+        "Ready for embroidery"
+        if compatible_area and complexity != "Heavy"
+        else "Needs review"
+    )
 
     return {
         # Existing fields used by the frontend
         "stitches": stitches,
-        "colors": k,
+        "colors": reported_colors,
         "coverage": coverage,
         "price_eur": price,
         "width_mm": width_mm,
@@ -527,8 +549,9 @@ async def estimate(
         # New machine-aware fields
         "product_type": product_type,
         "product_label": product["label"],
-        "machine_type": "single-head commercial embroidery machine",
+        "machine_type": "multi-needle commercial embroidery machine",
         "machine_speed_spm": MACHINE_SPEED_SPM,
+        "thread_color_limit": PRACTICAL_THREAD_COLOR_LIMIT,
         "machine_time_minutes": machine_time_minutes,
         "complexity": complexity,
         "machine_status": machine_status,
