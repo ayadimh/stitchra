@@ -261,7 +261,7 @@ export default function Home() {
         background: bg,
         color: '#f5f7f8',
         fontFamily:
-          '"Avenir Next", Inter, "Helvetica Neue", Arial, sans-serif',
+          'var(--font-geist-sans), Inter, "Avenir Next", "Helvetica Neue", Arial, sans-serif',
         overflow: 'hidden',
         position: 'relative',
       }}
@@ -274,8 +274,8 @@ export default function Home() {
       <section
         id="hero"
         style={{
-          minHeight: '100vh',
-          padding: '132px 24px 96px',
+          minHeight: '100svh',
+          padding: '124px 24px 90px',
           position: 'relative',
           zIndex: 1,
         }}
@@ -329,25 +329,26 @@ export default function Home() {
 
             .hero-atelier {
               position: relative;
-              max-width: 1320px;
+              max-width: 1360px;
               margin: 0 auto;
               display: grid;
-              grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
-              gap: 56px;
+              grid-template-columns: minmax(0, 0.84fr) minmax(460px, 1.16fr);
+              gap: 64px;
               align-items: center;
             }
 
             .hero-copy-panel {
               position: relative;
-              padding: clamp(30px, 4vw, 52px);
-              border-radius: 30px;
-              border: 1px solid rgba(255,255,255,0.10);
+              padding: clamp(34px, 4.4vw, 58px);
+              border-radius: 34px;
+              border: 1px solid rgba(185,255,204,0.12);
               background:
-                radial-gradient(circle at 16% 18%, rgba(0,255,136,0.14), transparent 32%),
-                radial-gradient(circle at 86% 86%, rgba(0,200,255,0.10), transparent 34%),
-                linear-gradient(145deg, rgba(17,19,20,0.72), rgba(6,7,7,0.90) 58%, rgba(14,16,18,0.72));
+                radial-gradient(circle at 4% 20%, rgba(0,255,136,0.13), transparent 30%),
+                radial-gradient(circle at 94% 72%, rgba(0,200,255,0.10), transparent 31%),
+                linear-gradient(145deg, rgba(18,21,22,0.70), rgba(4,6,7,0.94) 58%, rgba(13,15,18,0.78));
               box-shadow:
-                0 34px 110px rgba(0,0,0,0.48),
+                0 42px 130px rgba(0,0,0,0.54),
+                0 0 0 1px rgba(255,255,255,0.015),
                 inset 0 1px 0 rgba(255,255,255,0.08);
               backdrop-filter: blur(24px);
             }
@@ -373,10 +374,10 @@ export default function Home() {
               align-items: center;
               gap: 10px;
               padding: 9px 13px;
-              margin-bottom: 24px;
+              margin-bottom: 26px;
               border: 1px solid rgba(213,255,223,0.22);
               border-radius: 999px;
-              background: rgba(255,255,255,0.045);
+              background: rgba(185,255,204,0.06);
               color: rgba(214,255,229,0.88);
               font-size: 11px;
               font-weight: 750;
@@ -394,11 +395,11 @@ export default function Home() {
 
             .hero-title {
               max-width: 720px;
-              margin: 0 0 24px;
-              font-size: clamp(54px, 7.2vw, 104px);
-              line-height: 0.96;
-              letter-spacing: -0.025em;
-              font-weight: 920;
+              margin: 0 0 26px;
+              font-size: clamp(58px, 7.4vw, 108px);
+              line-height: 0.91;
+              letter-spacing: -0.045em;
+              font-weight: 950;
               color: #f6f3eb;
             }
 
@@ -413,17 +414,17 @@ export default function Home() {
 
             .hero-subcopy {
               max-width: 620px;
-              margin: 0 0 34px;
-              color: rgba(246,243,235,0.68);
-              font-size: 18px;
-              line-height: 1.7;
+              margin: 0 0 36px;
+              color: rgba(246,243,235,0.70);
+              font-size: clamp(17px, 1.35vw, 20px);
+              line-height: 1.68;
             }
 
             .hero-actions {
               display: flex;
               gap: 14px;
               flex-wrap: wrap;
-              margin-bottom: 30px;
+              margin-bottom: 32px;
             }
 
             .hero-proof-strip {
@@ -434,10 +435,11 @@ export default function Home() {
 
             .hero-proof-item {
               min-height: 72px;
-              padding: 14px;
-              border-radius: 18px;
+              padding: 15px;
+              border-radius: 20px;
               border: 1px solid rgba(255,255,255,0.09);
-              background: rgba(255,255,255,0.045);
+              background:
+                linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
               box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
             }
 
@@ -466,9 +468,10 @@ export default function Home() {
               min-height: 692px;
               overflow: visible;
               border: 1px solid rgba(255,255,255,0.11);
-              border-radius: 36px;
+              border-radius: 38px;
               background:
-                linear-gradient(145deg, rgba(18,20,21,0.94), rgba(5,6,7,0.98) 58%, rgba(8,18,17,0.96));
+                radial-gradient(circle at 64% 22%, rgba(0,255,136,0.10), transparent 24%),
+                linear-gradient(145deg, rgba(17,19,20,0.96), rgba(5,6,7,0.98) 58%, rgba(7,17,18,0.97));
               box-shadow:
                 0 50px 150px rgba(0,0,0,0.68),
                 inset 0 1px 0 rgba(255,255,255,0.09);
@@ -521,10 +524,10 @@ export default function Home() {
 
             .hero-machine-frame {
               position: absolute;
-              inset: 76px 42px 128px;
+              inset: 78px 42px 136px;
               overflow: hidden;
               border-radius: 30px;
-              border: 1px solid rgba(255,255,255,0.12);
+              border: 1px solid rgba(185,255,204,0.16);
               background:
                 linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)),
                 rgba(5,7,8,0.72);
@@ -549,7 +552,7 @@ export default function Home() {
                 url('/stitchra-machine-hero.jpg'),
                 linear-gradient(145deg, #f7f8f2 0%, #d7dad5 48%, #626a70 100%);
               background-size: cover;
-              background-position: center 42%;
+              background-position: center 43%;
               box-shadow:
                 inset 0 0 0 1px rgba(255,255,255,0.08),
                 inset 0 -80px 120px rgba(0,0,0,0.70);
@@ -648,7 +651,8 @@ export default function Home() {
 
             .hero-ai-badge,
             .hero-machine-toolbar,
-            .hero-placement-callout {
+            .hero-placement-callout,
+            .hero-floating-quote {
               position: absolute;
               z-index: 5;
               border: 1px solid rgba(255,255,255,0.12);
@@ -717,6 +721,21 @@ export default function Home() {
               gap: 13px;
               padding: 14px 16px;
               border-radius: 20px;
+            }
+
+            .hero-floating-quote {
+              right: 30px;
+              bottom: 90px;
+              display: grid;
+              gap: 2px;
+              padding: 13px 15px;
+              border-radius: 18px;
+              color: rgba(245,247,248,0.76);
+            }
+
+            .hero-floating-quote strong {
+              color: #00ff88;
+              font-size: 19px;
             }
 
             .hero-callout-icon {
@@ -892,9 +911,9 @@ export default function Home() {
 
             .hero-spec-grid {
               position: absolute;
-              left: 28px;
-              right: 28px;
-              bottom: 24px;
+              left: 34px;
+              right: 34px;
+              bottom: 26px;
               z-index: 4;
               display: grid;
               grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -903,9 +922,10 @@ export default function Home() {
 
             .hero-spec-card {
               padding: 14px 12px;
-              border: 1px solid rgba(255,255,255,0.09);
-              border-radius: 16px;
-              background: rgba(5,6,6,0.48);
+              border: 1px solid rgba(255,255,255,0.10);
+              border-radius: 18px;
+              background:
+                linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.030));
               text-align: center;
               backdrop-filter: blur(14px);
             }
@@ -925,6 +945,7 @@ export default function Home() {
             @media (max-width: 980px) {
               .hero-atelier {
                 grid-template-columns: 1fr;
+                gap: 34px;
               }
 
               .hero-preview-card {
@@ -978,6 +999,10 @@ export default function Home() {
                 left: 20px;
               }
 
+              .hero-floating-quote {
+                display: none;
+              }
+
               .hero-placement-callout {
                 min-width: 0;
                 width: calc(100% - 40px);
@@ -1006,7 +1031,7 @@ export default function Home() {
           <div className="hero-copy-panel">
             <div className="hero-kicker">
               <span className="hero-kicker-dot" />
-              AI EMBROIDERY STUDIO
+              Powered by advanced AI
             </div>
 
             <h1 className="hero-title">
@@ -1019,7 +1044,7 @@ export default function Home() {
             </h1>
 
             <p className="hero-subcopy">
-              Create custom embroidered T-shirts with AI. Upload your logo, preview it on a shirt, and get a clear price before production.
+              Create custom embroidered T-shirts with AI. Upload a logo or write an idea, preview it on a shirt, and get a clear price before production.
             </p>
 
             <div className="hero-actions">
@@ -1036,7 +1061,7 @@ export default function Home() {
                 className="lux-button"
                 style={secondaryButton}
               >
-                See 3D Preview
+                See Product Preview
               </a>
             </div>
 
@@ -1064,7 +1089,7 @@ export default function Home() {
                   Output
                 </div>
                 <div className="hero-proof-value">
-                  Clear price
+                  Ready to quote
                 </div>
               </div>
             </div>
@@ -1187,7 +1212,7 @@ export default function Home() {
               </div>
 
               <div className="hero-placement-callout">
-                <div className="hero-callout-icon">👕</div>
+                <div className="hero-callout-icon">TEE</div>
                 <div>
                   <div
                     style={{
@@ -1210,10 +1235,15 @@ export default function Home() {
               </div>
             </div>
 
+            <div className="hero-floating-quote">
+              <span>Instant quote</span>
+              <strong>{estimate ? `€${estimate.price_eur}` : '€22'}</strong>
+            </div>
+
             <div className="hero-spec-grid">
               {[
-                ['Ready to Stitch', preview ? 'Logo loaded' : 'AI artwork'],
-                ['Instant Quote', estimate ? `€${estimate.price_eur}` : 'From €10'],
+                ['Artwork', preview ? 'Logo loaded' : 'AI-ready'],
+                ['Colors', estimate ? String(estimate.colors) : 'Auto'],
                 ['Stitches', estimate ? estimate.stitches.toLocaleString() : '12,450'],
               ].map(([labelText, value]) => (
                 <div
@@ -1236,7 +1266,9 @@ export default function Home() {
       <section
         id="designer"
         style={{
-          padding: '80px 24px 120px',
+          padding: '96px 24px 128px',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         <div
@@ -1307,7 +1339,7 @@ export default function Home() {
               </select>
 
               <label style={label}>
-                Choose T-shirt color
+                Choose shirt color
               </label>
 
               <div
@@ -1380,6 +1412,7 @@ export default function Home() {
               </label>
 
               <input
+                className="stitchra-file-input"
                 type="file"
                 accept="image/*"
                 onChange={onFile}
@@ -1406,7 +1439,8 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  placeholder="minimal green badge for a small brand"
+                  aria-label="Logo idea prompt"
+                  placeholder="minimal badge for a coffee brand"
                   style={{
                     ...input,
                     flex: 1,
@@ -1562,8 +1596,8 @@ export default function Home() {
       <section id="how" style={sectionStyle}>
         <SectionHeader
           eyebrow="Simple process"
-          title="From idea to stitched tee"
-          text="Four clear steps. No design skills needed. Good for creators, students and small brands."
+          title="From idea to stitched shirt"
+          text="A clean flow for creators, students, clubs and small brands. Design first, quote before production."
         />
 
         <div style={fourGrid}>
@@ -1583,8 +1617,8 @@ export default function Home() {
       <section id="features" style={sectionStyle}>
         <SectionHeader
           eyebrow="Powerful features"
-          title="Everything you need to sell custom embroidery"
-          text="Create, preview and price custom T-shirts before production. Clear enough for customers, fast enough for your shop."
+          title="Everything you need for fast custom embroidery"
+          text="AI design, realistic preview and instant pricing in one focused studio."
         />
 
         <div style={fourGrid}>
@@ -1605,15 +1639,15 @@ export default function Home() {
         <div className="production-layout">
           <div>
             <div style={sectionEyebrow}>
-              Craft quality
+              Production quality
             </div>
 
             <h2 style={sectionTitle}>
-              Built for real embroidery work
+              Real studio visuals, not empty mockups
             </h2>
 
             <p style={sectionText}>
-              Stitchra is designed for real orders: chest logos, small brand badges, student merch and clean streetwear drops.
+              Customers trust what they can see. Stitchra gives them a clean design preview, real production context and a clear price before you start stitching.
             </p>
 
             <div className="production-stat-grid">
@@ -1631,24 +1665,57 @@ export default function Home() {
             </div>
           </div>
 
-          <div
-            className="glow-card production-photo-card"
-            onPointerMove={setGlowPosition}
-            onPointerLeave={resetGlowPosition}
-          >
-            <Image
-              src="/stitchra-machine-hero.jpg"
-              alt="Embroidery machine stitching a design"
-              fill
-              sizes="(max-width: 900px) 100vw, 560px"
-              style={{
-                objectFit: 'cover',
-              }}
-            />
-            <div className="production-photo-overlay" />
-            <div className="production-photo-badge">
-              <strong>Production studio</strong>
-              <span>Machine-ready artwork</span>
+          <div className="production-bento">
+            <div
+              className="glow-card production-photo-card production-photo-main"
+              onPointerMove={setGlowPosition}
+              onPointerLeave={resetGlowPosition}
+            >
+              <Image
+                src="/stitchra-machine-hero.jpg"
+                alt="Embroidery machine stitching a design"
+                fill
+                sizes="(max-width: 900px) 100vw, 620px"
+                style={{
+                  objectFit: 'cover',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-photo-badge">
+                <strong>Commercial machine</strong>
+                <span>Made for real stitch work</span>
+              </div>
+            </div>
+
+            <div
+              className="glow-card production-mini-card production-thread-card"
+              onPointerMove={setGlowPosition}
+              onPointerLeave={resetGlowPosition}
+            >
+              <Image
+                src="/stitchra-thread-spools.jpg"
+                alt="Colorful embroidery thread spools"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                style={{
+                  objectFit: 'cover',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>Threads</span>
+                <strong>Color-rich finish</strong>
+              </div>
+            </div>
+
+            <div
+              className="glow-card production-mini-card production-proof-card"
+              onPointerMove={setGlowPosition}
+              onPointerLeave={resetGlowPosition}
+            >
+              <div className="proof-card-orbit" />
+              <span>Preview first</span>
+              <strong>Approve the chest placement before production.</strong>
             </div>
           </div>
         </div>
@@ -1657,8 +1724,8 @@ export default function Home() {
       <section id="gallery" style={sectionStyle}>
         <SectionHeader
           eyebrow="Gallery"
-          title="Styles for modern creators"
-          text="Pick a direction, then let the AI create a first concept. Keep it simple, bold and embroidery-friendly."
+          title="Made for modern creators"
+          text="Clean directions for brand badges, small chest logos, statement fronts and minimal streetwear."
         />
 
         <div style={galleryGrid}>
@@ -1676,8 +1743,8 @@ export default function Home() {
       <section id="pricing" style={sectionStyle}>
         <SectionHeader
           eyebrow="Clear pricing"
-          title="Know the price before production"
-          text="The estimate is based on real production factors: stitches, colors and coverage."
+          title="Know what you pay"
+          text="No surprise cost. The estimate is based on stitches, colors and coverage."
         />
 
         <div
@@ -1715,7 +1782,7 @@ export default function Home() {
         <SectionHeader
           eyebrow="FAQ"
           title="Simple answers before you order"
-          text="The goal is clear: no confusion, no long messages, no surprise costs."
+          text="Built to keep the buying decision clear for international customers."
         />
 
         <div className="faq-grid">
@@ -1744,7 +1811,7 @@ export default function Home() {
           </div>
 
           <h2 style={ctaTitle}>
-            Create your first custom embroidered T-shirt
+            Ready to create your first custom design?
           </h2>
 
           <p style={ctaText}>
@@ -1795,6 +1862,14 @@ export default function Home() {
               style={footerLink}
             >
               Photo: Rwendland / CC BY-SA 4.0
+            </a>
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Colorful_thread_spools_(Unsplash).jpg"
+              target="_blank"
+              rel="noreferrer"
+              style={footerLink}
+            >
+              Thread photo: Wikimedia Commons
             </a>
           </div>
         </div>
@@ -1874,6 +1949,7 @@ function Header() {
         </a>
 
         <div
+          className="header-links"
           style={{
             display: 'flex',
             gap: 26,
@@ -1946,6 +2022,12 @@ function MannequinPreview({
   const logoBlend: CSSProperties['mixBlendMode'] = isWhite
     ? 'multiply'
     : 'screen';
+  const placementBorder = preview
+    ? '1px solid rgba(124,240,212,0.30)'
+    : '1px solid rgba(124,240,212,0.86)';
+  const placementGlow = preview
+    ? '0 0 18px rgba(124,240,212,0.22), 0 0 58px rgba(0,200,255,0.10), inset 0 0 16px rgba(124,240,212,0.08)'
+    : '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)';
 
   return (
     <div
@@ -2216,19 +2298,19 @@ function MannequinPreview({
                 transform: 'translateX(-50%)',
                 width: placementWidth,
                 height: placementHeight,
-                border:
-                  '1px solid rgba(124,240,212,0.96)',
+                border: placementBorder,
                 borderRadius: 18,
                 display: 'grid',
                 placeItems: 'center',
                 overflow: 'hidden',
-                boxShadow:
-                  '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)',
+                boxShadow: placementGlow,
                 background: preview
                   ? 'transparent'
                   : 'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
                 animation:
-                  'stitchraGlow 3.2s ease-in-out infinite',
+                  preview
+                    ? 'none'
+                    : 'stitchraGlow 3.2s ease-in-out infinite',
               }}
             >
               <div
@@ -2256,15 +2338,15 @@ function MannequinPreview({
                 <div
                   style={{
                     position: 'absolute',
-                    inset: 4,
+                    inset: 0,
                     borderRadius: 14,
                     overflow: 'hidden',
                     isolation: 'isolate',
                     background: 'transparent',
                     WebkitMaskImage:
-                      'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
+                      'radial-gradient(ellipse at center, black 68%, rgba(0,0,0,0.86) 82%, transparent 100%)',
                     maskImage:
-                      'radial-gradient(ellipse at center, black 64%, rgba(0,0,0,0.84) 78%, transparent 100%)',
+                      'radial-gradient(ellipse at center, black 68%, rgba(0,0,0,0.86) 82%, transparent 100%)',
                     zIndex: 1,
                   }}
                 >
@@ -2276,11 +2358,11 @@ function MannequinPreview({
                     style={{
                       objectFit: 'contain',
                       mixBlendMode: logoBlend,
-                      opacity: isWhite ? 0.9 : 0.86,
-                      padding: 6,
+                      opacity: isWhite ? 0.86 : 0.82,
+                      padding: 7,
                       filter: isWhite
-                        ? 'contrast(1.18) saturate(1.08) brightness(1.03) drop-shadow(0 1px 3px rgba(0,0,0,0.24))'
-                        : 'contrast(1.65) saturate(1.25) brightness(0.82) drop-shadow(0 0 14px rgba(124,240,212,0.50))',
+                        ? 'contrast(1.18) saturate(0.95) brightness(0.98) drop-shadow(0 1px 2px rgba(0,0,0,0.20))'
+                        : 'contrast(1.55) saturate(1.20) brightness(0.78) drop-shadow(0 0 10px rgba(124,240,212,0.36))',
                       background: 'transparent',
                     }}
                   />
@@ -2289,11 +2371,11 @@ function MannequinPreview({
                       position: 'absolute',
                       inset: 0,
                       backgroundImage:
-                        'repeating-linear-gradient(90deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, rgba(0,0,0,0.14) 0 1px, transparent 1px 6px)',
+                        'repeating-linear-gradient(90deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, rgba(0,0,0,0.13) 0 1px, transparent 1px 6px)',
                       mixBlendMode: isWhite
                         ? 'multiply'
                         : 'screen',
-                      opacity: isWhite ? 0.18 : 0.16,
+                      opacity: isWhite ? 0.22 : 0.14,
                       pointerEvents: 'none',
                     }}
                   />
@@ -2410,9 +2492,56 @@ function GlobalVisualStyles() {
   return (
     <style>
       {`
+        html {
+          scroll-behavior: smooth;
+          scroll-padding-top: 104px;
+        }
+
+        ::selection {
+          background: rgba(0,255,136,0.26);
+          color: #ffffff;
+        }
+
+        button,
+        input,
+        select {
+          font: inherit;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+          outline: 2px solid rgba(0,215,255,0.78);
+          outline-offset: 4px;
+        }
+
+        .stitchra-file-input {
+          min-height: 52px;
+          width: 100%;
+          padding: 12px;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.045);
+          color: rgba(245,247,248,0.78);
+        }
+
+        .stitchra-file-input::file-selector-button {
+          margin-right: 14px;
+          min-height: 30px;
+          padding: 0 14px;
+          border: 0;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #f7fff9, #dff7ff);
+          color: #06100a;
+          font-weight: 850;
+          cursor: pointer;
+        }
+
         .glow-card {
           --glow-x: 50%;
           --glow-y: 50%;
+          --card-glow: rgba(0,255,136,0.28);
           position: relative;
           overflow: visible !important;
           isolation: isolate;
@@ -2431,8 +2560,8 @@ function GlobalVisualStyles() {
           z-index: -1;
           opacity: 0;
           background:
-            radial-gradient(circle at var(--glow-x) var(--glow-y), rgba(0,255,136,0.36), rgba(0,212,255,0.22) 25%, rgba(255,56,212,0.13) 46%, transparent 68%);
-          filter: blur(28px);
+            radial-gradient(circle at var(--glow-x) var(--glow-y), var(--card-glow), rgba(0,212,255,0.16) 30%, rgba(255,56,212,0.10) 50%, transparent 70%);
+          filter: blur(30px);
           transform: translateZ(0);
           transition:
             opacity 220ms ease,
@@ -2458,7 +2587,7 @@ function GlobalVisualStyles() {
         }
 
         .glow-card:hover {
-          transform: translateY(-4px);
+          transform: translateY(-6px);
           border-color: rgba(124,240,212,0.34) !important;
           box-shadow:
             0 34px 105px rgba(0,0,0,0.52),
@@ -2469,9 +2598,13 @@ function GlobalVisualStyles() {
           opacity: 0.78;
         }
 
-        .glow-card > * {
+        .glow-card > :not(img) {
           position: relative;
           z-index: 1;
+        }
+
+        .glow-card > img {
+          z-index: 0;
         }
 
         .lux-button {
@@ -2514,11 +2647,11 @@ function GlobalVisualStyles() {
         }
 
         .production-layout {
-          max-width: 1180px;
+          max-width: 1220px;
           margin: 0 auto;
           display: grid;
           grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
-          gap: 34px;
+          gap: 42px;
           align-items: center;
         }
 
@@ -2557,7 +2690,6 @@ function GlobalVisualStyles() {
 
         .production-photo-card {
           position: relative;
-          min-height: 520px;
           overflow: hidden !important;
           border-radius: 34px;
           border: 1px solid rgba(0,215,255,0.20);
@@ -2565,6 +2697,83 @@ function GlobalVisualStyles() {
           box-shadow:
             0 44px 130px rgba(0,0,0,0.52),
             inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+
+        .production-bento {
+          display: grid;
+          grid-template-columns: 1.15fr 0.85fr;
+          grid-template-rows: 270px 230px;
+          gap: 16px;
+        }
+
+        .production-photo-main {
+          min-height: 520px;
+          grid-row: 1 / span 2;
+        }
+
+        .production-mini-card {
+          position: relative;
+          overflow: hidden !important;
+          border-radius: 28px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(255,255,255,0.04);
+          box-shadow:
+            0 30px 90px rgba(0,0,0,0.42),
+            inset 0 1px 0 rgba(255,255,255,0.09);
+        }
+
+        .production-thread-card {
+          --card-glow: rgba(0,215,255,0.26);
+        }
+
+        .production-proof-card {
+          --card-glow: rgba(255,40,214,0.22);
+          padding: 26px;
+          display: grid;
+          align-content: end;
+          gap: 10px;
+          background:
+            radial-gradient(circle at 70% 18%, rgba(255,40,214,0.16), transparent 32%),
+            radial-gradient(circle at 22% 82%, rgba(0,255,136,0.12), transparent 34%),
+            rgba(255,255,255,0.04);
+        }
+
+        .proof-card-orbit {
+          position: absolute;
+          top: 24px;
+          right: 24px;
+          width: 82px;
+          height: 82px;
+          border-radius: 50%;
+          border: 1px solid rgba(124,240,212,0.30);
+          box-shadow: 0 0 45px rgba(124,240,212,0.16);
+        }
+
+        .production-mini-card span,
+        .production-proof-card span {
+          color: #00d7ff;
+          font-size: 12px;
+          font-weight: 850;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .production-mini-card strong,
+        .production-proof-card strong {
+          display: block;
+          color: #f5f7f8;
+          font-size: 22px;
+          line-height: 1.15;
+        }
+
+        .production-mini-copy {
+          position: absolute;
+          left: 22px;
+          right: 22px;
+          bottom: 22px;
+          z-index: 2;
+          display: grid;
+          gap: 6px;
         }
 
         .production-photo-overlay {
@@ -2702,12 +2911,27 @@ function GlobalVisualStyles() {
         }
 
         @media (max-width: 900px) {
+          .header-links a:not(.lux-button) {
+            display: none !important;
+          }
+
           .production-layout {
             grid-template-columns: 1fr;
           }
 
-          .production-photo-card {
+          .production-bento {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto;
+          }
+
+          .production-photo-card,
+          .production-photo-main {
             min-height: 420px;
+            grid-row: auto;
+          }
+
+          .production-mini-card {
+            min-height: 240px;
           }
 
           .faq-grid {
@@ -2716,6 +2940,12 @@ function GlobalVisualStyles() {
         }
 
         @media (max-width: 640px) {
+          .header-links .lux-button {
+            min-height: 44px !important;
+            padding: 0 14px !important;
+            font-size: 13px !important;
+          }
+
           .production-stat-grid {
             grid-template-columns: 1fr;
           }
@@ -2739,12 +2969,23 @@ function BackgroundEffects() {
         inset: 0,
         pointerEvents: 'none',
         backgroundImage:
-          'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)',
+          'linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px)',
         backgroundSize: '96px 96px',
         maskImage:
           'linear-gradient(to bottom, black, transparent 86%)',
       }}
-    />
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: '10% -8% auto',
+          height: 520,
+          background:
+            'radial-gradient(circle at 25% 35%, rgba(0,255,136,0.13), transparent 28%), radial-gradient(circle at 80% 26%, rgba(0,215,255,0.12), transparent 30%), radial-gradient(circle at 50% 82%, rgba(255,40,214,0.08), transparent 32%)',
+          filter: 'blur(10px)',
+        }}
+      />
+    </div>
   );
 }
 
@@ -2849,9 +3090,10 @@ function StepCard({
       onPointerLeave={resetGlowPosition}
       style={{
         ...stepCard,
+        '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
         background: colors.surface,
-      }}
+      } as CSSProperties}
     >
       <div style={stepTop}>
         <div
@@ -2909,9 +3151,10 @@ function FeatureCard({
       onPointerLeave={resetGlowPosition}
       style={{
         ...featureCard,
+        '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
         background: colors.surface,
-      }}
+      } as CSSProperties}
     >
       <div
         style={{
@@ -2967,9 +3210,10 @@ function GalleryCard({
       onPointerMove={setGlowPosition}
       onPointerLeave={resetGlowPosition}
       style={{
+        '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
         background: colors.surface,
-      }}
+      } as CSSProperties}
     >
       <div
         className="gallery-mark"
@@ -3049,7 +3293,7 @@ const accentStyles: Record<
     glow: 'rgba(0,255,136,0.26)',
     icon: 'linear-gradient(135deg, rgba(0,255,136,0.30), rgba(0,200,160,0.12))',
     surface:
-      'radial-gradient(circle at 18% 22%, rgba(0,255,136,0.16), transparent 34%), rgba(5,9,10,0.78)',
+      'linear-gradient(145deg, rgba(10,17,16,0.82), rgba(4,7,8,0.90))',
   },
   cyan: {
     main: '#00d7ff',
@@ -3058,7 +3302,7 @@ const accentStyles: Record<
     glow: 'rgba(0,215,255,0.24)',
     icon: 'linear-gradient(135deg, rgba(0,215,255,0.30), rgba(70,120,255,0.16))',
     surface:
-      'radial-gradient(circle at 28% 16%, rgba(0,215,255,0.14), transparent 36%), rgba(5,9,12,0.78)',
+      'linear-gradient(145deg, rgba(7,14,18,0.82), rgba(4,7,10,0.90))',
   },
   purple: {
     main: '#a879ff',
@@ -3067,7 +3311,7 @@ const accentStyles: Record<
     glow: 'rgba(168,121,255,0.24)',
     icon: 'linear-gradient(135deg, rgba(168,121,255,0.32), rgba(255,40,214,0.14))',
     surface:
-      'radial-gradient(circle at 22% 24%, rgba(168,121,255,0.15), transparent 34%), rgba(8,7,12,0.78)',
+      'linear-gradient(145deg, rgba(12,10,18,0.82), rgba(6,6,10,0.90))',
   },
   pink: {
     main: '#ff28d6',
@@ -3076,7 +3320,7 @@ const accentStyles: Record<
     glow: 'rgba(255,40,214,0.24)',
     icon: 'linear-gradient(135deg, rgba(255,40,214,0.34), rgba(255,206,0,0.16))',
     surface:
-      'radial-gradient(circle at 22% 24%, rgba(255,40,214,0.14), transparent 34%), rgba(10,7,10,0.78)',
+      'linear-gradient(145deg, rgba(16,8,14,0.82), rgba(7,6,9,0.90))',
   },
 };
 
@@ -3099,28 +3343,28 @@ const processSteps: Array<{
     number: '01',
     icon: 'TEE',
     title: 'Choose your shirt',
-    text: 'Pick black or white, choose placement and start with a clean T-shirt preview.',
+    text: 'Pick black or white, choose the chest placement and start with a clean product canvas.',
     accent: 'green',
   },
   {
     number: '02',
     icon: 'AI',
     title: 'Create a logo',
-    text: 'Describe your idea in simple words or upload your own artwork.',
+    text: 'Describe your idea in simple words or upload existing artwork from a customer.',
     accent: 'cyan',
   },
   {
     number: '03',
     icon: '3D',
     title: 'Preview it',
-    text: 'See the design on the chest before you spend money on production.',
+    text: 'See the design blended into the shirt before spending money on production.',
     accent: 'purple',
   },
   {
     number: '04',
     icon: '€',
     title: 'Get the price',
-    text: 'Check stitches, colors and cost so customers can decide fast.',
+    text: 'Check stitches, colors and cost so customers can decide without long messages.',
     accent: 'pink',
   },
 ];
@@ -3129,14 +3373,14 @@ const features = [
   {
     icon: 'AI',
     title: 'AI Logo Generator',
-    text: 'Type a short idea and get a clean logo direction for embroidery.',
+    text: 'Type a short idea and get a clean logo direction made for simple embroidery.',
     footer: 'Instant concept',
     accent: 'green' as const,
   },
   {
     icon: '3D',
     title: 'Real T-shirt Preview',
-    text: 'Place the logo on a dark or light shirt and see it before ordering.',
+    text: 'Place the logo on a dark or light shirt and see the chest result before ordering.',
     footer: 'Chest mockup',
     accent: 'cyan' as const,
   },
@@ -3150,7 +3394,7 @@ const features = [
   {
     icon: '€',
     title: 'Instant Pricing',
-    text: 'Show a clear quote based on stitches, colors and coverage.',
+    text: 'Show a clear quote based on stitch count, colors and coverage.',
     footer: 'No surprise cost',
     accent: 'pink' as const,
   },
@@ -3163,31 +3407,31 @@ const galleryItems: Array<{
 }> = [
   {
     title: 'Monogram',
-    text: 'Clean initials for small chest branding.',
+    text: 'Clean initials for small chest branding and student clubs.',
     accent: 'green',
   },
   {
     title: 'Streetwear',
-    text: 'Bold marks for drops, clubs and creator merch.',
+    text: 'Bold marks for creator drops, teams and local brands.',
     accent: 'cyan',
   },
   {
     title: 'Badge',
-    text: 'Round patches and simple symbol logos.',
+    text: 'Patch-style symbols that stay readable when stitched.',
     accent: 'purple',
   },
   {
     title: 'Minimal',
-    text: 'Low-detail artwork that stitches cleanly.',
+    text: 'Low-detail artwork for a premium quiet look.',
     accent: 'pink',
   },
 ];
 
 const craftStats = [
   { value: '60s', label: 'Fast first concept' },
-  { value: '500+', label: 'Thread color options' },
-  { value: '3-5 days', label: 'Typical production' },
-  { value: '100%', label: 'Preview before order' },
+  { value: '500+', label: 'Thread color directions' },
+  { value: '3-5 days', label: 'Typical production window' },
+  { value: '100%', label: 'Preview before ordering' },
 ];
 
 const faqItems = [
@@ -3215,11 +3459,12 @@ const faqItems = [
 
 const heroCard: CSSProperties = {
   padding: 48,
-  borderRadius: 32,
+  borderRadius: 34,
   background:
-    'linear-gradient(145deg,rgba(11,18,22,0.82),rgba(7,10,12,0.92))',
-  border: '1px solid rgba(255,255,255,0.1)',
-  boxShadow: '0 40px 120px rgba(0,0,0,0.42)',
+    'linear-gradient(145deg,rgba(12,17,19,0.82),rgba(5,8,10,0.94))',
+  border: '1px solid rgba(255,255,255,0.095)',
+  boxShadow:
+    '0 42px 130px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.08)',
   backdropFilter: 'blur(22px)',
 };
 
@@ -3230,7 +3475,7 @@ const glassCard: CSSProperties = {
 };
 
 const sectionStyle: CSSProperties = {
-  padding: '94px 24px',
+  padding: '112px 24px',
   position: 'relative',
   zIndex: 1,
 };
@@ -3251,18 +3496,18 @@ const sectionEyebrow: CSSProperties = {
 };
 
 const sectionTitle: CSSProperties = {
-  fontSize: 'clamp(32px, 5vw, 54px)',
-  lineHeight: 1.05,
-  letterSpacing: '-0.03em',
+  fontSize: 'clamp(36px, 5.4vw, 70px)',
+  lineHeight: 0.98,
+  letterSpacing: '-0.045em',
   margin: '0 0 14px',
-  fontWeight: 900,
+  fontWeight: 950,
 };
 
 const sectionText: CSSProperties = {
   margin: 0,
   color: 'rgba(245,247,248,0.66)',
-  fontSize: 16,
-  lineHeight: 1.7,
+  fontSize: 17,
+  lineHeight: 1.68,
 };
 
 const fourGrid: CSSProperties = {
@@ -3285,12 +3530,12 @@ const galleryGrid: CSSProperties = {
 
 const featureCard: CSSProperties = {
   ...glassCard,
-  minHeight: 220,
+  minHeight: 252,
 };
 
 const stepCard: CSSProperties = {
   ...glassCard,
-  minHeight: 280,
+  minHeight: 300,
 };
 
 const stepTop: CSSProperties = {
