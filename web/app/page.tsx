@@ -312,21 +312,6 @@ export default function Home() {
               50% { transform: translate3d(0, -12px, 0) rotateX(1.2deg); }
             }
 
-            @keyframes heroMachineNeedle {
-              0%, 100% { transform: translate3d(-50%, 0, 0); }
-              45% { transform: translate3d(-50%, 11px, 0); }
-            }
-
-            @keyframes heroMachineThread {
-              from { background-position: 0 0; }
-              to { background-position: 80px 80px; }
-            }
-
-            @keyframes heroMachineLight {
-              0%, 100% { transform: translateX(-34%) rotate(14deg); opacity: 0.15; }
-              50% { transform: translateX(34%) rotate(14deg); opacity: 0.38; }
-            }
-
             .hero-atelier {
               position: relative;
               max-width: 1360px;
@@ -522,18 +507,12 @@ export default function Home() {
               z-index: 0;
             }
 
-            .hero-machine-frame {
+            .hero-editorial-stage {
               position: absolute;
-              inset: 78px 42px 136px;
-              overflow: hidden;
-              border-radius: 30px;
-              border: 1px solid rgba(185,255,204,0.16);
-              background:
-                linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)),
-                rgba(5,7,8,0.72);
-              box-shadow:
-                0 34px 90px rgba(0,0,0,0.52),
-                inset 0 1px 0 rgba(255,255,255,0.12);
+              inset: 78px 34px 138px;
+              display: grid;
+              grid-template-columns: minmax(0, 1fr) 188px;
+              gap: 16px;
               transform: rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
               transform-style: preserve-3d;
               transition: transform 180ms ease-out;
@@ -541,116 +520,171 @@ export default function Home() {
               animation: heroMachineFloat 7s ease-in-out infinite;
             }
 
-            .hero-machine-photo {
-              position: absolute;
-              inset: 18px;
+            .hero-photo-panel,
+            .hero-mini-photo-card,
+            .hero-fabric-note {
+              position: relative;
               overflow: hidden;
-              border-radius: 24px;
-              background-image:
-                linear-gradient(180deg, rgba(5,6,8,0.04) 0%, rgba(5,6,8,0.28) 58%, rgba(5,6,8,0.88) 100%),
-                radial-gradient(circle at 30% 18%, rgba(255,255,255,0.75), transparent 18%),
-                url('/stitchra-machine-hero.jpg'),
-                linear-gradient(145deg, #f7f8f2 0%, #d7dad5 48%, #626a70 100%);
-              background-size: cover;
-              background-position: center 43%;
+              border: 1px solid rgba(255,255,255,0.12);
+              background: rgba(255,255,255,0.045);
               box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,0.08),
-                inset 0 -80px 120px rgba(0,0,0,0.70);
+                0 34px 95px rgba(0,0,0,0.50),
+                inset 0 1px 0 rgba(255,255,255,0.11);
             }
 
-            .hero-machine-photo::before {
+            .hero-photo-panel {
+              grid-row: 1 / span 2;
+              min-height: 452px;
+              border-radius: 30px;
+            }
+
+            .hero-photo-panel::before,
+            .hero-mini-photo-card::before {
               content: "";
               position: absolute;
               inset: 0;
+              z-index: 1;
+              pointer-events: none;
               background:
-                linear-gradient(112deg, rgba(255,255,255,0.34), transparent 21%, transparent 66%, rgba(0,200,255,0.10));
+                linear-gradient(180deg, rgba(2,3,4,0.00), rgba(2,3,4,0.28) 44%, rgba(2,3,4,0.86)),
+                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(255,255,255,0.23), transparent 30%),
+                radial-gradient(circle at 76% 76%, rgba(0,255,136,0.16), transparent 32%);
+            }
+
+            .hero-photo-panel::after,
+            .hero-mini-photo-card::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              z-index: 2;
+              pointer-events: none;
+              background:
+                linear-gradient(rgba(255,255,255,0.030) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+              background-size: 42px 42px;
               mix-blend-mode: overlay;
-              animation: heroMachineLight 9s ease-in-out infinite;
-              pointer-events: none;
+              opacity: 0.72;
             }
 
-            .hero-machine-photo::after {
+            .hero-photo-image {
+              filter: saturate(0.88) contrast(1.08) brightness(0.78);
+              transform: scale(1.04);
+            }
+
+            .hero-photo-caption {
+              position: absolute;
+              left: 22px;
+              right: 22px;
+              bottom: 22px;
+              z-index: 4;
+              padding: 18px;
+              border-radius: 20px;
+              border: 1px solid rgba(255,255,255,0.13);
+              background: rgba(3,5,6,0.68);
+              backdrop-filter: blur(18px);
+              box-shadow: 0 18px 58px rgba(0,0,0,0.36);
+            }
+
+            .hero-photo-caption span,
+            .hero-fabric-note span {
+              display: block;
+              margin-bottom: 6px;
+              color: #00d7ff;
+              font-size: 11px;
+              font-weight: 860;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            }
+
+            .hero-photo-caption strong,
+            .hero-fabric-note strong {
+              display: block;
+              color: #f6f3eb;
+              font-size: 18px;
+              line-height: 1.24;
+            }
+
+            .hero-preview-logo {
+              position: absolute;
+              top: 26px;
+              right: 24px;
+              z-index: 4;
+              width: 96px;
+              height: 66px;
+              border-radius: 18px;
+              border: 1px solid rgba(185,255,204,0.32);
+              background: rgba(2,5,5,0.42);
+              box-shadow:
+                0 0 40px rgba(0,255,136,0.18),
+                inset 0 0 24px rgba(0,255,136,0.07);
+              backdrop-filter: blur(10px);
+              overflow: hidden;
+            }
+
+            .hero-preview-logo::after {
               content: "";
               position: absolute;
               inset: 0;
               background:
-                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(255,255,255,0.18), transparent 28%),
-                radial-gradient(circle at 68% 70%, rgba(0,255,136,0.16), transparent 30%),
-                linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.020) 1px, transparent 1px);
-              background-size: auto, auto, 42px 42px, 42px 42px;
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.14) 0 1px, transparent 1px 5px);
+              opacity: 0.16;
               pointer-events: none;
+              mix-blend-mode: screen;
             }
 
-            .hero-machine-fallback {
-              position: absolute;
-              inset: 18px;
-              border-radius: 24px;
-              overflow: hidden;
-              display: none;
-              opacity: 0;
-              pointer-events: none;
+            .hero-side-stack {
+              display: grid;
+              grid-template-rows: 1fr 1fr;
+              gap: 16px;
             }
 
-            .hero-machine-head {
+            .hero-mini-photo-card {
+              min-height: 218px;
+              border-radius: 26px;
+            }
+
+            .hero-mini-photo-card .hero-mini-copy {
               position: absolute;
-              left: 44%;
-              top: 16%;
-              width: 50%;
-              height: 34%;
-              border-radius: 46% 46% 28% 28%;
+              left: 16px;
+              right: 16px;
+              bottom: 16px;
+              z-index: 4;
+            }
+
+            .hero-mini-photo-card span {
+              color: #00ff88;
+              font-size: 11px;
+              font-weight: 860;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            }
+
+            .hero-mini-photo-card strong {
+              display: block;
+              margin-top: 6px;
+              color: #f6f3eb;
+              font-size: 16px;
+              line-height: 1.24;
+            }
+
+            .hero-fabric-note {
+              grid-column: 1 / -1;
+              min-height: 86px;
+              padding: 18px 20px;
+              border-radius: 22px;
               background:
-                radial-gradient(circle at 32% 28%, rgba(255,255,255,0.52), transparent 10%),
-                linear-gradient(145deg, rgba(247,250,247,0.82), rgba(165,174,176,0.92) 56%, rgba(31,40,43,0.84));
-              filter: blur(0.2px);
-              transform: rotate(-7deg);
-              box-shadow: 0 28px 72px rgba(0,0,0,0.34);
+                radial-gradient(circle at 18% 20%, rgba(0,255,136,0.12), transparent 34%),
+                radial-gradient(circle at 82% 74%, rgba(0,215,255,0.12), transparent 34%),
+                rgba(255,255,255,0.045);
             }
 
-            .hero-machine-arm {
-              position: absolute;
-              left: 31%;
-              top: 32%;
-              width: 13%;
-              height: 48%;
-              border-radius: 999px;
-              background:
-                linear-gradient(180deg, rgba(25,29,31,0.30), rgba(8,10,11,0.86));
-              transform: rotate(6deg);
-              box-shadow: 0 18px 36px rgba(0,0,0,0.32);
+            .hero-fabric-note strong {
+              font-size: 15px;
             }
 
-            .hero-machine-needle {
-              position: absolute;
-              left: 48%;
-              top: 40%;
-              width: 12px;
-              height: 172px;
-              transform: translateX(-50%);
-              background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(125,139,147,0.72), rgba(0,0,0,0.82));
-              border-radius: 999px;
-              box-shadow: 0 0 24px rgba(0,200,255,0.18);
-              animation: heroMachineNeedle 1.8s ease-in-out infinite;
-            }
-
-            .hero-machine-hoop {
-              position: absolute;
-              left: 29%;
-              bottom: 20%;
-              width: 40%;
-              height: 18%;
-              border: 2px solid rgba(0,255,136,0.44);
-              border-radius: 50%;
-              background:
-                repeating-linear-gradient(45deg, rgba(0,255,136,0.11) 0 2px, transparent 2px 10px);
-              box-shadow:
-                0 0 34px rgba(0,255,136,0.24),
-                inset 0 0 28px rgba(0,200,255,0.12);
-              animation: heroMachineThread 8s linear infinite;
-            }
 
             .hero-ai-badge,
-            .hero-machine-toolbar,
+            .hero-studio-toolbar,
             .hero-placement-callout,
             .hero-floating-quote {
               position: absolute;
@@ -682,7 +716,7 @@ export default function Home() {
               font-weight: 900;
             }
 
-            .hero-machine-toolbar {
+            .hero-studio-toolbar {
               top: 28px;
               left: 28px;
               display: inline-flex;
@@ -952,8 +986,8 @@ export default function Home() {
                 min-height: 640px;
               }
 
-              .hero-machine-frame {
-                inset: 82px 24px 124px;
+              .hero-editorial-stage {
+                inset: 84px 24px 132px;
               }
             }
 
@@ -983,9 +1017,19 @@ export default function Home() {
                 top: 70px;
               }
 
-              .hero-machine-frame {
-                inset: 88px 16px 130px;
-                border-radius: 24px;
+              .hero-editorial-stage {
+                inset: 92px 16px 138px;
+                grid-template-columns: 1fr;
+              }
+
+              .hero-photo-panel {
+                min-height: 292px;
+                grid-row: auto;
+              }
+
+              .hero-side-stack,
+              .hero-fabric-note {
+                display: none;
               }
 
               .hero-ai-badge {
@@ -994,7 +1038,7 @@ export default function Home() {
                 top: 20px;
               }
 
-              .hero-machine-toolbar {
+              .hero-studio-toolbar {
                 top: 72px;
                 left: 20px;
               }
@@ -1015,10 +1059,7 @@ export default function Home() {
               .hero-shirt-body::before,
               .hero-placement-box,
               .hero-placement-box::before,
-              .hero-machine-frame,
-              .hero-machine-photo::before,
-              .hero-machine-needle,
-              .hero-machine-hoop {
+              .hero-editorial-stage {
                 animation: none;
               }
             }
@@ -1031,7 +1072,7 @@ export default function Home() {
           <div className="hero-copy-panel">
             <div className="hero-kicker">
               <span className="hero-kicker-dot" />
-              Powered by advanced AI
+              AI embroidery atelier
             </div>
 
             <h1 className="hero-title">
@@ -1039,12 +1080,12 @@ export default function Home() {
               <br />
               Preview.
               <span className="hero-title-accent">
-                Stitch.
+                Stitch it right.
               </span>
             </h1>
 
             <p className="hero-subcopy">
-              Create custom embroidered T-shirts with AI. Upload a logo or write an idea, preview it on a shirt, and get a clear price before production.
+              Turn a logo idea into a premium embroidered T-shirt. See the fabric, placement and price before the first stitch is made.
             </p>
 
             <div className="hero-actions">
@@ -1057,21 +1098,21 @@ export default function Home() {
               </a>
 
               <a
-                href="#designer"
+                href="#craft"
                 className="lux-button"
                 style={secondaryButton}
               >
-                See Product Preview
+                See Craft Quality
               </a>
             </div>
 
             <div className="hero-proof-strip">
               <div className="hero-proof-item">
                 <div className="hero-proof-label">
-                  Placement
+                  Studio
                 </div>
                 <div className="hero-proof-value">
-                  {preset.label}
+                  Premium finish
                 </div>
               </div>
 
@@ -1086,10 +1127,10 @@ export default function Home() {
 
               <div className="hero-proof-item">
                 <div className="hero-proof-label">
-                  Output
+                  Quote
                 </div>
                 <div className="hero-proof-value">
-                  Ready to quote
+                  Clear before production
                 </div>
               </div>
             </div>
@@ -1171,11 +1212,11 @@ export default function Home() {
               } as CSSProperties
             }
           >
-            <div className="hero-machine-toolbar">
+            <div className="hero-studio-toolbar">
               <span className="hero-window-dot" />
               <span className="hero-window-dot" />
               <span className="hero-window-dot" />
-              Production studio
+              Textile studio
             </div>
 
             <div className="hero-ai-badge">
@@ -1188,7 +1229,7 @@ export default function Home() {
                     marginBottom: 2,
                   }}
                 >
-                  AI Generated
+                  Artwork ready
                 </div>
                 <div
                   style={{
@@ -1196,41 +1237,114 @@ export default function Home() {
                     fontSize: 12,
                   }}
                 >
-                  Logo ready for stitching
+                  Clean preview for production
                 </div>
               </div>
             </div>
 
-            <div className="hero-machine-frame">
-              <div className="hero-machine-photo" />
+            <div className="hero-editorial-stage">
+              <div className="hero-photo-panel">
+                <Image
+                  src="/stitchra-needle-macro.jpg"
+                  alt="Macro view of embroidery needles and fabric"
+                  fill
+                  priority
+                  sizes="(max-width: 980px) 90vw, 560px"
+                  className="hero-photo-image"
+                  style={{
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                  }}
+                />
 
-              <div className="hero-machine-fallback">
-                <div className="hero-machine-head" />
-                <div className="hero-machine-arm" />
-                <div className="hero-machine-needle" />
-                <div className="hero-machine-hoop" />
+                {preview ? (
+                  <div className="hero-preview-logo">
+                    <Image
+                      src={preview}
+                      alt="Current logo preview"
+                      fill
+                      unoptimized
+                      style={{
+                        objectFit: 'contain',
+                        padding: 9,
+                        filter:
+                          'contrast(1.18) saturate(1.18) drop-shadow(0 0 12px rgba(0,255,136,0.24))',
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                <div className="hero-photo-caption">
+                  <span>Macro production view</span>
+                  <strong>
+                    Needle, thread and fabric detail before the order starts.
+                  </strong>
+                </div>
               </div>
 
-              <div className="hero-placement-callout">
-                <div className="hero-callout-icon">TEE</div>
-                <div>
-                  <div
+              <div className="hero-side-stack">
+                <div className="hero-mini-photo-card">
+                  <Image
+                    src="/stitchra-stitching-detail.jpg"
+                    alt="Close-up stitching detail on fabric"
+                    fill
+                    sizes="188px"
                     style={{
-                      color: '#f5f7f8',
-                      fontWeight: 860,
+                      objectFit: 'cover',
+                      objectPosition: 'center',
                     }}
-                  >
+                  />
+                  <div className="hero-mini-copy">
+                    <span>Stitch finish</span>
+                    <strong>Clean edges and readable details.</strong>
+                  </div>
+                </div>
+
+                <div className="hero-mini-photo-card">
+                  <Image
+                    src="/stitchra-thread-spools.jpg"
+                    alt="Premium colorful embroidery thread"
+                    fill
+                    sizes="188px"
+                    style={{
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                    }}
+                  />
+                  <div className="hero-mini-copy">
+                    <span>Thread palette</span>
+                    <strong>Color directions for every idea.</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hero-fabric-note">
+                <span>Fashion-tech workflow</span>
+                <strong>
+                  Create the idea, check the chest placement and quote with confidence.
+                </strong>
+              </div>
+            </div>
+
+            <div className="hero-placement-callout">
+              <div className="hero-callout-icon">TEE</div>
+              <div>
+                <div
+                  style={{
+                    color: '#f5f7f8',
+                    fontWeight: 860,
+                  }}
+                >
                   Chest Placement
-                  </div>
-                  <div
-                    style={{
-                      color: 'rgba(245,247,248,0.58)',
-                      fontSize: 13,
-                      marginTop: 3,
-                    }}
-                  >
-                    {preset.size} · live preview
-                  </div>
+                </div>
+                <div
+                  style={{
+                    color: 'rgba(245,247,248,0.58)',
+                    fontSize: 13,
+                    marginTop: 3,
+                  }}
+                >
+                  {preset.size} · live preview
                 </div>
               </div>
             </div>
@@ -1596,8 +1710,8 @@ export default function Home() {
       <section id="how" style={sectionStyle}>
         <SectionHeader
           eyebrow="Simple process"
-          title="From idea to stitched shirt"
-          text="A clean flow for creators, students, clubs and small brands. Design first, quote before production."
+          title="From idea to finished piece"
+          text="A calm flow for creators, students, clubs and small brands. Start with an idea, preview the shirt and quote before production."
         />
 
         <div style={fourGrid}>
@@ -1616,9 +1730,9 @@ export default function Home() {
 
       <section id="features" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Powerful features"
-          title="Everything you need for fast custom embroidery"
-          text="AI design, realistic preview and instant pricing in one focused studio."
+          eyebrow="Studio tools"
+          title="Everything feels ready to produce"
+          text="AI design, logo cleanup, shirt preview and pricing in one premium embroidery workspace."
         />
 
         <div style={fourGrid}>
@@ -1639,15 +1753,15 @@ export default function Home() {
         <div className="production-layout">
           <div>
             <div style={sectionEyebrow}>
-              Production quality
+              Craft quality
             </div>
 
             <h2 style={sectionTitle}>
-              Real studio visuals, not empty mockups
+              Built around fabric, thread and finish
             </h2>
 
             <p style={sectionText}>
-              Customers trust what they can see. Stitchra gives them a clean design preview, real production context and a clear price before you start stitching.
+              Premium embroidery starts before production. Stitchra helps customers understand how a logo will feel on cotton, how many colors it needs and whether the design is ready to stitch.
             </p>
 
             <div className="production-stat-grid">
@@ -1672,18 +1786,19 @@ export default function Home() {
               onPointerLeave={resetGlowPosition}
             >
               <Image
-                src="/stitchra-machine-hero.jpg"
-                alt="Embroidery machine stitching a design"
+                src="/stitchra-stitching-detail.jpg"
+                alt="Close-up of detailed stitching and texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 620px"
                 style={{
                   objectFit: 'cover',
+                  objectPosition: 'center',
                 }}
               />
               <div className="production-photo-overlay" />
               <div className="production-photo-badge">
-                <strong>Commercial machine</strong>
-                <span>Made for real stitch work</span>
+                <strong>Stitch detail</strong>
+                <span>Readable artwork, clean texture</span>
               </div>
             </div>
 
@@ -1693,18 +1808,19 @@ export default function Home() {
               onPointerLeave={resetGlowPosition}
             >
               <Image
-                src="/stitchra-thread-spools.jpg"
-                alt="Colorful embroidery thread spools"
+                src="/stitchra-needle-macro.jpg"
+                alt="Macro embroidery needle detail"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
                 style={{
                   objectFit: 'cover',
+                  objectPosition: 'center',
                 }}
               />
               <div className="production-photo-overlay" />
               <div className="production-mini-copy">
-                <span>Threads</span>
-                <strong>Color-rich finish</strong>
+                <span>Needle detail</span>
+                <strong>Industrial precision, close-up.</strong>
               </div>
             </div>
 
@@ -1714,8 +1830,8 @@ export default function Home() {
               onPointerLeave={resetGlowPosition}
             >
               <div className="proof-card-orbit" />
-              <span>Preview first</span>
-              <strong>Approve the chest placement before production.</strong>
+              <span>Material story</span>
+              <strong>Use fabric and thread cues to build trust before checkout.</strong>
             </div>
           </div>
         </div>
@@ -1724,8 +1840,8 @@ export default function Home() {
       <section id="gallery" style={sectionStyle}>
         <SectionHeader
           eyebrow="Gallery"
-          title="Made for modern creators"
-          text="Clean directions for brand badges, small chest logos, statement fronts and minimal streetwear."
+          title="Made for modern streetwear"
+          text="Clean visual directions for brand badges, small chest logos, team drops and minimal creator merch."
         />
 
         <div style={galleryGrid}>
@@ -1743,8 +1859,8 @@ export default function Home() {
       <section id="pricing" style={sectionStyle}>
         <SectionHeader
           eyebrow="Clear pricing"
-          title="Know what you pay"
-          text="No surprise cost. The estimate is based on stitches, colors and coverage."
+          title="Know the cost before stitching"
+          text="No surprise messages. The estimate is based on stitches, colors and coverage."
         />
 
         <div
@@ -1781,8 +1897,8 @@ export default function Home() {
       <section id="faq" style={sectionStyle}>
         <SectionHeader
           eyebrow="FAQ"
-          title="Simple answers before you order"
-          text="Built to keep the buying decision clear for international customers."
+          title="Simple answers before production"
+          text="Clear for international creators and small teams before they place an order."
         />
 
         <div className="faq-grid">
@@ -1811,11 +1927,11 @@ export default function Home() {
           </div>
 
           <h2 style={ctaTitle}>
-            Ready to create your first custom design?
+            Ready to create your first stitched piece?
           </h2>
 
           <p style={ctaText}>
-            Upload a logo or write an idea. Preview it on the shirt and get a clear price in seconds.
+            Upload a logo or write an idea. See it on fabric and get a clear price before production.
           </p>
 
           <a
@@ -1856,20 +1972,28 @@ export default function Home() {
             <a href="#faq" style={footerLink}>FAQ</a>
             <span>© 2026 Stitchra</span>
             <a
-              href="https://commons.wikimedia.org/wiki/File:Brother_Innov-is_V7_machine,_embroidering.jpg"
-              target="_blank"
-              rel="noreferrer"
-              style={footerLink}
-            >
-              Photo: Rwendland / CC BY-SA 4.0
-            </a>
-            <a
               href="https://commons.wikimedia.org/wiki/File:Colorful_thread_spools_(Unsplash).jpg"
               target="_blank"
               rel="noreferrer"
               style={footerLink}
             >
               Thread photo: Wikimedia Commons
+            </a>
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Macro_sewing_machine_needles.jpg"
+              target="_blank"
+              rel="noreferrer"
+              style={footerLink}
+            >
+              Needle photo: Wikimedia Commons
+            </a>
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Sequin_stitching-16986196536.jpg"
+              target="_blank"
+              rel="noreferrer"
+              style={footerLink}
+            >
+              Stitch photo: Wikimedia Commons
             </a>
           </div>
         </div>
@@ -2541,7 +2665,7 @@ function GlobalVisualStyles() {
         .glow-card {
           --glow-x: 50%;
           --glow-y: 50%;
-          --card-glow: rgba(0,255,136,0.28);
+          --card-glow: rgba(0,255,136,0.18);
           position: relative;
           overflow: visible !important;
           isolation: isolate;
@@ -2555,13 +2679,13 @@ function GlobalVisualStyles() {
         .glow-card::before {
           content: "";
           position: absolute;
-          inset: -34px;
+          inset: -42px;
           pointer-events: none;
           z-index: -1;
           opacity: 0;
           background:
             radial-gradient(circle at var(--glow-x) var(--glow-y), var(--card-glow), rgba(0,212,255,0.16) 30%, rgba(255,56,212,0.10) 50%, transparent 70%);
-          filter: blur(30px);
+          filter: blur(42px);
           transform: translateZ(0);
           transition:
             opacity 220ms ease,
@@ -2595,7 +2719,7 @@ function GlobalVisualStyles() {
         }
 
         .glow-card:hover::before {
-          opacity: 0.78;
+          opacity: 0.52;
         }
 
         .glow-card > :not(img) {
@@ -3342,29 +3466,29 @@ const processSteps: Array<{
   {
     number: '01',
     icon: 'TEE',
-    title: 'Choose your shirt',
-    text: 'Pick black or white, choose the chest placement and start with a clean product canvas.',
+    title: 'Choose the garment',
+    text: 'Start with a dark or light tee and choose the placement that fits the brand.',
     accent: 'green',
   },
   {
     number: '02',
     icon: 'AI',
-    title: 'Create a logo',
-    text: 'Describe your idea in simple words or upload existing artwork from a customer.',
+    title: 'Shape the artwork',
+    text: 'Write a simple idea or upload a customer logo and prepare it for embroidery.',
     accent: 'cyan',
   },
   {
     number: '03',
     icon: '3D',
-    title: 'Preview it',
-    text: 'See the design blended into the shirt before spending money on production.',
+    title: 'See it on fabric',
+    text: 'Check the logo on the chest with fabric texture, shadow and real placement size.',
     accent: 'purple',
   },
   {
     number: '04',
     icon: '€',
-    title: 'Get the price',
-    text: 'Check stitches, colors and cost so customers can decide without long messages.',
+    title: 'Quote with confidence',
+    text: 'Show stitches, colors and cost before the first sample is made.',
     accent: 'pink',
   },
 ];
@@ -3372,30 +3496,30 @@ const processSteps: Array<{
 const features = [
   {
     icon: 'AI',
-    title: 'AI Logo Generator',
-    text: 'Type a short idea and get a clean logo direction made for simple embroidery.',
-    footer: 'Instant concept',
+    title: 'AI logo direction',
+    text: 'Type a short idea and create a clean first concept for embroidery.',
+    footer: 'Fast idea',
     accent: 'green' as const,
   },
   {
-    icon: '3D',
-    title: 'Real T-shirt Preview',
-    text: 'Place the logo on a dark or light shirt and see the chest result before ordering.',
-    footer: 'Chest mockup',
+    icon: 'FAB',
+    title: 'Fabric-aware preview',
+    text: 'Blend the logo into the shirt with texture, shadow and natural contrast.',
+    footer: 'Natural look',
     accent: 'cyan' as const,
   },
   {
     icon: 'PNG',
-    title: 'Logo Cleanup',
-    text: 'Uploaded logos are analyzed and converted into a cleaner transparent preview.',
-    footer: 'Better upload',
+    title: 'Logo cleanup',
+    text: 'Remove simple backgrounds and crop extra space for a cleaner preview.',
+    footer: 'Cleaner file',
     accent: 'purple' as const,
   },
   {
     icon: '€',
-    title: 'Instant Pricing',
-    text: 'Show a clear quote based on stitch count, colors and coverage.',
-    footer: 'No surprise cost',
+    title: 'Instant quote',
+    text: 'Estimate price from stitch count, color count and logo coverage.',
+    footer: 'Clear cost',
     accent: 'pink' as const,
   },
 ];
@@ -3406,32 +3530,32 @@ const galleryItems: Array<{
   accent: Accent;
 }> = [
   {
-    title: 'Monogram',
-    text: 'Clean initials for small chest branding and student clubs.',
+    title: 'Quiet monograms',
+    text: 'Clean initials for small chest branding, student clubs and makers.',
     accent: 'green',
   },
   {
-    title: 'Streetwear',
-    text: 'Bold marks for creator drops, teams and local brands.',
+    title: 'Streetwear marks',
+    text: 'Bold symbols for creator drops, local labels and launch pieces.',
     accent: 'cyan',
   },
   {
-    title: 'Badge',
-    text: 'Patch-style symbols that stay readable when stitched.',
+    title: 'Patch badges',
+    text: 'Badge-style artwork that stays readable when stitched.',
     accent: 'purple',
   },
   {
-    title: 'Minimal',
-    text: 'Low-detail artwork for a premium quiet look.',
+    title: 'Minimal graphics',
+    text: 'Low-detail artwork with a premium, quiet fashion look.',
     accent: 'pink',
   },
 ];
 
 const craftStats = [
-  { value: '60s', label: 'Fast first concept' },
-  { value: '500+', label: 'Thread color directions' },
+  { value: '60s', label: 'First concept direction' },
+  { value: '500+', label: 'Thread color possibilities' },
   { value: '3-5 days', label: 'Typical production window' },
-  { value: '100%', label: 'Preview before ordering' },
+  { value: '100%', label: 'Preview before production' },
 ];
 
 const faqItems = [
