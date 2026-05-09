@@ -12,6 +12,15 @@ const API =
   process.env.NEXT_PUBLIC_API_URL ??
   'https://stitchra-production.up.railway.app';
 
+const stitchraImages = {
+  heroMain: '/stitchra-box-01.jpg',
+  heroDetail: '/stitchra-box-02.jpg',
+  heroMaterial: '/stitchra-box-03.jpg',
+  craftMain: '/stitchra-box-04.jpg',
+  craftDetail: '/stitchra-box-05.jpg',
+  galleryExtra: '/stitchra-box-06.jpg',
+} as const;
+
 type Estimate = {
   stitches: number;
   colors: number;
@@ -317,7 +326,7 @@ export default function Home() {
               max-width: 1360px;
               margin: 0 auto;
               display: grid;
-              grid-template-columns: minmax(0, 0.84fr) minmax(460px, 1.16fr);
+              grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
               gap: 64px;
               align-items: center;
             }
@@ -381,9 +390,9 @@ export default function Home() {
             .hero-title {
               max-width: 720px;
               margin: 0 0 26px;
-              font-size: clamp(58px, 7.4vw, 108px);
+              font-size: clamp(48px, 6.8vw, 100px);
               line-height: 0.91;
-              letter-spacing: -0.045em;
+              letter-spacing: -0.035em;
               font-weight: 950;
               color: #f6f3eb;
             }
@@ -480,13 +489,11 @@ export default function Home() {
               position: absolute;
               inset: -32px;
               background:
-                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(0,255,136,0.28), transparent 30%),
-                radial-gradient(circle at 74% 74%, rgba(0,200,255,0.16), transparent 36%),
-                radial-gradient(circle at 20% 82%, rgba(255,55,212,0.11), transparent 35%);
-              filter: blur(26px);
-              opacity: 0.78;
-              transform: translate3d(var(--hero-shift-x), var(--hero-shift-y), 0);
-              transition: transform 160ms ease-out;
+                radial-gradient(circle at 34% 16%, rgba(0,255,136,0.18), transparent 30%),
+                radial-gradient(circle at 82% 76%, rgba(0,200,255,0.12), transparent 34%),
+                radial-gradient(circle at 20% 84%, rgba(255,55,212,0.08), transparent 36%);
+              filter: blur(34px);
+              opacity: 0.48;
               pointer-events: none;
               z-index: -1;
             }
@@ -532,6 +539,11 @@ export default function Home() {
                 inset 0 1px 0 rgba(255,255,255,0.11);
             }
 
+            .hero-photo-panel,
+            .hero-mini-photo-card {
+              min-width: 0;
+            }
+
             .hero-photo-panel {
               grid-row: 1 / span 2;
               min-height: 452px;
@@ -547,7 +559,7 @@ export default function Home() {
               pointer-events: none;
               background:
                 linear-gradient(180deg, rgba(2,3,4,0.00), rgba(2,3,4,0.28) 44%, rgba(2,3,4,0.86)),
-                radial-gradient(circle at var(--hero-light-x) var(--hero-light-y), rgba(255,255,255,0.23), transparent 30%),
+                radial-gradient(circle at 42% 18%, rgba(255,255,255,0.16), transparent 30%),
                 radial-gradient(circle at 76% 76%, rgba(0,255,136,0.16), transparent 32%);
             }
 
@@ -600,8 +612,9 @@ export default function Home() {
             .hero-fabric-note strong {
               display: block;
               color: #f6f3eb;
-              font-size: 18px;
+              font-size: clamp(15px, 1.25vw, 18px);
               line-height: 1.24;
+              overflow-wrap: anywhere;
             }
 
             .hero-preview-logo {
@@ -663,8 +676,9 @@ export default function Home() {
               display: block;
               margin-top: 6px;
               color: #f6f3eb;
-              font-size: 16px;
+              font-size: clamp(14px, 1.15vw, 16px);
               line-height: 1.24;
+              overflow-wrap: anywhere;
             }
 
             .hero-fabric-note {
@@ -991,14 +1005,39 @@ export default function Home() {
               }
             }
 
+            @media (max-width: 720px) {
+              .hero-preview-card {
+                min-height: 560px;
+              }
+
+              .hero-editorial-stage {
+                inset: 86px 18px 120px;
+                grid-template-columns: minmax(0, 1fr) minmax(132px, 0.42fr);
+                gap: 12px;
+              }
+
+              .hero-photo-caption {
+                left: 14px;
+                right: 14px;
+                bottom: 14px;
+                padding: 14px;
+                border-radius: 16px;
+              }
+
+              .hero-mini-photo-card {
+                min-height: 170px;
+              }
+            }
+
             @media (max-width: 560px) {
               .hero-copy-panel {
-                padding: 28px;
+                padding: 24px;
                 border-radius: 24px;
               }
 
               .hero-title {
-                font-size: clamp(42px, 13vw, 58px);
+                font-size: clamp(36px, 11vw, 52px);
+                line-height: 0.96;
               }
 
               .hero-proof-strip,
@@ -1007,7 +1046,7 @@ export default function Home() {
               }
 
               .hero-preview-card {
-                min-height: 600px;
+                min-height: 520px;
                 border-radius: 28px;
               }
 
@@ -1018,12 +1057,12 @@ export default function Home() {
               }
 
               .hero-editorial-stage {
-                inset: 92px 16px 138px;
+                inset: 72px 14px 96px;
                 grid-template-columns: 1fr;
               }
 
               .hero-photo-panel {
-                min-height: 292px;
+                min-height: 330px;
                 grid-row: auto;
               }
 
@@ -1033,14 +1072,12 @@ export default function Home() {
               }
 
               .hero-ai-badge {
-                left: 20px;
-                right: 20px;
-                top: 20px;
+                display: none;
               }
 
               .hero-studio-toolbar {
-                top: 72px;
-                left: 20px;
+                top: 18px;
+                left: 18px;
               }
 
               .hero-floating-quote {
@@ -1049,7 +1086,8 @@ export default function Home() {
 
               .hero-placement-callout {
                 min-width: 0;
-                width: calc(100% - 40px);
+                width: calc(100% - 32px);
+                bottom: 18px;
               }
             }
 
@@ -1245,7 +1283,7 @@ export default function Home() {
             <div className="hero-editorial-stage">
               <div className="hero-photo-panel">
                 <Image
-                  src="/stitchra-needle-macro.jpg"
+                  src={stitchraImages.heroMain}
                   alt="Macro view of embroidery needles and fabric"
                   fill
                   priority
@@ -1285,7 +1323,7 @@ export default function Home() {
               <div className="hero-side-stack">
                 <div className="hero-mini-photo-card">
                   <Image
-                    src="/stitchra-stitching-detail.jpg"
+                    src={stitchraImages.heroDetail}
                     alt="Close-up stitching detail on fabric"
                     fill
                     sizes="188px"
@@ -1302,7 +1340,7 @@ export default function Home() {
 
                 <div className="hero-mini-photo-card">
                   <Image
-                    src="/stitchra-thread-spools.jpg"
+                    src={stitchraImages.heroMaterial}
                     alt="Premium colorful embroidery thread"
                     fill
                     sizes="188px"
@@ -1786,7 +1824,7 @@ export default function Home() {
               onPointerLeave={resetGlowPosition}
             >
               <Image
-                src="/stitchra-stitching-detail.jpg"
+                src={stitchraImages.craftMain}
                 alt="Close-up of detailed stitching and texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 620px"
@@ -1808,7 +1846,7 @@ export default function Home() {
               onPointerLeave={resetGlowPosition}
             >
               <Image
-                src="/stitchra-needle-macro.jpg"
+                src={stitchraImages.craftDetail}
                 alt="Macro embroidery needle detail"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
@@ -1851,6 +1889,7 @@ export default function Home() {
               title={item.title}
               text={item.text}
               accent={item.accent}
+              image={item.image}
             />
           ))}
         </div>
@@ -2032,6 +2071,7 @@ function Header() {
       >
         <a
           href="#hero"
+          className="header-brand"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -2042,6 +2082,7 @@ function Header() {
           <Image
             src="/stitchra-mark.svg"
             alt="Stitchra"
+            className="header-mark"
             width={58}
             height={58}
             style={{
@@ -2054,7 +2095,7 @@ function Header() {
             priority
           />
 
-          <div>
+          <div className="header-wordmark">
             <Image
               src="/stitchra-wordmark.svg"
               alt="Stitchra AI embroidery platform"
@@ -2665,7 +2706,7 @@ function GlobalVisualStyles() {
         .glow-card {
           --glow-x: 50%;
           --glow-y: 50%;
-          --card-glow: rgba(0,255,136,0.18);
+          --card-glow: rgba(0,255,136,0.12);
           position: relative;
           overflow: visible !important;
           isolation: isolate;
@@ -2682,10 +2723,10 @@ function GlobalVisualStyles() {
           inset: -42px;
           pointer-events: none;
           z-index: -1;
-          opacity: 0;
+          opacity: 0.16;
           background:
-            radial-gradient(circle at var(--glow-x) var(--glow-y), var(--card-glow), rgba(0,212,255,0.16) 30%, rgba(255,56,212,0.10) 50%, transparent 70%);
-          filter: blur(42px);
+            radial-gradient(circle at 50% 0%, var(--card-glow), rgba(0,212,255,0.08) 34%, transparent 68%);
+          filter: blur(48px);
           transform: translateZ(0);
           transition:
             opacity 220ms ease,
@@ -2711,15 +2752,15 @@ function GlobalVisualStyles() {
         }
 
         .glow-card:hover {
-          transform: translateY(-6px);
-          border-color: rgba(124,240,212,0.34) !important;
+          transform: translateY(-3px);
+          border-color: rgba(124,240,212,0.24) !important;
           box-shadow:
-            0 34px 105px rgba(0,0,0,0.52),
+            0 28px 92px rgba(0,0,0,0.48),
             inset 0 1px 0 rgba(255,255,255,0.12) !important;
         }
 
         .glow-card:hover::before {
-          opacity: 0.52;
+          opacity: 0.24;
         }
 
         .glow-card > :not(img) {
@@ -2774,7 +2815,7 @@ function GlobalVisualStyles() {
           max-width: 1220px;
           margin: 0 auto;
           display: grid;
-          grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+          grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
           gap: 42px;
           align-items: center;
         }
@@ -2815,6 +2856,7 @@ function GlobalVisualStyles() {
         .production-photo-card {
           position: relative;
           overflow: hidden !important;
+          min-width: 0;
           border-radius: 34px;
           border: 1px solid rgba(0,215,255,0.20);
           background: rgba(255,255,255,0.04);
@@ -2826,8 +2868,9 @@ function GlobalVisualStyles() {
         .production-bento {
           display: grid;
           grid-template-columns: 1.15fr 0.85fr;
-          grid-template-rows: 270px 230px;
+          grid-template-rows: minmax(260px, 0.54fr) minmax(230px, 0.46fr);
           gap: 16px;
+          min-width: 0;
         }
 
         .production-photo-main {
@@ -2838,6 +2881,7 @@ function GlobalVisualStyles() {
         .production-mini-card {
           position: relative;
           overflow: hidden !important;
+          min-width: 0;
           border-radius: 28px;
           border: 1px solid rgba(255,255,255,0.10);
           background: rgba(255,255,255,0.04);
@@ -2856,6 +2900,7 @@ function GlobalVisualStyles() {
           display: grid;
           align-content: end;
           gap: 10px;
+          min-height: 0;
           background:
             radial-gradient(circle at 70% 18%, rgba(255,40,214,0.16), transparent 32%),
             radial-gradient(circle at 22% 82%, rgba(0,255,136,0.12), transparent 34%),
@@ -2876,18 +2921,21 @@ function GlobalVisualStyles() {
         .production-mini-card span,
         .production-proof-card span {
           color: #00d7ff;
-          font-size: 12px;
+          font-size: clamp(10px, 1vw, 12px);
           font-weight: 850;
           letter-spacing: 0.12em;
           text-transform: uppercase;
+          overflow-wrap: anywhere;
         }
 
         .production-mini-card strong,
         .production-proof-card strong {
           display: block;
           color: #f5f7f8;
-          font-size: 22px;
-          line-height: 1.15;
+          font-size: clamp(17px, 1.45vw, 21px);
+          line-height: 1.18;
+          overflow-wrap: anywhere;
+          hyphens: auto;
         }
 
         .production-mini-copy {
@@ -2913,16 +2961,14 @@ function GlobalVisualStyles() {
 
         .production-photo-badge {
           position: absolute;
-          left: 24px;
-          right: 24px;
-          bottom: 24px;
+          left: 18px;
+          right: 18px;
+          bottom: 18px;
           z-index: 2;
-          display: flex;
-          justify-content: space-between;
-          gap: 18px;
-          align-items: center;
-          padding: 18px 20px;
-          border-radius: 22px;
+          display: grid;
+          gap: 5px;
+          padding: 15px 16px;
+          border-radius: 18px;
           border: 1px solid rgba(255,255,255,0.12);
           background: rgba(5,6,7,0.72);
           backdrop-filter: blur(18px);
@@ -2931,11 +2977,15 @@ function GlobalVisualStyles() {
         .production-photo-badge strong {
           color: #f5f7f8;
           font-size: 18px;
+          line-height: 1.15;
+          overflow-wrap: anywhere;
         }
 
         .production-photo-badge span {
           color: rgba(245,247,248,0.60);
           font-size: 13px;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
         }
 
         .gallery-card {
@@ -2948,7 +2998,32 @@ function GlobalVisualStyles() {
         }
 
         .gallery-card::before {
-          opacity: 0.34;
+          opacity: 0.18;
+        }
+
+        .gallery-card-with-image {
+          padding-top: 132px;
+        }
+
+        .gallery-image {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 112px;
+          overflow: hidden;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+          opacity: 0.74;
+        }
+
+        .gallery-image::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.70)),
+            radial-gradient(circle at 24% 16%, rgba(0,255,136,0.16), transparent 34%);
+          pointer-events: none;
         }
 
         .gallery-mark {
@@ -3039,19 +3114,27 @@ function GlobalVisualStyles() {
             display: none !important;
           }
 
+          .header-brand {
+            gap: 10px !important;
+          }
+
           .production-layout {
             grid-template-columns: 1fr;
           }
 
           .production-bento {
-            grid-template-columns: 1fr;
-            grid-template-rows: auto;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-rows: minmax(320px, auto) minmax(220px, auto);
           }
 
           .production-photo-card,
           .production-photo-main {
-            min-height: 420px;
+            min-height: 340px;
             grid-row: auto;
+          }
+
+          .production-photo-main {
+            grid-column: 1 / -1;
           }
 
           .production-mini-card {
@@ -3064,6 +3147,16 @@ function GlobalVisualStyles() {
         }
 
         @media (max-width: 640px) {
+          .header-wordmark {
+            display: none !important;
+          }
+
+          .header-mark {
+            width: 46px !important;
+            height: 46px !important;
+            border-radius: 16px !important;
+          }
+
           .header-links .lux-button {
             min-height: 44px !important;
             padding: 0 14px !important;
@@ -3072,6 +3165,41 @@ function GlobalVisualStyles() {
 
           .production-stat-grid {
             grid-template-columns: 1fr;
+          }
+
+          .production-bento {
+            grid-template-columns: 1fr;
+            grid-template-rows: none;
+          }
+
+          .production-photo-card,
+          .production-photo-main,
+          .production-mini-card {
+            min-height: 260px;
+          }
+
+          .production-proof-card {
+            min-height: 220px;
+            padding: 22px;
+          }
+
+          .proof-card-orbit {
+            width: 62px;
+            height: 62px;
+            opacity: 0.70;
+          }
+
+          .gallery-card {
+            min-height: 230px;
+            padding: 24px;
+          }
+
+          .gallery-card-with-image {
+            padding-top: 118px;
+          }
+
+          .gallery-image {
+            height: 96px;
           }
 
           .pricing-example {
@@ -3321,16 +3449,18 @@ function GalleryCard({
   title,
   text,
   accent,
+  image,
 }: {
   title: string;
   text: string;
   accent: Accent;
+  image?: string;
 }) {
   const colors = accentStyles[accent];
 
   return (
     <div
-      className="glow-card gallery-card"
+      className={`glow-card gallery-card${image ? ' gallery-card-with-image' : ''}`}
       onPointerMove={setGlowPosition}
       onPointerLeave={resetGlowPosition}
       style={{
@@ -3339,6 +3469,21 @@ function GalleryCard({
         background: colors.surface,
       } as CSSProperties}
     >
+      {image ? (
+        <div className="gallery-image">
+          <Image
+            src={image}
+            alt={`${title} embroidery texture`}
+            fill
+            sizes="(max-width: 900px) 100vw, 320px"
+            style={{
+              objectFit: 'cover',
+              objectPosition: 'center',
+            }}
+          />
+        </div>
+      ) : null}
+
       <div
         className="gallery-mark"
         style={{
@@ -3528,11 +3673,13 @@ const galleryItems: Array<{
   title: string;
   text: string;
   accent: Accent;
+  image?: string;
 }> = [
   {
     title: 'Quiet monograms',
     text: 'Clean initials for small chest branding, student clubs and makers.',
     accent: 'green',
+    image: stitchraImages.galleryExtra,
   },
   {
     title: 'Streetwear marks',
