@@ -14,11 +14,17 @@ const API =
 const PRACTICAL_THREAD_COLOR_LIMIT = 15;
 
 const stitchraImages = {
+  // Image slot 01: hero main image. Replace web/public/stitchra-box-01.jpg to change the large hero visual.
   heroMain: '/stitchra-box-01.jpg',
+  // Image slot 02: hero small detail image. Replace web/public/stitchra-box-02.jpg to change the small stitch/detail card.
   heroDetail: '/stitchra-box-02.jpg',
+  // Image slot 03: hero small material/thread image. Replace web/public/stitchra-box-03.jpg to change the small material card.
   heroMaterial: '/stitchra-box-03.jpg',
+  // Image slot 04: craft main image. Replace web/public/stitchra-box-04.jpg to change the large craft-quality visual.
   craftMain: '/stitchra-box-04.jpg',
+  // Image slot 05: craft side/detail image. Replace web/public/stitchra-box-05.jpg to change the craft side card.
   craftDetail: '/stitchra-box-05.jpg',
+  // Image slot 06: gallery/extra image. Replace web/public/stitchra-box-06.jpg to change the extra gallery/craft visual.
   galleryExtra: '/stitchra-box-06.jpg',
 } as const;
 
@@ -1527,6 +1533,7 @@ export default function Home() {
 
             <div className="hero-editorial-stage">
               <div className="hero-photo-panel">
+                {/* Image slot 01: hero main image. Replace /web/public/stitchra-box-01.jpg. */}
                 <Image
                   src={stitchraImages.heroMain}
                   alt="Cinematic close-up of embroidery texture and fabric"
@@ -1567,6 +1574,7 @@ export default function Home() {
 
               <div className="hero-side-stack">
                 <div className="hero-mini-photo-card">
+                  {/* Image slot 02: hero small stitch/detail image. Replace /web/public/stitchra-box-02.jpg. */}
                   <Image
                     src={stitchraImages.heroDetail}
                     alt="Close-up stitching detail on fabric"
@@ -1584,6 +1592,7 @@ export default function Home() {
                 </div>
 
                 <div className="hero-mini-photo-card">
+                  {/* Image slot 03: hero small material/thread image. Replace /web/public/stitchra-box-03.jpg. */}
                   <Image
                     src={stitchraImages.heroMaterial}
                     alt="Premium colorful embroidery thread"
@@ -2239,6 +2248,7 @@ export default function Home() {
 
           <div className="production-bento">
             <div className="glow-card production-photo-card production-photo-main">
+              {/* Image slot 04: craft main close-up image. Replace /web/public/stitchra-box-04.jpg. */}
               <Image
                 src={stitchraImages.craftMain}
                 alt="Close-up embroidery detail with fabric texture"
@@ -2258,6 +2268,7 @@ export default function Home() {
             </div>
 
             <div className="glow-card production-mini-card production-thread-card">
+              {/* Image slot 05: craft side/detail image. Replace /web/public/stitchra-box-05.jpg. */}
               <Image
                 src={stitchraImages.craftDetail}
                 alt="Close-up thread detail and fabric texture"
@@ -2277,6 +2288,7 @@ export default function Home() {
             </div>
 
             <div className="glow-card production-mini-card production-gallery-card">
+              {/* Image slot 06: gallery/extra image. Replace /web/public/stitchra-box-06.jpg. */}
               <Image
                 src={stitchraImages.galleryExtra}
                 alt="Abstract close-up fabric texture for artwork preview"
@@ -3850,6 +3862,7 @@ function GalleryCard({
     >
       {image ? (
         <div className="gallery-image">
+          {/* Image slot 06: gallery/extra image. Replace /web/public/stitchra-box-06.jpg. */}
           <Image
             src={image}
             alt={`${title} embroidery texture`}
