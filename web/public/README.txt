@@ -17,17 +17,16 @@ Use CSS text branding in the header for maximum sharpness.
 Use favicon.ico only for browser tab.
 Do not open 16x16 favicon large and judge quality, it is supposed to be tiny.
 
-STITCHRA WEBSITE IMAGE SLOTS
+STITCHRA WEBSITE VERSIONED IMAGE SLOTS
 
 Replace these files with the same filenames to update the website visuals
 without changing code:
 
-stitchra-box-01.jpg = hero main macro embroidery image
-stitchra-box-02.jpg = hero small stitch/detail image
-stitchra-box-03.jpg = hero small thread/material image
-stitchra-box-04.jpg = craft main close-up image
-stitchra-box-05.jpg = craft side fabric/detail image
-stitchra-box-06.jpg = gallery/extra image
+stitchra-hero-v2.jpg = hero main macro embroidery image
+stitchra-detail-v2.jpg = hero small stitch/detail image
+stitchra-thread-v2.jpg = hero small thread/material image
+stitchra-craft-v2.jpg = craft main close-up image
+stitchra-extra-v2.jpg = gallery and secondary craft/detail image
 
 Art direction:
 Use cinematic macro embroidery, thread, fabric and stitch details.
