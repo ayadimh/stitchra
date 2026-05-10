@@ -71,6 +71,138 @@ PRODUCT_PRESETS = {
 }
 
 
+PLACEMENT_LIMITS = {
+    "left": {
+        "label": "left chest",
+        "max_colors": 6,
+        "style": "simple badge logo",
+    },
+    "center": {
+        "label": "center front",
+        "max_colors": 10,
+        "style": "bold front graphic",
+    },
+}
+
+
+def prepare_embroidery_design(
+    customer_prompt: str,
+    placement: str = "left",
+    width_mm: float = 90.0,
+    height_mm: float = 60.0,
+    shirt_color: str = "black",
+    max_colors: int = PRACTICAL_THREAD_COLOR_LIMIT,
+) -> dict:
+    """Compile a creative idea into embroidery-safe design guidance."""
+    clean_prompt = " ".join((customer_prompt or "").strip().split())
+    if not clean_prompt:
+        clean_prompt = "simple custom brand mark"
+
+    normalized_placement = "center" if placement == "center" else "left"
+    placement_rule = PLACEMENT_LIMITS[normalized_placement]
+    safe_max_colors = max(1, min(PRACTICAL_THREAD_COLOR_LIMIT, int(max_colors or 1)))
+    if normalized_placement == "left" or width_mm <= 100 or height_mm <= 70:
+        effective_max_colors = min(safe_max_colors, placement_rule["max_colors"])
+        recommended_style = "clean embroidered badge with bold silhouette"
+    else:
+        effective_max_colors = min(safe_max_colors, placement_rule["max_colors"])
+        recommended_style = "bold embroidery-ready front graphic"
+
+    prompt_lower = clean_prompt.lower()
+    warnings: list[str] = []
+    recommendations: list[str] = []
+    score = 92
+
+    risky_detail_words = [
+        "photorealistic",
+        "realistic",
+        "portrait",
+        "gradient",
+        "shadow",
+        "small text",
+        "tiny text",
+        "thin line",
+        "thin lines",
+        "many details",
+        "detailed",
+        "galaxy",
+        "stars",
+        "space",
+        "smoke",
+        "watercolor",
+        "3d",
+    ]
+    found_risks = [word for word in risky_detail_words if word in prompt_lower]
+
+    if normalized_placement == "left":
+        warnings.append(
+            "Small chest placement needs a simple badge shape and readable details."
+        )
+        recommendations.append("Use one main subject, bold outlines and no tiny text.")
+        score -= 6
+
+    if found_risks:
+        warnings.append(
+            "The idea includes details that may need simplification for embroidery."
+        )
+        recommendations.append(
+            "Remove gradients, tiny marks and fine lines. Keep the strongest silhouette."
+        )
+        score -= min(24, 4 * len(found_risks))
+
+    if len(clean_prompt.split()) > 14:
+        warnings.append("Long ideas are best reduced to one clear symbol or badge.")
+        recommendations.append("Focus on the main character, object or action.")
+        score -= 8
+
+    if "text" in prompt_lower or "word" in prompt_lower or "letter" in prompt_lower:
+        warnings.append("Small text may not stay readable after stitching.")
+        recommendations.append("Use large lettering only, or remove text from the logo.")
+        score -= 10
+
+    contrast_note = (
+        "Use bright thread colors for strong contrast on a dark shirt."
+        if shirt_color == "black"
+        else "Use darker thread colors for strong contrast on a light shirt."
+    )
+    recommendations.append(contrast_note)
+    recommendations.append(
+        f"Limit this placement to about {effective_max_colors} clear thread colors."
+    )
+
+    prompt_parts = [
+        clean_prompt,
+        f"converted into a {recommended_style}",
+        f"for {placement_rule['label']} embroidery at {int(width_mm)}x{int(height_mm)} mm",
+        f"maximum {effective_max_colors} flat thread colors",
+        "bold readable silhouette",
+        "thick shapes",
+        "clean high-contrast outlines",
+        "centered composition",
+        "transparent background",
+        "no gradients",
+        "no photorealism",
+        "no tiny text",
+        "no thin lines",
+        "no small scattered details",
+    ]
+
+    simplified_description = (
+        f"{clean_prompt} simplified into a bold {placement_rule['label']} "
+        f"embroidery mark with thick shapes and a clear color palette."
+    )
+
+    return {
+        "embroidery_prompt": ", ".join(prompt_parts),
+        "recommended_style": recommended_style,
+        "max_colors": effective_max_colors,
+        "warnings": warnings,
+        "recommendations": recommendations,
+        "machine_ready_score": max(0, min(100, int(score))),
+        "simplified_description": simplified_description,
+    }
+
+
 def rgb_to_hex(rgb: np.ndarray | list[int] | tuple[int, int, int]) -> str:
     """Return a #rrggbb string from RGB values."""
     red, green, blue = [int(value) for value in rgb[:3]]
@@ -608,6 +740,26 @@ async def analyze_logo(
     }
 
 
+@app.post("/prepare_design")
+async def prepare_design(
+    customer_prompt: str = Form(...),
+    placement: str = Form("left"),
+    width_mm: float = Form(90.0),
+    height_mm: float = Form(60.0),
+    shirt_color: str = Form("black"),
+    max_colors: int = Form(PRACTICAL_THREAD_COLOR_LIMIT),
+):
+    """Prepare a customer idea as embroidery-ready design direction."""
+    return prepare_embroidery_design(
+        customer_prompt=customer_prompt,
+        placement=placement,
+        width_mm=width_mm,
+        height_mm=height_mm,
+        shirt_color=shirt_color,
+        max_colors=max_colors,
+    )
+
+
 def make_logo(prompt: str, fg=(0, 200, 83, 255), stroke=(0, 0, 0, 255)) -> Image.Image:
     """Create a simple black-green placeholder logo PNG from text."""
     W, H = 512, 256
@@ -637,12 +789,27 @@ def make_logo(prompt: str, fg=(0, 200, 83, 255), stroke=(0, 0, 0, 255)) -> Image
 
 
 @app.post("/generate_logo")
-async def generate_logo(prompt: str = Form("Machine-aware embroidery design")):
+async def generate_logo(
+    prompt: str = Form("embroidery-ready design"),
+    placement: str = Form("left"),
+    width_mm: float = Form(90.0),
+    height_mm: float = Form(60.0),
+    shirt_color: str = Form("black"),
+    max_colors: int = Form(PRACTICAL_THREAD_COLOR_LIMIT),
+):
     """Return a temporary generated PNG logo placeholder.
 
     Later this endpoint can be replaced by the local AI server.
     """
-    img = make_logo(prompt)
+    prepared = prepare_embroidery_design(
+        customer_prompt=prompt,
+        placement=placement,
+        width_mm=width_mm,
+        height_mm=height_mm,
+        shirt_color=shirt_color,
+        max_colors=max_colors,
+    )
+    img = make_logo(prepared["embroidery_prompt"])
     buf = BytesIO()
     img.save(buf, format="PNG")
     return Response(content=buf.getvalue(), media_type="image/png")

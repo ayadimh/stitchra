@@ -45,6 +45,16 @@ type LogoAnalysis = {
   recommendations: string[];
 };
 
+type DesignPreparation = {
+  embroidery_prompt: string;
+  recommended_style: string;
+  max_colors: number;
+  warnings: string[];
+  recommendations: string[];
+  machine_ready_score: number;
+  simplified_description: string;
+};
+
 type Placement = 'left' | 'center';
 type TeeColor = 'black' | 'white';
 
@@ -87,6 +97,8 @@ export default function Home() {
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
     useState<LogoAnalysis | null>(null);
+  const [designPreparation, setDesignPreparation] =
+    useState<DesignPreparation | null>(null);
 
   const [logoPrompt, setLogoPrompt] = useState('');
   const [status, setStatus] = useState('');
@@ -109,6 +121,10 @@ export default function Home() {
   );
 
   const preset = placementPresets[placement];
+  const placementSize =
+    placement === 'left'
+      ? { width: 90, height: 60 }
+      : { width: 250, height: 200 };
 
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -118,6 +134,7 @@ export default function Home() {
     setFile(selectedFile);
     setEstimate(null);
     setLogoAnalysis(null);
+    setDesignPreparation(null);
     setStatus('');
     setError('');
 
@@ -183,8 +200,41 @@ export default function Home() {
     setIsGenerating(true);
 
     try {
+      const prepareData = new FormData();
+      prepareData.append('customer_prompt', logoPrompt);
+      prepareData.append('placement', placement);
+      prepareData.append('width_mm', String(placementSize.width));
+      prepareData.append('height_mm', String(placementSize.height));
+      prepareData.append('shirt_color', teeColor);
+      prepareData.append(
+        'max_colors',
+        String(PRACTICAL_THREAD_COLOR_LIMIT)
+      );
+
+      const prepareResponse = await fetch(
+        `${API}/prepare_design`,
+        {
+          method: 'POST',
+          body: prepareData,
+        }
+      );
+
+      if (!prepareResponse.ok) {
+        setError('Design preparation failed.');
+        return;
+      }
+
+      const prepared =
+        (await prepareResponse.json()) as DesignPreparation;
+      setDesignPreparation(prepared);
+
       const fd = new FormData();
       fd.append('prompt', logoPrompt);
+      fd.append('placement', placement);
+      fd.append('width_mm', String(placementSize.width));
+      fd.append('height_mm', String(placementSize.height));
+      fd.append('shirt_color', teeColor);
+      fd.append('max_colors', String(prepared.max_colors));
 
       const res = await fetch(`${API}/generate_logo`, {
         method: 'POST',
@@ -206,7 +256,7 @@ export default function Home() {
       setPreview(URL.createObjectURL(blob));
       setLogoAnalysis(null);
 
-      setStatus('AI logo generated.');
+      setStatus('Embroidery-ready design generated.');
     } catch {
       setError('Network error.');
     } finally {
@@ -1730,7 +1780,7 @@ export default function Home() {
               />
 
               <label style={label}>
-                Create with AI
+                Describe your idea
               </label>
 
               <div
@@ -1742,13 +1792,12 @@ export default function Home() {
               >
                 <input
                   value={logoPrompt}
-                  onChange={(e) =>
-                    setLogoPrompt(
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => {
+                    setLogoPrompt(e.target.value);
+                    setDesignPreparation(null);
+                  }}
                   aria-label="Logo idea prompt"
-                  placeholder="minimal badge for a coffee brand"
+                  placeholder="giraffe riding a car through space"
                   style={{
                     ...input,
                     flex: 1,
@@ -1766,10 +1815,101 @@ export default function Home() {
                   }}
                 >
                   {isGenerating
-                    ? 'Generating...'
+                    ? 'Preparing...'
                     : 'Generate'}
                 </button>
               </div>
+
+              {designPreparation && !error && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 10,
+                    padding: 16,
+                    borderRadius: 20,
+                    border:
+                      '1px solid rgba(0,255,136,0.18)',
+                    background:
+                      'linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,200,255,0.045)), rgba(255,255,255,0.04)',
+                    color: 'rgba(245,247,248,0.78)',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <strong
+                      style={{
+                        color:
+                          designPreparation.machine_ready_score >=
+                          75
+                            ? '#9dffc4'
+                            : '#ffe083',
+                      }}
+                    >
+                      Embroidery-ready score{' '}
+                      {
+                        designPreparation.machine_ready_score
+                      }
+                      /100
+                    </strong>
+                    <span>
+                      {designPreparation.max_colors} color
+                      {designPreparation.max_colors === 1
+                        ? ''
+                        : 's'}{' '}
+                      target
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong
+                      style={{
+                        color: '#f5f7f8',
+                      }}
+                    >
+                      Simplified idea:
+                    </strong>{' '}
+                    {
+                      designPreparation.simplified_description
+                    }
+                  </div>
+
+                  {designPreparation.warnings.length > 0 && (
+                    <div>
+                      <strong
+                        style={{
+                          color: '#ffe083',
+                        }}
+                      >
+                        Watch:
+                      </strong>{' '}
+                      {designPreparation.warnings
+                        .slice(0, 2)
+                        .join(' ')}
+                    </div>
+                  )}
+
+                  <div>
+                    <strong
+                      style={{
+                        color: '#9dffc4',
+                      }}
+                    >
+                      Recommendation:
+                    </strong>{' '}
+                    {designPreparation.recommendations
+                      .slice(0, 2)
+                      .join(' ')}
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={estimatePrice}
