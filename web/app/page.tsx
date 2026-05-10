@@ -26,7 +26,25 @@ type Estimate = {
   stitches: number;
   colors: number;
   coverage: number;
-  price_eur: number;
+  price_eur: number | null;
+  internal_cost_eur: number;
+  estimated_profit_eur: number | null;
+  manual_quote: boolean;
+  pricing_tier: string;
+  warnings: string[];
+  recommendations: string[];
+  cost_breakdown: {
+    blank_tshirt_eur: number;
+    backing_eur: number;
+    thread_and_bobbin_eur: number;
+    needle_wear_eur: number;
+    electricity_eur: number;
+    packaging_eur: number;
+    waste_buffer_eur: number;
+    machine_payback_eur: number;
+    labor_eur: number;
+    color_complexity_fee_eur: number;
+  };
   width_mm: number;
   height_mm: number;
 };
@@ -309,7 +327,11 @@ export default function Home() {
 
       setEstimate(data);
 
-      setStatus('Quote ready.');
+      setStatus(
+        data.manual_quote
+          ? 'Manual quote needed.'
+          : 'Quote ready.'
+      );
     } catch {
       setError('Network error.');
     } finally {
@@ -1556,7 +1578,7 @@ export default function Home() {
                     }}
                   />
                   <div className="hero-mini-copy">
-                    <span>Thread detail</span>
+                    <span>Stitches</span>
                     <strong>Curated tones for a premium stitched finish.</strong>
                   </div>
                 </div>
@@ -1595,14 +1617,20 @@ export default function Home() {
 
             <div className="hero-floating-quote">
               <span>Clear price before stitching</span>
-              <strong>{estimate ? `€${estimate.price_eur}` : '€22'}</strong>
+              <strong>
+                {estimate
+                  ? estimate.manual_quote
+                    ? 'Manual quote'
+                    : `€${estimate.price_eur}`
+                  : '€22'}
+              </strong>
             </div>
 
             <div className="hero-spec-grid">
               {[
                 ['Artwork', preview ? 'Logo loaded' : 'AI-ready'],
                 ['Colors', estimate ? String(estimate.colors) : 'Auto'],
-                ['Thread detail', estimate ? estimate.stitches.toLocaleString() : '12,450'],
+                ['Stitches', estimate ? estimate.stitches.toLocaleString() : '12,450'],
               ].map(([labelText, value]) => (
                 <div
                   key={labelText}
@@ -2009,39 +2037,143 @@ export default function Home() {
               )}
 
               {estimate && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                      'repeat(auto-fit,minmax(120px,1fr))',
-                    gap: 12,
-                    marginTop: 12,
-                  }}
-                >
-                  <Metric
-                    label="Thread detail"
-                    value={estimate.stitches.toLocaleString()}
-                  />
+                <>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit,minmax(120px,1fr))',
+                      gap: 12,
+                      marginTop: 12,
+                    }}
+                  >
+                    <Metric
+                      label="Stitches"
+                      value={estimate.stitches.toLocaleString()}
+                    />
 
-                  <Metric
-                    label="Colors"
-                    value={estimate.colors}
-                    helper={`Up to ${PRACTICAL_THREAD_COLOR_LIMIT} thread colors can be used depending on the artwork.`}
-                  />
+                    <Metric
+                      label="Colors"
+                      value={estimate.colors}
+                      helper={
+                        estimate.colors > 6
+                          ? 'Best result: 4–6 colors'
+                          : 'Best price'
+                      }
+                    />
 
-                  <Metric
-                    label="Coverage"
-                    value={`${(
-                      estimate.coverage *
-                      100
-                    ).toFixed(1)}%`}
-                  />
+                    <Metric
+                      label="Coverage"
+                      value={`${(
+                        estimate.coverage *
+                        100
+                      ).toFixed(1)}%`}
+                    />
 
-                  <Metric
-                    label="Price"
-                    value={`€${estimate.price_eur}`}
-                  />
-                </div>
+                    <Metric
+                      label="Price"
+                      value={
+                        estimate.manual_quote
+                          ? 'Manual quote'
+                          : `€${estimate.price_eur}`
+                      }
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      ...analysisPanel,
+                      marginTop: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <strong
+                        style={{
+                          color: estimate.manual_quote
+                            ? '#ffe083'
+                            : '#9dffc4',
+                        }}
+                      >
+                        {estimate.manual_quote
+                          ? 'Manual quote'
+                          : 'Clear price'}
+                      </strong>
+                      <span>{estimate.pricing_tier}</span>
+                    </div>
+
+                    {estimate.warnings.length > 0 && (
+                      <div>
+                        {estimate.warnings.slice(0, 2).join(' ')}
+                      </div>
+                    )}
+
+                    {estimate.recommendations.length > 0 && (
+                      <div
+                        style={{
+                          color: 'rgba(157,255,196,0.74)',
+                          fontSize: 12,
+                        }}
+                      >
+                        {estimate.recommendations
+                          .slice(0, 2)
+                          .join(' ')}
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit,minmax(150px,1fr))',
+                        gap: 10,
+                        marginTop: 8,
+                      }}
+                    >
+                      <BreakdownLine
+                        label="Blank shirt"
+                        value={estimate.cost_breakdown.blank_tshirt_eur}
+                      />
+                      <BreakdownLine
+                        label="Embroidery materials"
+                        value={
+                          estimate.cost_breakdown.backing_eur +
+                          estimate.cost_breakdown.thread_and_bobbin_eur
+                        }
+                      />
+                      <BreakdownLine
+                        label="Production handling"
+                        value={
+                          estimate.cost_breakdown.labor_eur +
+                          estimate.cost_breakdown.packaging_eur +
+                          estimate.cost_breakdown.waste_buffer_eur
+                        }
+                      />
+                      <BreakdownLine
+                        label="Studio investment"
+                        value={estimate.cost_breakdown.machine_payback_eur}
+                      />
+                      <BreakdownLine
+                        label="Complexity/color fee"
+                        value={
+                          estimate.cost_breakdown
+                            .color_complexity_fee_eur
+                        }
+                      />
+                      <BreakdownLine
+                        label="Estimated profit"
+                        value={estimate.estimated_profit_eur ?? 0}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </HoverCard>
@@ -2217,18 +2349,24 @@ export default function Home() {
           style={pricingPanel}
         >
           <div style={priceGrid}>
-            <PriceBlock label="Base setup" value="€3.50" />
-            <PriceBlock label="Artwork detail" value="€1.00" />
-            <PriceBlock label="Color fee" value="€0.75" />
-            <PriceBlock label="Minimum order" value="€10" highlight />
+            <PriceBlock label="Left chest" value="€9.99+" />
+            <PriceBlock label="Better badge" value="€15.99" />
+            <PriceBlock label="Front design" value="€17.99+" />
+            <PriceBlock label="Manual quote" value="Complex art" highlight />
           </div>
 
           <div className="pricing-example">
             <div>
               <strong>Example quote</strong>
-              <span>Small chest logo, refined detail, 3 colors</span>
+              <span>Small chest logo, clean detail, 3 colors</span>
             </div>
-            <strong>{estimate ? `€${estimate.price_eur}` : '€22'}</strong>
+            <strong>
+              {estimate
+                ? estimate.manual_quote
+                  ? 'Manual quote'
+                  : `€${estimate.price_eur}`
+                : '€22'}
+            </strong>
           </div>
 
           <a
@@ -3560,6 +3698,45 @@ function Metric({
   );
 }
 
+function BreakdownLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div
+      style={{
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 14,
+        padding: '10px 12px',
+        background: 'rgba(255,255,255,0.035)',
+      }}
+    >
+      <div
+        style={{
+          color: 'rgba(245,247,248,0.54)',
+          fontSize: 11,
+          lineHeight: 1.3,
+        }}
+      >
+        {label}
+      </div>
+      <strong
+        style={{
+          display: 'block',
+          marginTop: 4,
+          color: '#f5f7f8',
+          fontSize: 14,
+        }}
+      >
+        €{value.toFixed(2)}
+      </strong>
+    </div>
+  );
+}
+
 function SectionHeader({
   eyebrow,
   title,
@@ -4264,6 +4441,18 @@ const statCard: CSSProperties = {
 const metricCard: CSSProperties = {
   ...statCard,
   minHeight: 76,
+};
+
+const analysisPanel: CSSProperties = {
+  padding: 16,
+  borderRadius: 18,
+  border: '1px solid rgba(157,255,196,0.18)',
+  background:
+    'linear-gradient(145deg, rgba(9,17,16,0.78), rgba(8,10,13,0.90))',
+  color: 'rgba(245,247,248,0.68)',
+  fontSize: 13,
+  lineHeight: 1.55,
+  boxShadow: '0 18px 48px rgba(0,0,0,0.22)',
 };
 
 const statLabel: CSSProperties = {

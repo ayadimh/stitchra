@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 
 
-app = FastAPI(title="Stitchra Machine-Aware Embroidery API")
+app = FastAPI(title="Stitchra Embroidery API")
 
 # Allow the deployed frontend and local dev server to call this API (CORS)
 app.add_middleware(
@@ -33,14 +33,20 @@ MACHINE_SPEED_SPM = 900  # realistic average stitches per minute, not max advert
 THREAD_CHANGE_SECONDS = 20
 SETUP_MINUTES = 4
 PRACTICAL_THREAD_COLOR_LIMIT = 15
-PACKAGING_EUR = 1.00
-HANDLING_EUR = 1.00
-MACHINE_WEAR_EUR = 5.00
-SHIRT_COST_EUR = 1.50
-TARGET_SMALL_PRICE_EUR = 11.99
-TARGET_LARGE_PRICE_EUR = 14.99
-STITCH_COST_PER_1000_EUR = 0.05
-MARGIN_EUR = 3.50
+CHEAP_PRODUCT_COLOR_LIMIT = 6
+MANUAL_REVIEW_COLOR_LIMIT = 10
+MANUAL_QUOTE_STITCH_LIMIT = 90000
+
+BLANK_TSHIRT_EUR = 2.50
+BACKING_LEFT_EUR = 0.15
+BACKING_CENTER_EUR = 0.35
+THREAD_AND_BOBBIN_PER_1000_STITCHES_EUR = 0.035
+NEEDLE_WEAR_EUR = 0.05
+ELECTRICITY_EUR = 0.03
+PACKAGING_EUR = 0.30
+WASTE_BUFFER_EUR = 0.50
+MACHINE_PAYBACK_EUR = 0.75
+COLOR_COMPLEXITY_FEE_EUR = 0.60
 
 
 PRODUCT_PRESETS = {
@@ -533,9 +539,15 @@ def kmeans_quantize(image_bgr: np.ndarray, k: int) -> np.ndarray:
     return labels.reshape(image_bgr.shape[:2])
 
 
-def estimate_complexity(stitches: int, colors: int, coverage: float) -> tuple[str, list[str]]:
-    """Return embroidery complexity and warnings based on machine-aware rules."""
+def estimate_complexity(
+    stitches: int,
+    colors: int,
+    coverage: float,
+    placement: str,
+) -> tuple[str, list[str], list[str]]:
+    """Return embroidery complexity with customer-friendly guidance."""
     warnings: list[str] = []
+    recommendations: list[str] = []
 
     if stitches < 8000 and colors <= 3 and coverage <= 0.35:
         complexity = "Easy"
@@ -554,18 +566,39 @@ def estimate_complexity(stitches: int, colors: int, coverage: float) -> tuple[st
     else:
         complexity = "Heavy"
 
-    if stitches > 60000:
-        warnings.append("High stitch count. Production time and risk of thread breaks increase.")
-    if coverage > 0.75:
-        warnings.append("High coverage. Design may feel heavy on fabric.")
+    if placement == "left" and stitches > 18000:
+        warnings.append(
+            "This is detailed for a small chest logo. A simpler version may be cheaper."
+        )
+        recommendations.append("For cheaper production, use fewer colors and bigger shapes.")
+    if placement == "left" and stitches > 25000:
+        warnings.append("This design is too detailed for instant price.")
+        recommendations.append("Use a simpler badge version for a fast left chest quote.")
+    if stitches > 50000:
+        warnings.append("Large detailed embroidery needs manual review.")
+        recommendations.append("Reduce detail or choose a smaller, cleaner design area.")
+    if coverage > 0.65:
+        warnings.append("High coverage may increase stitch time and cost.")
+        recommendations.append("Use more open space for a softer and cheaper stitched finish.")
+    if colors > CHEAP_PRODUCT_COLOR_LIMIT:
+        warnings.append("For best price, keep the design around 4–6 colors.")
+        recommendations.append("Best result: 4–6 colors.")
+    if colors > MANUAL_REVIEW_COLOR_LIMIT:
+        warnings.append("This color palette is complex and may need review.")
+        recommendations.append("Reduce colors for a cleaner stitched result.")
     if colors > PRACTICAL_THREAD_COLOR_LIMIT:
         warnings.append(
             "Logo has more than 15 thread colors. Manual review or color reduction may be needed."
         )
+        recommendations.append("Reduce the design to 15 colors or fewer.")
     if stitches < 1000:
         warnings.append("Very low stitch count. The design may be too small or too empty.")
+        recommendations.append("Use bigger shapes so the logo reads clearly on fabric.")
 
-    return complexity, warnings
+    if not recommendations:
+        recommendations.append("Best price is usually reached with clean shapes and 4–6 colors.")
+
+    return complexity, warnings, recommendations
 
 
 def calculate_machine_time_minutes(stitches: int, colors: int) -> float:
@@ -578,48 +611,105 @@ def calculate_machine_time_minutes(stitches: int, colors: int) -> float:
 
 def calculate_price(
     stitches: int,
-    width_mm: float,
-    product_type: str = "tshirt",
-) -> tuple[float, dict]:
-    """Business-first price model for Stitchra V1."""
-    product = PRODUCT_PRESETS.get(product_type, PRODUCT_PRESETS["tshirt"])
-    blank_cost = float(product["blank_cost"])
-    stitch_cost = (stitches / 1000.0) * STITCH_COST_PER_1000_EUR
-
-    raw_price = (
-        blank_cost
-        + MACHINE_WEAR_EUR
-        + HANDLING_EUR
-        + PACKAGING_EUR
-        + stitch_cost
-        + MARGIN_EUR
+    colors: int,
+    placement: str,
+) -> tuple[float | None, float, float | None, bool, str, dict]:
+    """Affordable student-market pricing for embroidered T-shirts."""
+    is_left_chest = placement == "left"
+    backing = BACKING_LEFT_EUR if is_left_chest else BACKING_CENTER_EUR
+    thread_and_bobbin = (
+        stitches / 1000.0
+    ) * THREAD_AND_BOBBIN_PER_1000_STITCHES_EUR
+    color_complexity_fee = (
+        max(0, colors - CHEAP_PRODUCT_COLOR_LIMIT) * COLOR_COMPLEXITY_FEE_EUR
     )
 
-    # Keep T-shirt V1 pricing inside the business target.
-    # Other products can later receive their own pricing tiers.
-    if product_type == "tshirt":
-        if width_mm <= 100:
-            price = min(raw_price, TARGET_SMALL_PRICE_EUR)
+    if is_left_chest:
+        if stitches < 18000:
+            labor = 2.50
+        elif stitches <= 25000:
+            labor = 3.50
         else:
-            price = min(raw_price, TARGET_LARGE_PRICE_EUR)
+            labor = 3.50
     else:
-        price = raw_price
+        if stitches < 35000:
+            labor = 4.50
+        elif stitches <= 50000:
+            labor = 6.50
+        else:
+            labor = 6.50
 
-    price = round(price, 2)
+    internal_cost = (
+        BLANK_TSHIRT_EUR
+        + backing
+        + thread_and_bobbin
+        + NEEDLE_WEAR_EUR
+        + ELECTRICITY_EUR
+        + PACKAGING_EUR
+        + WASTE_BUFFER_EUR
+        + MACHINE_PAYBACK_EUR
+        + labor
+        + color_complexity_fee
+    )
+
+    manual_quote = (
+        colors > PRACTICAL_THREAD_COLOR_LIMIT
+        or stitches >= MANUAL_QUOTE_STITCH_LIMIT
+        or (is_left_chest and stitches > 25000)
+        or (not is_left_chest and stitches > 50000)
+    )
+
+    pricing_tier = "Manual quote"
+    price: float | None = None
+    profit: float | None = None
+
+    if not manual_quote:
+        if is_left_chest:
+            if stitches <= 10000 and colors <= 4:
+                price = 9.99
+                pricing_tier = "Simple left chest"
+            elif stitches <= 18000 and colors <= CHEAP_PRODUCT_COLOR_LIMIT:
+                price = 11.99
+                pricing_tier = "Standard left chest"
+            elif stitches <= 25000:
+                price = 15.99
+                pricing_tier = "Detailed left chest"
+            price = max(9.99, min(15.99, price or 15.99))
+        else:
+            if stitches <= 25000 and colors <= CHEAP_PRODUCT_COLOR_LIMIT:
+                price = 19.99
+                pricing_tier = "Simple center front"
+            elif stitches <= 35000:
+                price = 24.99
+                pricing_tier = "Standard center front"
+            else:
+                price = 29.99
+                pricing_tier = "Detailed center front"
+            price = max(17.99, min(29.99, price))
+
+        profit = price - internal_cost
 
     breakdown = {
-        "blank_cost_eur": round(blank_cost, 2),
-        "machine_wear_eur": MACHINE_WEAR_EUR,
-        "handling_eur": HANDLING_EUR,
-        "packaging_eur": PACKAGING_EUR,
-        "stitch_cost_eur": round(stitch_cost, 2),
-        "margin_eur": MARGIN_EUR,
-        "raw_price_eur": round(raw_price, 2),
-        "final_price_eur": price,
-        "shipping_note": "Shipping is not included and should be added separately.",
+        "blank_tshirt_eur": round(BLANK_TSHIRT_EUR, 2),
+        "backing_eur": round(backing, 2),
+        "thread_and_bobbin_eur": round(thread_and_bobbin, 2),
+        "needle_wear_eur": round(NEEDLE_WEAR_EUR, 2),
+        "electricity_eur": round(ELECTRICITY_EUR, 2),
+        "packaging_eur": round(PACKAGING_EUR, 2),
+        "waste_buffer_eur": round(WASTE_BUFFER_EUR, 2),
+        "machine_payback_eur": round(MACHINE_PAYBACK_EUR, 2),
+        "labor_eur": round(labor, 2),
+        "color_complexity_fee_eur": round(color_complexity_fee, 2),
     }
 
-    return price, breakdown
+    return (
+        round(price, 2) if price is not None else None,
+        round(internal_cost, 2),
+        round(profit, 2) if profit is not None else None,
+        manual_quote,
+        pricing_tier,
+        breakdown,
+    )
 
 
 @app.post("/estimate")
@@ -630,7 +720,7 @@ async def estimate(
     colors: int = Form(2),
     product_type: str = Form("tshirt"),
 ):
-    """Estimate stitches, machine time, complexity and price from an uploaded image + size."""
+    """Estimate stitches, readiness and affordable retail price from an uploaded image."""
     data = await file.read()
     img = Image.open(BytesIO(data)).convert("RGB")
     img_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
@@ -647,11 +737,21 @@ async def estimate(
     STITCHES_PER_IN2 = 1800
     stitches = int(area_in2 * coverage * STITCHES_PER_IN2)
 
+    placement = "left" if width_mm <= 100 and height_mm <= 80 else "center"
     machine_time_minutes = calculate_machine_time_minutes(
         stitches, reported_colors
     )
-    complexity, warnings = estimate_complexity(stitches, reported_colors, coverage)
-    price, price_breakdown = calculate_price(stitches, width_mm, product_type)
+    complexity, warnings, recommendations = estimate_complexity(
+        stitches, reported_colors, coverage, placement
+    )
+    (
+        price,
+        internal_cost,
+        estimated_profit,
+        manual_quote,
+        pricing_tier,
+        cost_breakdown,
+    ) = calculate_price(stitches, reported_colors, placement)
 
     product = PRODUCT_PRESETS.get(product_type, PRODUCT_PRESETS["tshirt"])
     compatible_area = (
@@ -663,10 +763,15 @@ async def estimate(
         warnings.append(
             f"Design area is too large for {product['label']} preset. Reduce size or choose another product."
         )
+        recommendations.append("Choose a smaller placement for an instant price.")
+        manual_quote = True
+        price = None
+        estimated_profit = None
+        pricing_tier = "Manual quote"
 
-    machine_status = (
+    quote_status = (
         "Ready for embroidery"
-        if compatible_area and complexity != "Heavy"
+        if compatible_area and not manual_quote
         else "Needs review"
     )
 
@@ -678,18 +783,21 @@ async def estimate(
         "price_eur": price,
         "width_mm": width_mm,
         "height_mm": height_mm,
-        # New machine-aware fields
+        # Pricing and readiness fields
         "product_type": product_type,
         "product_label": product["label"],
-        "machine_type": "multi-needle commercial embroidery machine",
-        "machine_speed_spm": MACHINE_SPEED_SPM,
-        "thread_color_limit": PRACTICAL_THREAD_COLOR_LIMIT,
         "machine_time_minutes": machine_time_minutes,
         "complexity": complexity,
-        "machine_status": machine_status,
+        "machine_status": quote_status,
+        "quote_status": quote_status,
         "compatible_area": compatible_area,
+        "manual_quote": manual_quote,
+        "pricing_tier": pricing_tier,
+        "internal_cost_eur": internal_cost,
+        "estimated_profit_eur": estimated_profit,
         "warnings": warnings,
-        "price_breakdown": price_breakdown,
+        "recommendations": recommendations,
+        "cost_breakdown": cost_breakdown,
     }
 
 
@@ -820,8 +928,7 @@ def health():
     """Simple liveness endpoint."""
     return {
         "status": "ok",
-        "service": "stitchra-machine-aware-embroidery-api",
-        "machine_type": "single-head commercial embroidery machine",
+        "service": "stitchra-embroidery-api",
     }
 
 
