@@ -712,6 +712,55 @@ def calculate_price(
     )
 
 
+def build_internal_production_notes(
+    stitches: int,
+    colors: int,
+    coverage: float,
+    placement: str,
+    manual_quote: bool,
+) -> list[str]:
+    """Return internal-only production decision labels for the studio view."""
+    notes: list[str] = []
+    is_left_chest = placement == "left"
+
+    if (
+        not manual_quote
+        and colors <= CHEAP_PRODUCT_COLOR_LIMIT
+        and coverage <= 0.55
+        and (
+            (is_left_chest and stitches <= 18000)
+            or (not is_left_chest and stitches <= 35000)
+        )
+    ):
+        notes.append("Good for cheap product")
+
+    if manual_quote:
+        notes.append("Manual review")
+
+    if (
+        colors > CHEAP_PRODUCT_COLOR_LIMIT
+        or coverage > 0.65
+        or (is_left_chest and stitches > 18000)
+        or (not is_left_chest and stitches > 35000)
+    ):
+        notes.append("Needs simplification")
+
+    if (
+        stitches >= MANUAL_QUOTE_STITCH_LIMIT
+        or (is_left_chest and stitches > 25000)
+        or (not is_left_chest and stitches > 50000)
+    ):
+        notes.append("Too many stitches")
+
+    if colors > PRACTICAL_THREAD_COLOR_LIMIT:
+        notes.append("Too many colors")
+
+    if coverage > 0.65:
+        notes.append("High coverage")
+
+    return notes or ["Ready for embroidery"]
+
+
 @app.post("/estimate")
 async def estimate(
     file: UploadFile = File(...),
@@ -774,8 +823,40 @@ async def estimate(
         if compatible_area and not manual_quote
         else "Needs review"
     )
+    profit_margin_percent = (
+        round((estimated_profit / price) * 100, 1)
+        if price and estimated_profit is not None
+        else None
+    )
+    public_quote = {
+        "stitches": stitches,
+        "colors": reported_colors,
+        "coverage": coverage,
+        "price_eur": price,
+        "manual_quote": manual_quote,
+        "pricing_tier": pricing_tier,
+        "customer_warnings": warnings,
+        "customer_recommendations": recommendations,
+    }
+    internal_quote = {
+        "internal_cost_eur": internal_cost,
+        "estimated_profit_eur": estimated_profit,
+        "profit_margin_percent": profit_margin_percent,
+        "cost_breakdown": cost_breakdown,
+        "technical_warnings": warnings,
+        "production_notes": build_internal_production_notes(
+            stitches,
+            reported_colors,
+            coverage,
+            placement,
+            manual_quote,
+        ),
+    }
 
     return {
+        # Structured response for customer and private studio views
+        "public_quote": public_quote,
+        "internal_quote": internal_quote,
         # Existing fields used by the frontend
         "stitches": stitches,
         "colors": reported_colors,

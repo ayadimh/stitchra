@@ -27,26 +27,24 @@ type Estimate = {
   colors: number;
   coverage: number;
   price_eur: number | null;
-  internal_cost_eur: number;
-  estimated_profit_eur: number | null;
   manual_quote: boolean;
   pricing_tier: string;
   warnings: string[];
   recommendations: string[];
-  cost_breakdown: {
-    blank_tshirt_eur: number;
-    backing_eur: number;
-    thread_and_bobbin_eur: number;
-    needle_wear_eur: number;
-    electricity_eur: number;
-    packaging_eur: number;
-    waste_buffer_eur: number;
-    machine_payback_eur: number;
-    labor_eur: number;
-    color_complexity_fee_eur: number;
-  };
+  public_quote?: PublicQuote;
   width_mm: number;
   height_mm: number;
+};
+
+type PublicQuote = {
+  stitches: number;
+  colors: number;
+  coverage: number;
+  price_eur: number | null;
+  manual_quote: boolean;
+  pricing_tier: string;
+  customer_warnings: string[];
+  customer_recommendations: string[];
 };
 
 type LogoAnalysis = {
@@ -106,6 +104,21 @@ async function dataUrlToFile(
   );
 }
 
+function getPublicQuote(estimate: Estimate): PublicQuote {
+  return (
+    estimate.public_quote ?? {
+      stitches: estimate.stitches,
+      colors: estimate.colors,
+      coverage: estimate.coverage,
+      price_eur: estimate.price_eur,
+      manual_quote: estimate.manual_quote,
+      pricing_tier: estimate.pricing_tier,
+      customer_warnings: estimate.warnings,
+      customer_recommendations: estimate.recommendations,
+    }
+  );
+}
+
 export default function Home() {
   const [placement, setPlacement] = useState<Placement>('left');
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
@@ -143,6 +156,9 @@ export default function Home() {
     placement === 'left'
       ? { width: 90, height: 60 }
       : { width: 250, height: 200 };
+  const publicQuote = estimate
+    ? getPublicQuote(estimate)
+    : null;
 
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -323,12 +339,13 @@ export default function Home() {
         return;
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as Estimate;
+      const customerQuote = getPublicQuote(data);
 
       setEstimate(data);
 
       setStatus(
-        data.manual_quote
+        customerQuote.manual_quote
           ? 'Manual quote needed.'
           : 'Quote ready.'
       );
@@ -1618,10 +1635,10 @@ export default function Home() {
             <div className="hero-floating-quote">
               <span>Clear price before stitching</span>
               <strong>
-                {estimate
-                  ? estimate.manual_quote
+                {publicQuote
+                  ? publicQuote.manual_quote
                     ? 'Manual quote'
-                    : `€${estimate.price_eur}`
+                    : `€${publicQuote.price_eur}`
                   : '€22'}
               </strong>
             </div>
@@ -2036,7 +2053,7 @@ export default function Home() {
                 </div>
               )}
 
-              {estimate && (
+              {publicQuote && (
                 <>
                   <div
                     style={{
@@ -2049,14 +2066,14 @@ export default function Home() {
                   >
                     <Metric
                       label="Stitches"
-                      value={estimate.stitches.toLocaleString()}
+                      value={publicQuote.stitches.toLocaleString()}
                     />
 
                     <Metric
                       label="Colors"
-                      value={estimate.colors}
+                      value={publicQuote.colors}
                       helper={
-                        estimate.colors > 6
+                        publicQuote.colors > 6
                           ? 'Best result: 4–6 colors'
                           : 'Best price'
                       }
@@ -2065,7 +2082,7 @@ export default function Home() {
                     <Metric
                       label="Coverage"
                       value={`${(
-                        estimate.coverage *
+                        publicQuote.coverage *
                         100
                       ).toFixed(1)}%`}
                     />
@@ -2073,9 +2090,9 @@ export default function Home() {
                     <Metric
                       label="Price"
                       value={
-                        estimate.manual_quote
+                        publicQuote.manual_quote
                           ? 'Manual quote'
-                          : `€${estimate.price_eur}`
+                          : `€${publicQuote.price_eur}`
                       }
                     />
                   </div>
@@ -2097,81 +2114,45 @@ export default function Home() {
                     >
                       <strong
                         style={{
-                          color: estimate.manual_quote
+                          color: publicQuote.manual_quote
                             ? '#ffe083'
                             : '#9dffc4',
                         }}
                       >
-                        {estimate.manual_quote
-                          ? 'Manual quote'
+                        {publicQuote.manual_quote
+                          ? 'Manual quote needed'
                           : 'Clear price'}
                       </strong>
-                      <span>{estimate.pricing_tier}</span>
+                      <span>{publicQuote.pricing_tier}</span>
                     </div>
 
-                    {estimate.warnings.length > 0 && (
+                    <div>
+                      {publicQuote.manual_quote
+                        ? 'This design is large or very detailed. We will review it before production.'
+                        : publicQuote.customer_warnings[0] ??
+                          'Your design is ready for embroidery.'}
+                    </div>
+
+                    {publicQuote.customer_warnings.length > 1 && (
                       <div>
-                        {estimate.warnings.slice(0, 2).join(' ')}
+                        {publicQuote.customer_warnings
+                          .slice(1, 3)
+                          .join(' ')}
                       </div>
                     )}
 
-                    {estimate.recommendations.length > 0 && (
+                    {publicQuote.customer_recommendations.length > 0 && (
                       <div
                         style={{
                           color: 'rgba(157,255,196,0.74)',
                           fontSize: 12,
                         }}
                       >
-                        {estimate.recommendations
+                        {publicQuote.customer_recommendations
                           .slice(0, 2)
                           .join(' ')}
                       </div>
                     )}
-
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns:
-                          'repeat(auto-fit,minmax(150px,1fr))',
-                        gap: 10,
-                        marginTop: 8,
-                      }}
-                    >
-                      <BreakdownLine
-                        label="Blank shirt"
-                        value={estimate.cost_breakdown.blank_tshirt_eur}
-                      />
-                      <BreakdownLine
-                        label="Embroidery materials"
-                        value={
-                          estimate.cost_breakdown.backing_eur +
-                          estimate.cost_breakdown.thread_and_bobbin_eur
-                        }
-                      />
-                      <BreakdownLine
-                        label="Production handling"
-                        value={
-                          estimate.cost_breakdown.labor_eur +
-                          estimate.cost_breakdown.packaging_eur +
-                          estimate.cost_breakdown.waste_buffer_eur
-                        }
-                      />
-                      <BreakdownLine
-                        label="Studio investment"
-                        value={estimate.cost_breakdown.machine_payback_eur}
-                      />
-                      <BreakdownLine
-                        label="Complexity/color fee"
-                        value={
-                          estimate.cost_breakdown
-                            .color_complexity_fee_eur
-                        }
-                      />
-                      <BreakdownLine
-                        label="Estimated profit"
-                        value={estimate.estimated_profit_eur ?? 0}
-                      />
-                    </div>
                   </div>
                 </>
               )}
@@ -2361,10 +2342,10 @@ export default function Home() {
               <span>Small chest logo, clean detail, 3 colors</span>
             </div>
             <strong>
-              {estimate
-                ? estimate.manual_quote
+              {publicQuote
+                ? publicQuote.manual_quote
                   ? 'Manual quote'
-                  : `€${estimate.price_eur}`
+                  : `€${publicQuote.price_eur}`
                 : '€22'}
             </strong>
           </div>
@@ -3694,45 +3675,6 @@ function Metric({
           {helper}
         </div>
       )}
-    </div>
-  );
-}
-
-function BreakdownLine({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div
-      style={{
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14,
-        padding: '10px 12px',
-        background: 'rgba(255,255,255,0.035)',
-      }}
-    >
-      <div
-        style={{
-          color: 'rgba(245,247,248,0.54)',
-          fontSize: 11,
-          lineHeight: 1.3,
-        }}
-      >
-        {label}
-      </div>
-      <strong
-        style={{
-          display: 'block',
-          marginTop: 4,
-          color: '#f5f7f8',
-          fontSize: 14,
-        }}
-      >
-        €{value.toFixed(2)}
-      </strong>
     </div>
   );
 }
