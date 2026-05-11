@@ -2734,6 +2734,10 @@ export default function Home() {
             <a href="#features" style={footerLink}>Features</a>
             <a href="#pricing" style={footerLink}>Pricing</a>
             <a href="#faq" style={footerLink}>FAQ</a>
+            <a href="https://stitchra.com/impressum" style={footerLink}>Impressum</a>
+            <a href="https://stitchra.com/privacy" style={footerLink}>Privacy</a>
+            <a href="https://stitchra.com/contact" style={footerLink}>Contact</a>
+            <a href="https://stitchra.com/terms" style={footerLink}>Terms</a>
             <span>© 2026 Stitchra</span>
             <a
               href="https://commons.wikimedia.org/wiki/File:Colorful_thread_spools_(Unsplash).jpg"
