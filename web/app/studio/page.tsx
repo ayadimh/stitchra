@@ -60,6 +60,42 @@ type EstimateResponse = {
   internal_quote?: InternalQuote;
 };
 
+type OrderStatus =
+  | 'new'
+  | 'needs_review'
+  | 'approved'
+  | 'sent_to_production'
+  | 'declined'
+  | 'completed';
+
+type OrderRecord = {
+  id: string;
+  created_at: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  quantity: number | null;
+  note: string | null;
+  prompt: string | null;
+  placement: string;
+  shirt_color: string;
+  logo_preview_url: string | null;
+  stitches: number;
+  colors: number;
+  coverage: number;
+  customer_price_eur: number | null;
+  internal_cost_eur: number | null;
+  estimated_profit_eur: number | null;
+  profit_margin_percent: number | null;
+  pricing_tier: string;
+  manual_quote: boolean;
+  warnings: string[];
+  recommendations: string[];
+  production_notes: string[];
+  cost_breakdown: CostBreakdown;
+  status: OrderStatus;
+};
+
 type LogoAnalysis = {
   processed_png: string;
   colors_count: number;
@@ -85,6 +121,28 @@ const breakdownLabels: Array<[keyof CostBreakdown, string]> = [
   ['labor_eur', 'Labor'],
   ['color_complexity_fee_eur', 'Color complexity'],
 ];
+
+const orderStatuses: Array<{
+  value: OrderStatus | 'all';
+  label: string;
+}> = [
+  { value: 'all', label: 'All' },
+  { value: 'new', label: 'New' },
+  { value: 'needs_review', label: 'Needs review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'sent_to_production', label: 'Production' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'completed', label: 'Completed' },
+];
+
+const statusLabels: Record<OrderStatus, string> = {
+  new: 'New',
+  needs_review: 'Needs review',
+  approved: 'Approved',
+  sent_to_production: 'Sent to production',
+  declined: 'Declined',
+  completed: 'Completed',
+};
 
 async function dataUrlToFile(dataUrl: string, name: string) {
   const response = await fetch(dataUrl);
@@ -141,6 +199,9 @@ export default function StudioPage() {
   const [passcode, setPasscode] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [gateError, setGateError] = useState('');
+  const [activeView, setActiveView] = useState<'quote' | 'orders'>(
+    'quote'
+  );
 
   const [placement, setPlacement] = useState<Placement>('left');
   const [shirtColor, setShirtColor] = useState<ShirtColor>('black');
@@ -153,6 +214,14 @@ export default function StudioPage() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [selectedOrder, setSelectedOrder] =
+    useState<OrderRecord | null>(null);
+  const [orderStatusFilter, setOrderStatusFilter] =
+    useState<OrderStatus | 'all'>('all');
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState('');
+  const [productionNote, setProductionNote] = useState('');
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -169,6 +238,103 @@ export default function StudioPage() {
     return Array.from(labels);
   }, [analysis, internalQuote]);
 
+  const loadOrders = async (
+    filter: OrderStatus | 'all' = orderStatusFilter
+  ) => {
+    setOrdersLoading(true);
+    setOrdersError('');
+
+    try {
+      const query = filter === 'all' ? '' : `?status=${filter}`;
+      const response = await fetch(`/api/orders${query}`, {
+        headers: {
+          'x-studio-passcode': passcode,
+        },
+      });
+      const payload = (await response.json()) as {
+        orders?: OrderRecord[];
+        message?: string;
+      };
+
+      if (!response.ok) {
+        setOrders([]);
+        setSelectedOrder(null);
+        setOrdersError(
+          payload.message ??
+            'Database not configured yet. Add DATABASE_URL to enable order storage.'
+        );
+        return;
+      }
+
+      setOrders(payload.orders ?? []);
+      setSelectedOrder((current) => {
+        if (!current) {
+          return payload.orders?.[0] ?? null;
+        }
+
+        return (
+          payload.orders?.find((order) => order.id === current.id) ??
+          payload.orders?.[0] ??
+          null
+        );
+      });
+    } catch {
+      setOrdersError('Could not load orders.');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const changeOrderStatus = async (
+    order: OrderRecord,
+    nextStatus: OrderStatus
+  ) => {
+    setOrdersError('');
+
+    try {
+      const notes =
+        productionNote.trim().length > 0
+          ? [
+              ...order.production_notes,
+              productionNote.trim(),
+            ]
+          : order.production_notes;
+
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-studio-passcode': passcode,
+        },
+        body: JSON.stringify({
+          status: nextStatus,
+          production_notes: notes,
+        }),
+      });
+      const payload = (await response.json()) as {
+        order?: OrderRecord;
+        message?: string;
+      };
+
+      if (!response.ok || !payload.order) {
+        setOrdersError(payload.message ?? 'Could not update order.');
+        return;
+      }
+
+      const updatedOrder = payload.order;
+
+      setProductionNote('');
+      setSelectedOrder(updatedOrder);
+      setOrders((current) =>
+        current.map((item) =>
+          item.id === updatedOrder.id ? updatedOrder : item
+        )
+      );
+    } catch {
+      setOrdersError('Could not update order.');
+    }
+  };
+
   const unlock = () => {
     if (!expectedPasscode) {
       setGateError(
@@ -180,6 +346,7 @@ export default function StudioPage() {
     if (passcode === expectedPasscode) {
       setUnlocked(true);
       setGateError('');
+      void loadOrders();
       return;
     }
 
@@ -312,11 +479,59 @@ export default function StudioPage() {
           <p style={eyebrow}>Private studio</p>
           <h1 style={studioTitle}>Quote command center</h1>
         </div>
-        <Link href="/" style={secondaryButton}>
-          Public website
-        </Link>
+        <div style={headerActions}>
+          <button
+            type="button"
+            onClick={() => setActiveView('quote')}
+            style={
+              activeView === 'quote'
+                ? primaryButton
+                : secondaryButton
+            }
+          >
+            Quote
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView('orders');
+              void loadOrders();
+            }}
+            style={
+              activeView === 'orders'
+                ? primaryButton
+                : secondaryButton
+            }
+          >
+            Orders
+          </button>
+          <Link href="/" style={secondaryButton}>
+            Public website
+          </Link>
+        </div>
       </header>
 
+      {activeView === 'orders' && (
+        <OrdersDashboard
+          orders={orders}
+          selectedOrder={selectedOrder}
+          statusFilter={orderStatusFilter}
+          loading={ordersLoading}
+          error={ordersError}
+          productionNote={productionNote}
+          onProductionNoteChange={setProductionNote}
+          onFilterChange={(nextFilter) => {
+            setOrderStatusFilter(nextFilter);
+            void loadOrders(nextFilter);
+          }}
+          onSelectOrder={setSelectedOrder}
+          onRefresh={() => void loadOrders()}
+          onChangeStatus={changeOrderStatus}
+        />
+      )}
+
+      {activeView === 'quote' && (
+        <>
       <section style={workspaceGrid}>
         <div style={panel}>
           <h2 style={panelTitle}>Artwork input</h2>
@@ -492,6 +707,8 @@ export default function StudioPage() {
           </section>
         </>
       )}
+        </>
+      )}
     </main>
   );
 }
@@ -508,6 +725,364 @@ function Meta({
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function OrdersDashboard({
+  orders,
+  selectedOrder,
+  statusFilter,
+  loading,
+  error,
+  productionNote,
+  onProductionNoteChange,
+  onFilterChange,
+  onSelectOrder,
+  onRefresh,
+  onChangeStatus,
+}: {
+  orders: OrderRecord[];
+  selectedOrder: OrderRecord | null;
+  statusFilter: OrderStatus | 'all';
+  loading: boolean;
+  error: string;
+  productionNote: string;
+  onProductionNoteChange: (value: string) => void;
+  onFilterChange: (value: OrderStatus | 'all') => void;
+  onSelectOrder: (order: OrderRecord) => void;
+  onRefresh: () => void;
+  onChangeStatus: (
+    order: OrderRecord,
+    status: OrderStatus
+  ) => void;
+}) {
+  return (
+    <section style={ordersShell}>
+      <div style={ordersToolbar}>
+        <div>
+          <p style={eyebrow}>Orders</p>
+          <h2 style={panelTitle}>Customer requests</h2>
+        </div>
+        <div style={headerActions}>
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              onFilterChange(
+                event.target.value as OrderStatus | 'all'
+              )
+            }
+            style={{
+              ...inputStyle,
+              width: 190,
+            }}
+          >
+            {orderStatuses.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={onRefresh}
+            style={secondaryButton}
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {error && <p style={warningCard}>{error}</p>}
+      {loading && <p style={successText}>Loading orders...</p>}
+
+      {!loading && !error && orders.length === 0 && (
+        <div style={panel}>
+          <p style={mutedText}>
+            No orders yet. New customer requests will appear here
+            after DATABASE_URL is configured and customers submit the
+            request form.
+          </p>
+        </div>
+      )}
+
+      {orders.length > 0 && (
+        <div style={ordersGrid}>
+          <div style={ordersList}>
+            {orders.map((order) => (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => onSelectOrder(order)}
+                style={{
+                  ...orderCard,
+                  borderColor:
+                    selectedOrder?.id === order.id
+                      ? 'rgba(0,255,136,0.42)'
+                      : 'rgba(255,255,255,0.10)',
+                }}
+              >
+                <div style={orderCardHeader}>
+                  <span style={statusBadge(order.status)}>
+                    {statusLabels[order.status]}
+                  </span>
+                  <span style={tinyText}>
+                    {new Date(order.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <strong style={{ color: '#f5f7f8' }}>
+                  {order.customer_name}
+                </strong>
+                <span style={mutedText}>{order.customer_email}</span>
+                <div style={orderMiniGrid}>
+                  <Meta
+                    label="Placement"
+                    value={order.placement}
+                  />
+                  <Meta
+                    label="Color"
+                    value={order.shirt_color}
+                  />
+                  <Meta
+                    label="Stitches"
+                    value={order.stitches.toLocaleString()}
+                  />
+                  <Meta label="Colors" value={String(order.colors)} />
+                  <Meta
+                    label="Customer price"
+                    value={
+                      order.manual_quote
+                        ? 'Manual quote'
+                        : `€${order.customer_price_eur}`
+                    }
+                  />
+                  <Meta
+                    label="Profit"
+                    value={
+                      order.estimated_profit_eur === null
+                        ? 'Pending'
+                        : `€${order.estimated_profit_eur.toFixed(2)}`
+                    }
+                  />
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {selectedOrder && (
+            <div style={panel}>
+              <div style={orderDetailHeader}>
+                <div>
+                  <p style={eyebrow}>Order detail</p>
+                  <h2 style={panelTitle}>
+                    {selectedOrder.customer_name}
+                  </h2>
+                  <p style={mutedText}>
+                    {selectedOrder.customer_email}
+                    {selectedOrder.customer_phone
+                      ? ` · ${selectedOrder.customer_phone}`
+                      : ''}
+                  </p>
+                </div>
+                <span style={statusBadge(selectedOrder.status)}>
+                  {statusLabels[selectedOrder.status]}
+                </span>
+              </div>
+
+              <div style={orderDetailGrid}>
+                <div style={previewBox}>
+                  {selectedOrder.logo_preview_url ? (
+                    <div
+                      style={{
+                        ...logoPreview,
+                        backgroundImage: `url(${selectedOrder.logo_preview_url})`,
+                      }}
+                    />
+                  ) : (
+                    <span style={mutedText}>No logo preview</span>
+                  )}
+                </div>
+                <div style={noteStack}>
+                  <Meta
+                    label="Placement"
+                    value={selectedOrder.placement}
+                  />
+                  <Meta
+                    label="Shirt"
+                    value={selectedOrder.shirt_color}
+                  />
+                  <Meta
+                    label="Quantity"
+                    value={String(selectedOrder.quantity ?? 1)}
+                  />
+                  <Meta
+                    label="Manual quote"
+                    value={selectedOrder.manual_quote ? 'Yes' : 'No'}
+                  />
+                </div>
+              </div>
+
+              {selectedOrder.prompt && (
+                <p style={recommendationCard}>
+                  Design idea: {selectedOrder.prompt}
+                </p>
+              )}
+              {selectedOrder.note && (
+                <p style={recommendationCard}>
+                  Customer note: {selectedOrder.note}
+                </p>
+              )}
+
+              <section style={metricGrid}>
+                <Metric
+                  label="Stitches"
+                  value={selectedOrder.stitches.toLocaleString()}
+                />
+                <Metric label="Colors" value={selectedOrder.colors} />
+                <Metric
+                  label="Coverage"
+                  value={`${(selectedOrder.coverage * 100).toFixed(1)}%`}
+                />
+                <Metric
+                  label="Customer price"
+                  value={
+                    selectedOrder.manual_quote
+                      ? 'Manual quote'
+                      : `€${selectedOrder.customer_price_eur}`
+                  }
+                />
+                <Metric
+                  label="Internal cost"
+                  value={
+                    selectedOrder.internal_cost_eur === null
+                      ? 'Pending'
+                      : `€${selectedOrder.internal_cost_eur.toFixed(2)}`
+                  }
+                />
+                <Metric
+                  label="Margin"
+                  value={
+                    selectedOrder.profit_margin_percent === null
+                      ? 'Pending'
+                      : `${selectedOrder.profit_margin_percent}%`
+                  }
+                />
+              </section>
+
+              <div style={workspaceGrid}>
+                <div style={panel}>
+                  <h3 style={panelTitle}>Warnings</h3>
+                  <div style={noteStack}>
+                    {selectedOrder.warnings.length > 0 ? (
+                      selectedOrder.warnings.map((warning) => (
+                        <p key={warning} style={warningCard}>
+                          {warning}
+                        </p>
+                      ))
+                    ) : (
+                      <p style={mutedText}>No warnings.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={panel}>
+                  <h3 style={panelTitle}>Recommendations</h3>
+                  <div style={noteStack}>
+                    {selectedOrder.recommendations.length > 0 ? (
+                      selectedOrder.recommendations.map((item) => (
+                        <p key={item} style={recommendationCard}>
+                          {item}
+                        </p>
+                      ))
+                    ) : (
+                      <p style={mutedText}>No recommendations.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={panel}>
+                <h3 style={panelTitle}>Cost breakdown</h3>
+                <div style={breakdownTable}>
+                  {breakdownLabels.map(([key, label]) => (
+                    <div key={key} style={breakdownRow}>
+                      <span>{label}</span>
+                      <strong>
+                        €{(selectedOrder.cost_breakdown[key] ?? 0).toFixed(2)}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <label style={fieldLabel}>
+                Production notes
+                <textarea
+                  value={productionNote}
+                  onChange={(event) =>
+                    onProductionNoteChange(event.target.value)
+                  }
+                  placeholder="Add an internal note before changing status"
+                  rows={3}
+                  style={{
+                    ...inputStyle,
+                    resize: 'vertical',
+                  }}
+                />
+              </label>
+
+              {selectedOrder.production_notes.length > 0 && (
+                <div style={noteStack}>
+                  {selectedOrder.production_notes.map((note, index) => (
+                    <p key={`${note}-${index}`} style={recommendationCard}>
+                      {note}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div style={orderActions}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChangeStatus(selectedOrder, 'approved')
+                  }
+                  style={primaryButton}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChangeStatus(selectedOrder, 'sent_to_production')
+                  }
+                  style={secondaryButton}
+                >
+                  Send to production
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChangeStatus(selectedOrder, 'declined')
+                  }
+                  style={secondaryButton}
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChangeStatus(selectedOrder, 'completed')
+                  }
+                  style={secondaryButton}
+                >
+                  Mark completed
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -567,6 +1142,13 @@ const studioHeader: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 20,
+  flexWrap: 'wrap',
+};
+
+const headerActions: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
   flexWrap: 'wrap',
 };
 
@@ -794,3 +1376,106 @@ const errorText: CSSProperties = {
   color: '#ff9d9d',
   margin: '12px 0 0',
 };
+
+const ordersShell: CSSProperties = {
+  maxWidth: 1320,
+  margin: '0 auto',
+};
+
+const ordersToolbar: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 18,
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  marginBottom: 18,
+};
+
+const ordersGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit, minmax(min(420px, 100%), 1fr))',
+  gap: 20,
+  alignItems: 'start',
+};
+
+const ordersList: CSSProperties = {
+  display: 'grid',
+  gap: 14,
+};
+
+const orderCard: CSSProperties = {
+  width: '100%',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 24,
+  padding: 18,
+  background:
+    'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025))',
+  color: '#f5f7f8',
+  textAlign: 'left',
+  cursor: 'pointer',
+  display: 'grid',
+  gap: 10,
+};
+
+const orderCardHeader: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  flexWrap: 'wrap',
+};
+
+const orderMiniGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+  gap: 10,
+};
+
+const orderDetailHeader: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 18,
+  flexWrap: 'wrap',
+  marginBottom: 18,
+};
+
+const orderDetailGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
+  gap: 16,
+  marginBottom: 18,
+};
+
+const orderActions: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  marginTop: 16,
+};
+
+function statusBadge(status: OrderStatus): CSSProperties {
+  const color =
+    status === 'declined'
+      ? '#ff9d9d'
+      : status === 'completed'
+        ? '#00c8ff'
+        : status === 'needs_review'
+          ? '#ffe083'
+          : '#9dffc4';
+
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    width: 'fit-content',
+    border: `1px solid ${color}55`,
+    borderRadius: 999,
+    padding: '7px 10px',
+    background: `${color}14`,
+    color,
+    fontSize: 12,
+    fontWeight: 850,
+  };
+}

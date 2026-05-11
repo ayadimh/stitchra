@@ -31,11 +31,16 @@ type Estimate = {
   colors: number;
   coverage: number;
   price_eur: number | null;
+  internal_cost_eur?: number | null;
+  estimated_profit_eur?: number | null;
+  profit_margin_percent?: number | null;
   manual_quote: boolean;
   pricing_tier: string;
   warnings: string[];
   recommendations: string[];
   public_quote?: PublicQuote;
+  internal_quote?: InternalQuote;
+  cost_breakdown?: CostBreakdown;
   width_mm: number;
   height_mm: number;
 };
@@ -49,6 +54,28 @@ type PublicQuote = {
   pricing_tier: string;
   customer_warnings: string[];
   customer_recommendations: string[];
+};
+
+type CostBreakdown = {
+  blank_tshirt_eur?: number;
+  backing_eur?: number;
+  thread_and_bobbin_eur?: number;
+  needle_wear_eur?: number;
+  electricity_eur?: number;
+  packaging_eur?: number;
+  waste_buffer_eur?: number;
+  machine_payback_eur?: number;
+  labor_eur?: number;
+  color_complexity_fee_eur?: number;
+};
+
+type InternalQuote = {
+  internal_cost_eur?: number | null;
+  estimated_profit_eur?: number | null;
+  profit_margin_percent?: number | null;
+  cost_breakdown?: CostBreakdown;
+  technical_warnings?: string[];
+  production_notes?: string[];
 };
 
 type LogoAnalysis = {
@@ -138,10 +165,21 @@ export default function Home() {
   const [logoPrompt, setLogoPrompt] = useState('');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [orderForm, setOrderForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    quantity: '1',
+    note: '',
+  });
+  const [orderStatus, setOrderStatus] = useState('');
+  const [orderError, setOrderError] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isRequestingOrder, setIsRequestingOrder] = useState(false);
 
   const bg = useMemo(
     () =>
@@ -347,6 +385,8 @@ export default function Home() {
       const customerQuote = getPublicQuote(data);
 
       setEstimate(data);
+      setOrderStatus('');
+      setOrderError('');
 
       setStatus(
         customerQuote.manual_quote
@@ -357,6 +397,99 @@ export default function Home() {
       setError('Network error.');
     } finally {
       setIsEstimating(false);
+    }
+  };
+
+  const requestOrder = async () => {
+    setOrderError('');
+    setOrderStatus('');
+
+    if (!estimate || !publicQuote) {
+      setOrderError('Get a quote before requesting an order.');
+      return;
+    }
+
+    if (!orderForm.name.trim() || !orderForm.email.trim()) {
+      setOrderError('Name and email are required.');
+      return;
+    }
+
+    setIsRequestingOrder(true);
+
+    const internalQuote = estimate.internal_quote;
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_name: orderForm.name.trim(),
+          customer_email: orderForm.email.trim(),
+          customer_phone: orderForm.phone.trim() || undefined,
+          quantity: orderForm.quantity
+            ? Number(orderForm.quantity)
+            : undefined,
+          note: orderForm.note.trim() || undefined,
+          prompt:
+            designPreparation?.simplified_description ||
+            logoPrompt.trim() ||
+            undefined,
+          placement: preset.label,
+          shirt_color: teeColor,
+          logo_preview_url: preview ?? undefined,
+          stitches: publicQuote.stitches,
+          colors: publicQuote.colors,
+          coverage: publicQuote.coverage,
+          customer_price_eur: publicQuote.price_eur,
+          internal_cost_eur:
+            internalQuote?.internal_cost_eur ??
+            estimate.internal_cost_eur ??
+            null,
+          estimated_profit_eur:
+            internalQuote?.estimated_profit_eur ??
+            estimate.estimated_profit_eur ??
+            null,
+          profit_margin_percent:
+            internalQuote?.profit_margin_percent ??
+            estimate.profit_margin_percent ??
+            null,
+          pricing_tier: publicQuote.pricing_tier,
+          manual_quote: publicQuote.manual_quote,
+          warnings: publicQuote.customer_warnings,
+          recommendations: publicQuote.customer_recommendations,
+          production_notes:
+            internalQuote?.production_notes ??
+            internalQuote?.technical_warnings ??
+            [],
+          cost_breakdown:
+            internalQuote?.cost_breakdown ??
+            estimate.cost_breakdown ??
+            {},
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        message?: string;
+      };
+
+      if (!response.ok) {
+        setOrderError(
+          payload.message ??
+            'Order storage is not ready yet. Add DATABASE_URL to enable orders.'
+        );
+        return;
+      }
+
+      setOrderStatus(
+        'Order request sent. We will review it and contact you.'
+      );
+      setOrderOpen(false);
+    } catch {
+      setOrderError('Could not send this order request.');
+    } finally {
+      setIsRequestingOrder(false);
     }
   };
 
@@ -2161,6 +2294,151 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderOpen((open) => !open);
+                      setOrderError('');
+                      setOrderStatus('');
+                    }}
+                    className="lux-button"
+                    style={{
+                      ...primaryButton,
+                      border: 'none',
+                      width: '100%',
+                      marginTop: 12,
+                    }}
+                  >
+                    Request order
+                  </button>
+
+                  {orderOpen && (
+                    <div
+                      style={{
+                        ...analysisPanel,
+                        marginTop: 12,
+                        gap: 12,
+                      }}
+                    >
+                      <strong
+                        style={{
+                          color: '#f5f7f8',
+                        }}
+                      >
+                        Send your order request
+                      </strong>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns:
+                            'repeat(auto-fit,minmax(180px,1fr))',
+                          gap: 10,
+                        }}
+                      >
+                        <input
+                          value={orderForm.name}
+                          onChange={(event) =>
+                            setOrderForm((current) => ({
+                              ...current,
+                              name: event.target.value,
+                            }))
+                          }
+                          placeholder="Your name"
+                          aria-label="Your name"
+                          style={input}
+                        />
+                        <input
+                          value={orderForm.email}
+                          onChange={(event) =>
+                            setOrderForm((current) => ({
+                              ...current,
+                              email: event.target.value,
+                            }))
+                          }
+                          placeholder="Email"
+                          aria-label="Email"
+                          type="email"
+                          style={input}
+                        />
+                        <input
+                          value={orderForm.phone}
+                          onChange={(event) =>
+                            setOrderForm((current) => ({
+                              ...current,
+                              phone: event.target.value,
+                            }))
+                          }
+                          placeholder="Phone (optional)"
+                          aria-label="Phone"
+                          style={input}
+                        />
+                        <input
+                          value={orderForm.quantity}
+                          onChange={(event) =>
+                            setOrderForm((current) => ({
+                              ...current,
+                              quantity: event.target.value,
+                            }))
+                          }
+                          placeholder="Quantity"
+                          aria-label="Quantity"
+                          type="number"
+                          min="1"
+                          style={input}
+                        />
+                      </div>
+
+                      <textarea
+                        value={orderForm.note}
+                        onChange={(event) =>
+                          setOrderForm((current) => ({
+                            ...current,
+                            note: event.target.value,
+                          }))
+                        }
+                        placeholder="Note for the studio (optional)"
+                        aria-label="Order note"
+                        rows={3}
+                        style={{
+                          ...input,
+                          resize: 'vertical',
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={requestOrder}
+                        disabled={isRequestingOrder}
+                        className="lux-button"
+                        style={{
+                          ...primaryButton,
+                          border: 'none',
+                          width: '100%',
+                          opacity: isRequestingOrder ? 0.68 : 1,
+                        }}
+                      >
+                        {isRequestingOrder
+                          ? 'Sending...'
+                          : 'Send request'}
+                      </button>
+                    </div>
+                  )}
+
+                  {(orderStatus || orderError) && (
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: orderError
+                          ? '#ffb4b4'
+                          : '#9dffc4',
+                        marginTop: 10,
+                      }}
+                    >
+                      {orderError || orderStatus}
+                    </div>
+                  )}
                 </>
               )}
             </div>
