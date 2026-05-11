@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { Pool } from 'pg';
 
 export const ORDER_STATUSES = [
@@ -15,6 +14,7 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export type OrderRecord = {
   id: string;
   created_at: string;
+  updated_at: string;
   customer_name: string;
   customer_email: string;
   customer_phone: string | null;
@@ -68,21 +68,32 @@ export type CreateOrderInput = {
 let pool: Pool | null = null;
 let initialized = false;
 
+function getDatabaseUrl() {
+  return (
+    process.env.SUPABASE_POSTGRES_URL ??
+    process.env.SUPABASE_POSTGRES_PRISMA_URL ??
+    process.env.DATABASE_URL ??
+    ''
+  );
+}
+
 export function isDatabaseConfigured() {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(getDatabaseUrl());
 }
 
 function getPool() {
-  if (!process.env.DATABASE_URL) {
+  const databaseUrl = getDatabaseUrl();
+
+  if (!databaseUrl) {
     return null;
   }
 
   if (!pool) {
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: databaseUrl,
       ssl:
-        process.env.DATABASE_URL.includes('localhost') ||
-        process.env.DATABASE_URL.includes('127.0.0.1')
+        databaseUrl.includes('localhost') ||
+        databaseUrl.includes('127.0.0.1')
           ? false
           : { rejectUnauthorized: false },
     });
@@ -117,21 +128,24 @@ async function ensureOrdersTable() {
 
   if (!initialized) {
     await db.query(`
-      CREATE TABLE IF NOT EXISTS stitchra_orders (
-        id TEXT PRIMARY KEY,
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+      CREATE TABLE IF NOT EXISTS orders (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         customer_name TEXT NOT NULL,
         customer_email TEXT NOT NULL,
         customer_phone TEXT,
-        quantity INTEGER,
-        note TEXT,
+        quantity INTEGER DEFAULT 1,
+        customer_note TEXT,
         prompt TEXT,
         placement TEXT NOT NULL,
         shirt_color TEXT NOT NULL,
         logo_preview_url TEXT,
         stitches INTEGER NOT NULL,
         colors INTEGER NOT NULL,
-        coverage DOUBLE PRECISION NOT NULL,
+        coverage NUMERIC NOT NULL,
         customer_price_eur NUMERIC(10, 2),
         internal_cost_eur NUMERIC(10, 2),
         estimated_profit_eur NUMERIC(10, 2),
@@ -140,11 +154,23 @@ async function ensureOrdersTable() {
         manual_quote BOOLEAN NOT NULL,
         warnings JSONB NOT NULL DEFAULT '[]'::jsonb,
         recommendations JSONB NOT NULL DEFAULT '[]'::jsonb,
-        production_notes JSONB NOT NULL DEFAULT '[]'::jsonb,
+        production_notes TEXT NOT NULL DEFAULT '',
         cost_breakdown JSONB NOT NULL DEFAULT '{}'::jsonb,
-        status TEXT NOT NULL DEFAULT 'new',
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        status TEXT NOT NULL DEFAULT 'new' CHECK (
+          status IN (
+            'new',
+            'needs_review',
+            'approved',
+            'sent_to_production',
+            'declined',
+            'completed'
+          )
+        )
       );
+
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_note TEXT;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS cost_breakdown JSONB NOT NULL DEFAULT '{}'::jsonb;
     `);
     initialized = true;
   }
@@ -156,11 +182,20 @@ function parseOrder(row: Record<string, unknown>): OrderRecord {
   return {
     id: String(row.id),
     created_at: new Date(String(row.created_at)).toISOString(),
+    updated_at: new Date(
+      String(row.updated_at ?? row.created_at)
+    ).toISOString(),
     customer_name: String(row.customer_name),
     customer_email: String(row.customer_email),
     customer_phone: row.customer_phone ? String(row.customer_phone) : null,
-    quantity: row.quantity === null ? null : Number(row.quantity),
-    note: row.note ? String(row.note) : null,
+    quantity:
+      row.quantity === null || row.quantity === undefined
+        ? null
+        : Number(row.quantity),
+    note:
+      row.customer_note || row.note
+        ? String(row.customer_note ?? row.note)
+        : null,
     prompt: row.prompt ? String(row.prompt) : null,
     placement: String(row.placement),
     shirt_color: String(row.shirt_color),
@@ -194,7 +229,13 @@ function parseOrder(row: Record<string, unknown>): OrderRecord {
       : [],
     production_notes: Array.isArray(row.production_notes)
       ? row.production_notes.map(String)
-      : [],
+      : typeof row.production_notes === 'string' &&
+          row.production_notes.trim().length > 0
+        ? row.production_notes
+            .split('\n')
+            .map((note) => note.trim())
+            .filter(Boolean)
+        : [],
     cost_breakdown:
       row.cost_breakdown &&
       typeof row.cost_breakdown === 'object' &&
@@ -218,13 +259,12 @@ export async function createOrder(input: CreateOrderInput) {
 
   const result = await db.query(
     `
-      INSERT INTO stitchra_orders (
-        id,
+      INSERT INTO orders (
         customer_name,
         customer_email,
         customer_phone,
         quantity,
-        note,
+        customer_note,
         prompt,
         placement,
         shirt_color,
@@ -245,18 +285,17 @@ export async function createOrder(input: CreateOrderInput) {
         status
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9,
-        $10, $11, $12, $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23, $24
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, $21, $22, $23
       )
       RETURNING *
     `,
     [
-      randomUUID(),
       input.customer_name,
       input.customer_email,
       input.customer_phone || null,
-      input.quantity || null,
+      input.quantity || 1,
       input.note || null,
       input.prompt || null,
       input.placement,
@@ -273,7 +312,7 @@ export async function createOrder(input: CreateOrderInput) {
       input.manual_quote,
       JSON.stringify(input.warnings ?? []),
       JSON.stringify(input.recommendations ?? []),
-      JSON.stringify(input.production_notes ?? []),
+      (input.production_notes ?? []).join('\n'),
       JSON.stringify(input.cost_breakdown ?? {}),
       status,
     ]
@@ -295,7 +334,7 @@ export async function listOrders(status?: string | null) {
   const result = await db.query(
     `
       SELECT *
-      FROM stitchra_orders
+      FROM orders
       ${hasStatus ? 'WHERE status = $1' : ''}
       ORDER BY created_at DESC
       LIMIT 100
@@ -329,12 +368,12 @@ export async function updateOrder(
 
   if (input.production_notes) {
     updates.push(`production_notes = $${updates.length + 1}`);
-    values.push(JSON.stringify(input.production_notes));
+    values.push(input.production_notes.join('\n'));
   }
 
   if (updates.length === 0) {
     const existing = await db.query(
-      'SELECT * FROM stitchra_orders WHERE id = $1',
+      'SELECT * FROM orders WHERE id = $1',
       [id]
     );
     return existing.rows[0] ? parseOrder(existing.rows[0]) : null;
@@ -344,7 +383,7 @@ export async function updateOrder(
 
   const result = await db.query(
     `
-      UPDATE stitchra_orders
+      UPDATE orders
       SET ${updates.join(', ')}, updated_at = NOW()
       WHERE id = $${values.length}
       RETURNING *

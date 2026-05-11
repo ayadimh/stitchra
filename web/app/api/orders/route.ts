@@ -9,8 +9,7 @@ import {
 
 export const runtime = 'nodejs';
 
-const databaseMessage =
-  'Database not configured yet. Add DATABASE_URL to enable order storage.';
+const databaseMessage = 'Database not configured.';
 
 function hasRequiredOrderFields(
   value: Partial<CreateOrderInput>

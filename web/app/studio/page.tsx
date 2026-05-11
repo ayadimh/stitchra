@@ -260,8 +260,7 @@ export default function StudioPage() {
         setOrders([]);
         setSelectedOrder(null);
         setOrdersError(
-          payload.message ??
-            'Database not configured yet. Add DATABASE_URL to enable order storage.'
+          payload.message ?? 'Database not configured.'
         );
         return;
       }
@@ -799,7 +798,7 @@ function OrdersDashboard({
         <div style={panel}>
           <p style={mutedText}>
             No orders yet. New customer requests will appear here
-            after DATABASE_URL is configured and customers submit the
+            after the database is configured and customers submit the
             request form.
           </p>
         </div>

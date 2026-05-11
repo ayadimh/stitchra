@@ -135,6 +135,16 @@ async function dataUrlToFile(
   );
 }
 
+async function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 function getPublicQuote(estimate: Estimate): PublicQuote {
   return (
     estimate.public_quote ?? {
@@ -219,7 +229,7 @@ export default function Home() {
       return;
     }
 
-    setPreview(URL.createObjectURL(selectedFile));
+    setPreview(await blobToDataUrl(selectedFile));
     setIsAnalyzing(true);
     setStatus('Analyzing logo...');
 
@@ -327,9 +337,10 @@ export default function Home() {
       const generatedFile = new File([blob], 'logo.png', {
         type: 'image/png',
       });
+      const previewDataUrl = await blobToDataUrl(blob);
 
       setFile(generatedFile);
-      setPreview(URL.createObjectURL(blob));
+      setPreview(previewDataUrl);
       setLogoAnalysis(null);
 
       setStatus('Embroidery-ready design generated.');
@@ -476,15 +487,12 @@ export default function Home() {
 
       if (!response.ok) {
         setOrderError(
-          payload.message ??
-            'Order storage is not ready yet. Add DATABASE_URL to enable orders.'
+          payload.message ?? 'Database not configured.'
         );
         return;
       }
 
-      setOrderStatus(
-        'Order request sent. We will review it and contact you.'
-      );
+      setOrderStatus('Request sent. We will review your design.');
       setOrderOpen(false);
     } catch {
       setOrderError('Could not send this order request.');
