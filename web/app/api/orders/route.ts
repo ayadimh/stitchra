@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   createOrder,
+  getOrderErrorMessage,
   isDatabaseConfigured,
   isStudioRequest,
   listOrders,
@@ -27,81 +28,101 @@ function hasRequiredOrderFields(
 }
 
 export async function POST(request: Request) {
-  if (!isDatabaseConfigured()) {
+  try {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        {
+          databaseConfigured: false,
+          message: databaseMessage,
+        },
+        { status: 503 }
+      );
+    }
+
+    const body = (await request.json()) as Partial<CreateOrderInput>;
+
+    if (!hasRequiredOrderFields(body)) {
+      return NextResponse.json(
+        { message: 'Missing required order information.' },
+        { status: 400 }
+      );
+    }
+
+    const order = await createOrder(body);
+
+    if (!order) {
+      return NextResponse.json(
+        {
+          databaseConfigured: false,
+          message: databaseMessage,
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       {
-        databaseConfigured: false,
-        message: databaseMessage,
+        order: {
+          id: order.id,
+          created_at: order.created_at,
+          status: order.status,
+        },
+        message: 'Order request received.',
       },
-      { status: 503 }
+      { status: 201 }
     );
-  }
-
-  const body = (await request.json()) as Partial<CreateOrderInput>;
-
-  if (!hasRequiredOrderFields(body)) {
-    return NextResponse.json(
-      { message: 'Missing required order information.' },
-      { status: 400 }
-    );
-  }
-
-  const order = await createOrder(body);
-
-  if (!order) {
+  } catch (error) {
     return NextResponse.json(
       {
-        databaseConfigured: false,
-        message: databaseMessage,
+        message: 'Order storage error.',
+        details: getOrderErrorMessage(error),
       },
-      { status: 503 }
+      { status: 500 }
     );
   }
-
-  return NextResponse.json(
-    {
-      order: {
-        id: order.id,
-        created_at: order.created_at,
-        status: order.status,
-      },
-      message: 'Order request received.',
-    },
-    { status: 201 }
-  );
 }
 
 export async function GET(request: Request) {
-  if (!isStudioRequest(request)) {
-    return NextResponse.json(
-      { message: 'Studio passcode required.' },
-      { status: 401 }
-    );
-  }
+  try {
+    if (!isStudioRequest(request)) {
+      return NextResponse.json(
+        { message: 'Studio passcode required.' },
+        { status: 401 }
+      );
+    }
 
-  if (!isDatabaseConfigured()) {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        {
+          databaseConfigured: false,
+          message: databaseMessage,
+        },
+        { status: 503 }
+      );
+    }
+
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const orders = await listOrders(status);
+
+    if (!orders) {
+      return NextResponse.json(
+        {
+          databaseConfigured: false,
+          message: databaseMessage,
+        },
+        { status: 503 }
+      );
+    }
+
+    return NextResponse.json({ orders });
+  } catch (error) {
     return NextResponse.json(
       {
-        databaseConfigured: false,
-        message: databaseMessage,
+        message: 'Order storage error.',
+        details: getOrderErrorMessage(error),
       },
-      { status: 503 }
+      { status: 500 }
     );
   }
-
-  const url = new URL(request.url);
-  const status = url.searchParams.get('status');
-  const orders = await listOrders(status);
-
-  if (!orders) {
-    return NextResponse.json(
-      {
-        databaseConfigured: false,
-        message: databaseMessage,
-      },
-      { status: 503 }
-    );
-  }
-
-  return NextResponse.json({ orders });
 }

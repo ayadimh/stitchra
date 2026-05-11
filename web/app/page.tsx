@@ -481,21 +481,27 @@ export default function Home() {
         }),
       });
 
-      const payload = (await response.json()) as {
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as {
         message?: string;
+        details?: string;
       };
 
       if (!response.ok) {
         setOrderError(
-          payload.message ?? 'Database not configured.'
+          payload.details ??
+            payload.message ??
+            'Database not configured.'
         );
         return;
       }
 
       setOrderStatus('Request sent. We will review your design.');
       setOrderOpen(false);
-    } catch {
+    } catch (error) {
       setOrderError('Could not send this order request.');
+      console.error(error);
     } finally {
       setIsRequestingOrder(false);
     }

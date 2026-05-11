@@ -251,16 +251,21 @@ export default function StudioPage() {
           'x-studio-passcode': passcode,
         },
       });
-      const payload = (await response.json()) as {
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as {
         orders?: OrderRecord[];
         message?: string;
+        details?: string;
       };
 
       if (!response.ok) {
         setOrders([]);
         setSelectedOrder(null);
         setOrdersError(
-          payload.message ?? 'Database not configured.'
+          payload.details ??
+            payload.message ??
+            'Database not configured.'
         );
         return;
       }
@@ -277,8 +282,9 @@ export default function StudioPage() {
           null
         );
       });
-    } catch {
+    } catch (error) {
       setOrdersError('Could not load orders.');
+      console.error(error);
     } finally {
       setOrdersLoading(false);
     }
@@ -310,13 +316,20 @@ export default function StudioPage() {
           production_notes: notes,
         }),
       });
-      const payload = (await response.json()) as {
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as {
         order?: OrderRecord;
         message?: string;
+        details?: string;
       };
 
       if (!response.ok || !payload.order) {
-        setOrdersError(payload.message ?? 'Could not update order.');
+        setOrdersError(
+          payload.details ??
+            payload.message ??
+            'Could not update order.'
+        );
         return;
       }
 
@@ -329,8 +342,9 @@ export default function StudioPage() {
           item.id === updatedOrder.id ? updatedOrder : item
         )
       );
-    } catch {
+    } catch (error) {
       setOrdersError('Could not update order.');
+      console.error(error);
     }
   };
 
