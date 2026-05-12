@@ -445,9 +445,51 @@ export default function Home() {
       }
 
       const data = (await res.json()) as Estimate;
-      const customerQuote = getPublicQuote(data);
+      const fallbackQuote = getPublicQuote(data);
+      let pricedEstimate = data;
 
-      setEstimate(data);
+      const pricingResponse = await fetch('/api/pricing/quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stitches: data.stitches,
+          colors: data.colors,
+          coverage: data.coverage,
+          placement,
+        }),
+      });
+
+      if (pricingResponse.ok) {
+        const pricingPayload = (await pricingResponse.json()) as {
+          public_quote?: Omit<
+            PublicQuote,
+            'customer_warnings' | 'customer_recommendations'
+          >;
+        };
+        const pricingQuote = pricingPayload.public_quote;
+
+        if (pricingQuote) {
+          pricedEstimate = {
+            ...data,
+            price_eur: pricingQuote.price_eur,
+            manual_quote: pricingQuote.manual_quote,
+            pricing_tier: pricingQuote.pricing_tier,
+            public_quote: {
+              ...pricingQuote,
+              customer_warnings:
+                fallbackQuote.customer_warnings,
+              customer_recommendations:
+                fallbackQuote.customer_recommendations,
+            },
+          };
+        }
+      }
+
+      const customerQuote = getPublicQuote(pricedEstimate);
+
+      setEstimate(pricedEstimate);
       setOrderStatus('');
       setOrderError('');
 
@@ -2765,9 +2807,9 @@ export default function Home() {
           style={pricingPanel}
         >
           <div style={priceGrid}>
-            <PriceBlock label="Left chest" value="€9.99+" />
-            <PriceBlock label="Better badge" value="€15.99" />
-            <PriceBlock label="Front design" value="€17.99+" />
+            <PriceBlock label="Left chest" value="From €9" />
+            <PriceBlock label="Badge detail" value="Calculated" />
+            <PriceBlock label="Front design" value="From €13" />
             <PriceBlock label="Manual quote" value="Complex art" highlight />
           </div>
 
@@ -2781,7 +2823,7 @@ export default function Home() {
                 ? publicQuote.manual_quote
                   ? 'Manual quote'
                   : `€${publicQuote.price_eur}`
-                : '€22'}
+                : 'Upload for quote'}
             </strong>
           </div>
 

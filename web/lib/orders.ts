@@ -1,3 +1,12 @@
+import {
+  calculatePricing,
+  defaultPricingSettings,
+  normalizeCostBreakdown,
+  normalizePricingSettings,
+  type CostBreakdown,
+  type PricingSettings,
+} from './pricing';
+
 export const ORDER_STATUSES = [
   'new',
   'needs_review',
@@ -45,7 +54,7 @@ export type OrderRecord = {
   recommendations: string[];
   production_notes: string[];
   team_message: string | null;
-  cost_breakdown: Record<string, number>;
+  cost_breakdown: CostBreakdown;
   status: OrderStatus;
   customer_decision: CustomerDecision;
   customer_decision_at: string | null;
@@ -66,9 +75,9 @@ export type CreateOrderInput = {
   stitches: number;
   colors: number;
   coverage: number;
-  customer_price_eur: number | null;
-  pricing_tier: string;
-  manual_quote: boolean;
+  customer_price_eur?: number | null;
+  pricing_tier?: string;
+  manual_quote?: boolean;
   warnings?: string[];
   recommendations?: string[];
 };
@@ -107,6 +116,23 @@ const publicOrderSelect = [
   'revised_price_eur',
   'team_message',
   'customer_decision',
+].join(',');
+
+const pricingSettingsSelect = [
+  'blank_shirt_eur',
+  'backing_eur',
+  'thread_and_bobbin_base_eur',
+  'needle_wear_eur',
+  'electricity_eur',
+  'packaging_eur',
+  'waste_buffer_eur',
+  'studio_payback_eur',
+  'labor_base_eur',
+  'color_complexity_eur',
+  'target_margin_percent',
+  'min_price_left_chest_eur',
+  'min_price_center_front_eur',
+  'round_mode',
 ].join(',');
 
 const emailPattern =
@@ -294,7 +320,14 @@ function createPublicToken() {
   return globalThis.crypto.randomUUID().replace(/-/g, '');
 }
 
-function parseOrder(row: SupabaseOrderRow): OrderRecord {
+function parsePricingSettings(row: SupabaseOrderRow): PricingSettings {
+  return normalizePricingSettings(row);
+}
+
+function parseOrder(
+  row: SupabaseOrderRow,
+  pricingSettings: PricingSettings = defaultPricingSettings
+): OrderRecord {
   const productionNotes = row.production_notes;
 
   return {
@@ -348,12 +381,10 @@ function parseOrder(row: SupabaseOrderRow): OrderRecord {
     team_message: row.team_message
       ? String(row.team_message)
       : null,
-    cost_breakdown:
-      row.cost_breakdown &&
-      typeof row.cost_breakdown === 'object' &&
-      !Array.isArray(row.cost_breakdown)
-        ? (row.cost_breakdown as Record<string, number>)
-        : {},
+    cost_breakdown: normalizeCostBreakdown(
+      row.cost_breakdown,
+      pricingSettings
+    ),
     status: parseStatus(row.status),
     customer_decision: parseCustomerDecision(row.customer_decision),
     customer_decision_at: parseDate(row.customer_decision_at),
@@ -443,12 +474,67 @@ async function supabaseRequest<T>(
   return payload as T;
 }
 
+export async function getPricingSettings() {
+  if (!isDatabaseConfigured()) {
+    return defaultPricingSettings;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      id: 'eq.default',
+      select: pricingSettingsSelect,
+    });
+    const rows = await supabaseRequest<SupabaseOrderRow[]>(
+      `pricing_settings?${params.toString()}`
+    );
+
+    return rows[0]
+      ? parsePricingSettings(rows[0])
+      : defaultPricingSettings;
+  } catch {
+    return defaultPricingSettings;
+  }
+}
+
+export async function savePricingSettings(input: PricingSettings) {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const settings = normalizePricingSettings(input);
+  const rows = await supabaseRequest<SupabaseOrderRow[]>(
+    `pricing_settings?on_conflict=id&select=${pricingSettingsSelect}`,
+    {
+      method: 'POST',
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify({
+        id: 'default',
+        ...settings,
+        updated_at: new Date().toISOString(),
+      }),
+    }
+  );
+
+  return rows[0] ? parsePricingSettings(rows[0]) : settings;
+}
+
 export async function createOrder(input: CreateOrderInput) {
   if (!isDatabaseConfigured()) {
     return null;
   }
 
-  const status: OrderStatus = input.manual_quote ? 'needs_review' : 'new';
+  const pricingSettings = await getPricingSettings();
+  const pricing = calculatePricing({
+    stitches: input.stitches,
+    colors: input.colors,
+    placement: input.placement,
+    settings: pricingSettings,
+  });
+  const status: OrderStatus = pricing.manual_quote
+    ? 'needs_review'
+    : 'new';
   const rows = await supabaseRequest<SupabaseOrderRow[]>(
     'orders?select=*',
     {
@@ -470,20 +556,23 @@ export async function createOrder(input: CreateOrderInput) {
         stitches: input.stitches,
         colors: input.colors,
         coverage: input.coverage,
-        customer_price_eur: input.customer_price_eur,
-        pricing_tier: input.pricing_tier,
-        manual_quote: input.manual_quote,
+        customer_price_eur: pricing.customer_price_eur,
+        internal_cost_eur: pricing.internal_cost_eur,
+        estimated_profit_eur: pricing.estimated_profit_eur,
+        profit_margin_percent: pricing.profit_margin_percent,
+        pricing_tier: pricing.pricing_tier,
+        manual_quote: pricing.manual_quote,
         warnings: input.warnings ?? [],
         recommendations: input.recommendations ?? [],
         production_notes: '',
-        cost_breakdown: {},
+        cost_breakdown: pricing.cost_breakdown,
         customer_decision: 'pending',
         status,
       }),
     }
   );
 
-  return rows[0] ? parseOrder(rows[0]) : null;
+  return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
 }
 
 export async function listOrders(status?: string | null) {
@@ -491,6 +580,7 @@ export async function listOrders(status?: string | null) {
     return null;
   }
 
+  const pricingSettings = await getPricingSettings();
   const params = new URLSearchParams({
     select: '*',
     order: 'created_at.desc',
@@ -505,7 +595,7 @@ export async function listOrders(status?: string | null) {
     `orders?${params.toString()}`
   );
 
-  return rows.map(parseOrder);
+  return rows.map((row) => parseOrder(row, pricingSettings));
 }
 
 export async function getOrderById(id: string) {
@@ -513,6 +603,7 @@ export async function getOrderById(id: string) {
     return null;
   }
 
+  const pricingSettings = await getPricingSettings();
   const params = new URLSearchParams({
     id: `eq.${id}`,
     select: '*',
@@ -522,7 +613,7 @@ export async function getOrderById(id: string) {
     `orders?${params.toString()}`
   );
 
-  return rows[0] ? parseOrder(rows[0]) : null;
+  return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
 }
 
 function escapeHtml(value: string) {
@@ -536,6 +627,35 @@ function escapeHtml(value: string) {
 
 function formatEmailPrice(value: number | null) {
   return value === null ? 'Manual quote' : `€${value.toFixed(2)}`;
+}
+
+function getResendErrorMessage(payload: unknown) {
+  const text = JSON.stringify(payload).toLowerCase();
+
+  if (text.includes('invalid_api_key')) {
+    return 'Resend API key is invalid. Check RESEND_API_KEY in Vercel and redeploy.';
+  }
+
+  if (payload && typeof payload === 'object') {
+    const body = payload as {
+      message?: string;
+      error?: string | { message?: string; name?: string };
+    };
+
+    if (typeof body.error === 'object' && body.error?.message) {
+      return body.error.message;
+    }
+
+    if (typeof body.error === 'string') {
+      return body.error;
+    }
+
+    if (body.message) {
+      return body.message;
+    }
+  }
+
+  return 'Could not send offer email.';
 }
 
 export async function sendOfferEmail(order: OrderRecord) {
@@ -601,14 +721,10 @@ export async function sendOfferEmail(order: OrderRecord) {
     }),
   });
 
-  const payload = (await response
-    .json()
-    .catch(() => ({}))) as { message?: string; error?: string };
+  const payload = (await response.json().catch(() => ({}))) as unknown;
 
   if (!response.ok) {
-    throw new Error(
-      payload.message ?? payload.error ?? 'Could not send offer email.'
-    );
+    throw new Error(getResendErrorMessage(payload));
   }
 }
 
@@ -678,9 +794,26 @@ export async function updateOrder(
     customer_price_eur?: number | null;
     quantity?: number;
     offer_sent_at?: string;
+    cost_breakdown?: CostBreakdown;
   }
 ) {
   if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const pricingSettings = await getPricingSettings();
+  const existingParams = new URLSearchParams({
+    id: `eq.${id}`,
+    select: '*',
+  });
+  const existingRows = await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${existingParams.toString()}`
+  );
+  const existingOrder = existingRows[0]
+    ? parseOrder(existingRows[0], pricingSettings)
+    : null;
+
+  if (!existingOrder) {
     return null;
   }
 
@@ -716,6 +849,34 @@ export async function updateOrder(
     updates.offer_sent_at = input.offer_sent_at;
   }
 
+  if (hasOwn(input, 'cost_breakdown') || hasOwn(input, 'revised_price_eur')) {
+    const costBreakdown = hasOwn(input, 'cost_breakdown')
+      ? normalizeCostBreakdown(input.cost_breakdown, pricingSettings)
+      : existingOrder.cost_breakdown;
+    const revisedPrice = hasOwn(input, 'revised_price_eur')
+      ? input.revised_price_eur
+      : existingOrder.revised_price_eur;
+    const pricing = calculatePricing({
+      stitches: existingOrder.stitches,
+      colors: existingOrder.colors,
+      placement: existingOrder.placement,
+      settings: pricingSettings,
+      costBreakdown,
+      revisedPrice,
+    });
+
+    updates.cost_breakdown = costBreakdown;
+    updates.internal_cost_eur = pricing.internal_cost_eur;
+    updates.customer_price_eur = pricing.customer_price_eur;
+    updates.estimated_profit_eur = pricing.estimated_profit_eur;
+    updates.profit_margin_percent = pricing.profit_margin_percent;
+    updates.pricing_tier = pricing.pricing_tier;
+    updates.manual_quote = pricing.manual_quote;
+    if (pricing.manual_quote && !input.status) {
+      updates.status = 'needs_review';
+    }
+  }
+
   const params = new URLSearchParams({
     id: `eq.${id}`,
     select: '*',
@@ -732,5 +893,5 @@ export async function updateOrder(
     }
   );
 
-  return rows[0] ? parseOrder(rows[0]) : null;
+  return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
 }

@@ -3,6 +3,15 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
+import {
+  calculatePricing,
+  costBreakdownLabels,
+  defaultPricingSettings,
+  normalizePricingSettings,
+  type CostBreakdown,
+  type CostBreakdownKey,
+  type PricingSettings,
+} from '@/lib/pricing';
 
 const API =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -10,19 +19,6 @@ const API =
 
 type Placement = 'left' | 'center';
 type ShirtColor = 'black' | 'white';
-
-type CostBreakdown = {
-  blank_tshirt_eur: number;
-  backing_eur: number;
-  thread_and_bobbin_eur: number;
-  needle_wear_eur: number;
-  electricity_eur: number;
-  packaging_eur: number;
-  waste_buffer_eur: number;
-  machine_payback_eur: number;
-  labor_eur: number;
-  color_complexity_fee_eur: number;
-};
 
 type PublicQuote = {
   stitches: number;
@@ -105,10 +101,10 @@ type OrderRecord = {
 
 type OrderEditForm = {
   revised_price_eur: string;
-  customer_price_eur: string;
   quantity: string;
   production_notes: string;
   team_message: string;
+  cost_breakdown: CostBreakdownForm;
 };
 
 type LogoAnalysis = {
@@ -119,22 +115,36 @@ type LogoAnalysis = {
   recommendations: string[];
 };
 
+type CostBreakdownForm = Record<CostBreakdownKey, string>;
+type PricingSettingKey = Exclude<keyof PricingSettings, 'round_mode'>;
+type PricingSettingsForm = Record<PricingSettingKey, string>;
+type OrderEditTextField = Exclude<
+  keyof OrderEditForm,
+  'cost_breakdown'
+>;
+
 const placementSize = {
   left: { width: 90, height: 60, label: 'Left chest' },
   center: { width: 250, height: 200, label: 'Center front' },
 } as const;
 
-const breakdownLabels: Array<[keyof CostBreakdown, string]> = [
-  ['blank_tshirt_eur', 'Blank shirt'],
+const costBreakdownKeys: CostBreakdownKey[] =
+  costBreakdownLabels.map(([key]) => key);
+
+const pricingSettingLabels: Array<[PricingSettingKey, string]> = [
+  ['blank_shirt_eur', 'Blank shirt cost'],
   ['backing_eur', 'Backing'],
-  ['thread_and_bobbin_eur', 'Thread and bobbin'],
+  ['thread_and_bobbin_base_eur', 'Thread and bobbin'],
   ['needle_wear_eur', 'Needle wear'],
   ['electricity_eur', 'Electricity'],
   ['packaging_eur', 'Packaging'],
   ['waste_buffer_eur', 'Waste buffer'],
-  ['machine_payback_eur', 'Studio payback'],
-  ['labor_eur', 'Labor'],
-  ['color_complexity_fee_eur', 'Color complexity'],
+  ['studio_payback_eur', 'Studio payback'],
+  ['labor_base_eur', 'Labor'],
+  ['color_complexity_eur', 'Color complexity'],
+  ['target_margin_percent', 'Target margin percent'],
+  ['min_price_left_chest_eur', 'Minimum left chest price'],
+  ['min_price_center_front_eur', 'Minimum center front price'],
 ];
 
 const orderStatuses: Array<{
@@ -169,14 +179,6 @@ const customerDecisionLabels: Record<
 };
 
 const publicSiteUrl = 'https://stitchra.com';
-
-const emptyOrderEditForm: OrderEditForm = {
-  revised_price_eur: '',
-  customer_price_eur: '',
-  quantity: '1',
-  production_notes: '',
-  team_message: '',
-};
 
 function formatMoney(value: number | null) {
   return value === null ? 'Pending' : `€${value.toFixed(2)}`;
@@ -216,9 +218,55 @@ function getCustomerOrderLink(publicToken: string) {
   return `${publicSiteUrl}/order/${publicToken}`;
 }
 
-function getOrderEditForm(order: OrderRecord | null): OrderEditForm {
+function getCostBreakdownForm(
+  costBreakdown: CostBreakdown
+): CostBreakdownForm {
+  return costBreakdownKeys.reduce((form, key) => {
+    form[key] = String(costBreakdown[key]);
+    return form;
+  }, {} as CostBreakdownForm);
+}
+
+function getPricingSettingsForm(
+  settings: PricingSettings
+): PricingSettingsForm {
+  return pricingSettingLabels.reduce((form, [key]) => {
+    form[key] = String(settings[key]);
+    return form;
+  }, {} as PricingSettingsForm);
+}
+
+const emptyOrderEditForm: OrderEditForm = {
+  revised_price_eur: '',
+  quantity: '1',
+  production_notes: '',
+  team_message: '',
+  cost_breakdown: getCostBreakdownForm(
+    calculatePricing({
+      stitches: 1,
+      colors: 1,
+      placement: 'left',
+      settings: defaultPricingSettings,
+    }).cost_breakdown
+  ),
+};
+
+function getOrderEditForm(
+  order: OrderRecord | null,
+  settings: PricingSettings = defaultPricingSettings
+): OrderEditForm {
   if (!order) {
-    return emptyOrderEditForm;
+    return {
+      ...emptyOrderEditForm,
+      cost_breakdown: getCostBreakdownForm(
+        calculatePricing({
+          stitches: 1,
+          colors: 1,
+          placement: 'left',
+          settings,
+        }).cost_breakdown
+      ),
+    };
   }
 
   return {
@@ -226,13 +274,10 @@ function getOrderEditForm(order: OrderRecord | null): OrderEditForm {
       order.revised_price_eur === null
         ? ''
         : String(order.revised_price_eur),
-    customer_price_eur:
-      order.customer_price_eur === null
-        ? ''
-        : String(order.customer_price_eur),
     quantity: String(order.quantity ?? 1),
     production_notes: order.production_notes.join('\n'),
     team_message: order.team_message ?? '',
+    cost_breakdown: getCostBreakdownForm(order.cost_breakdown),
   };
 }
 
@@ -253,6 +298,93 @@ function parseProductionNotes(value: string) {
     .split('\n')
     .map((note) => note.trim())
     .filter(Boolean);
+}
+
+function parseCostBreakdownForm(form: CostBreakdownForm) {
+  const parsed = {} as CostBreakdown;
+
+  for (const key of costBreakdownKeys) {
+    const raw = form[key]?.trim() ?? '';
+    const value = Number(raw);
+
+    if (!raw || !Number.isFinite(value) || value < 0) {
+      return null;
+    }
+
+    parsed[key] = Number(value.toFixed(2));
+  }
+
+  return parsed;
+}
+
+function parsePricingSettingsForm(form: PricingSettingsForm) {
+  const parsed: Partial<Record<PricingSettingKey, number>> = {};
+
+  for (const [key] of pricingSettingLabels) {
+    const raw = form[key]?.trim() ?? '';
+    const value = Number(raw);
+
+    if (!raw || !Number.isFinite(value) || value < 0) {
+      return null;
+    }
+
+    parsed[key] = value;
+  }
+
+  const targetMargin = parsed.target_margin_percent;
+
+  if (
+    targetMargin === undefined ||
+    targetMargin <= 0 ||
+    targetMargin >= 100
+  ) {
+    return null;
+  }
+
+  return normalizePricingSettings({
+    ...parsed,
+    round_mode: 'ceil_to_whole_euro',
+  });
+}
+
+function applyPricingToEstimate(
+  estimate: EstimateResponse,
+  settings: PricingSettings,
+  placement: Placement
+): EstimateResponse {
+  const pricing = calculatePricing({
+    stitches: estimate.stitches,
+    colors: estimate.colors,
+    placement,
+    settings,
+  });
+  const publicQuote = getPublicQuote(estimate);
+  const internalQuote = estimate.internal_quote;
+
+  return {
+    ...estimate,
+    price_eur: pricing.customer_price_eur,
+    internal_cost_eur: pricing.internal_cost_eur,
+    estimated_profit_eur: pricing.estimated_profit_eur,
+    manual_quote: pricing.manual_quote,
+    pricing_tier: pricing.pricing_tier,
+    cost_breakdown: pricing.cost_breakdown,
+    public_quote: {
+      ...publicQuote,
+      price_eur: pricing.customer_price_eur,
+      manual_quote: pricing.manual_quote,
+      pricing_tier: pricing.pricing_tier,
+    },
+    internal_quote: {
+      internal_cost_eur: pricing.internal_cost_eur,
+      estimated_profit_eur: pricing.estimated_profit_eur,
+      profit_margin_percent: pricing.profit_margin_percent,
+      cost_breakdown: pricing.cost_breakdown,
+      technical_warnings:
+        internalQuote?.technical_warnings ?? estimate.warnings,
+      production_notes: internalQuote?.production_notes ?? [],
+    },
+  };
 }
 
 async function dataUrlToFile(dataUrl: string, name: string) {
@@ -310,9 +442,9 @@ export default function StudioPage() {
   const [passcode, setPasscode] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [gateError, setGateError] = useState('');
-  const [activeView, setActiveView] = useState<'quote' | 'orders'>(
-    'quote'
-  );
+  const [activeView, setActiveView] = useState<
+    'quote' | 'orders' | 'pricing'
+  >('quote');
 
   const [placement, setPlacement] = useState<Placement>('left');
   const [shirtColor, setShirtColor] = useState<ShirtColor>('black');
@@ -346,6 +478,16 @@ export default function StudioPage() {
   );
   const [offerEmailStatus, setOfferEmailStatus] = useState('');
   const [offerEmailError, setOfferEmailError] = useState('');
+  const [pricingSettings, setPricingSettings] =
+    useState<PricingSettings>(defaultPricingSettings);
+  const [pricingForm, setPricingForm] =
+    useState<PricingSettingsForm>(
+      getPricingSettingsForm(defaultPricingSettings)
+    );
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingStatus, setPricingStatus] = useState('');
+  const [pricingError, setPricingError] = useState('');
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -364,7 +506,7 @@ export default function StudioPage() {
 
   const selectOrder = (order: OrderRecord | null) => {
     setSelectedOrder(order);
-    setOrderEditForm(getOrderEditForm(order));
+    setOrderEditForm(getOrderEditForm(order, pricingSettings));
     setOrderEditError('');
     setOrderEditStatus('');
     setCustomerLinkStatus('');
@@ -424,6 +566,51 @@ export default function StudioPage() {
     }
   };
 
+  const loadPricingSettings = async () => {
+    setPricingLoading(true);
+    setPricingError('');
+
+    try {
+      const response = await fetch('/api/pricing-settings', {
+        headers: {
+          'x-studio-passcode': passcode,
+        },
+      });
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as {
+        settings?: PricingSettings;
+        databaseConfigured?: boolean;
+        message?: string;
+        details?: string;
+      };
+
+      if (!response.ok || !payload.settings) {
+        setPricingError(
+          payload.details ??
+            payload.message ??
+            'Could not load pricing settings.'
+        );
+        return;
+      }
+
+      const settings = normalizePricingSettings(payload.settings);
+      setPricingSettings(settings);
+      setPricingForm(getPricingSettingsForm(settings));
+
+      if (payload.databaseConfigured === false) {
+        setPricingError(
+          'Database not configured. Pricing settings are using defaults.'
+        );
+      }
+    } catch (error) {
+      setPricingError('Could not load pricing settings.');
+      console.error(error);
+    } finally {
+      setPricingLoading(false);
+    }
+  };
+
   const updateStoredOrder = (updatedOrder: OrderRecord) => {
     setSelectedOrder(updatedOrder);
     setOrders((current) =>
@@ -478,7 +665,7 @@ export default function StudioPage() {
   };
 
   const updateOrderEditField = (
-    field: keyof OrderEditForm,
+    field: OrderEditTextField,
     value: string
   ) => {
     setOrderEditForm((current) => ({
@@ -487,6 +674,86 @@ export default function StudioPage() {
     }));
     setOrderEditError('');
     setOrderEditStatus('');
+  };
+
+  const updateOrderCostBreakdownField = (
+    field: CostBreakdownKey,
+    value: string
+  ) => {
+    setOrderEditForm((current) => ({
+      ...current,
+      cost_breakdown: {
+        ...current.cost_breakdown,
+        [field]: value,
+      },
+    }));
+    setOrderEditError('');
+    setOrderEditStatus('');
+  };
+
+  const updatePricingFormField = (
+    field: PricingSettingKey,
+    value: string
+  ) => {
+    setPricingForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setPricingError('');
+    setPricingStatus('');
+  };
+
+  const savePricingSettings = async () => {
+    setPricingError('');
+    setPricingStatus('');
+
+    const parsedSettings = parsePricingSettingsForm(pricingForm);
+
+    if (!parsedSettings) {
+      setPricingError(
+        'Pricing settings must be non-negative numbers and margin must be between 0 and 100.'
+      );
+      return;
+    }
+
+    setPricingSaving(true);
+
+    try {
+      const response = await fetch('/api/pricing-settings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-studio-passcode': passcode,
+        },
+        body: JSON.stringify(parsedSettings),
+      });
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as {
+        settings?: PricingSettings;
+        message?: string;
+        details?: string;
+      };
+
+      if (!response.ok || !payload.settings) {
+        setPricingError(
+          payload.details ??
+            payload.message ??
+            'Could not save pricing settings.'
+        );
+        return;
+      }
+
+      const settings = normalizePricingSettings(payload.settings);
+      setPricingSettings(settings);
+      setPricingForm(getPricingSettingsForm(settings));
+      setPricingStatus('Pricing settings saved.');
+    } catch (error) {
+      setPricingError('Could not save pricing settings.');
+      console.error(error);
+    } finally {
+      setPricingSaving(false);
+    }
   };
 
   const saveOrderDetails = async () => {
@@ -500,10 +767,10 @@ export default function StudioPage() {
     const revisedPrice = parseEditableMoney(
       orderEditForm.revised_price_eur
     );
-    const customerPrice = parseEditableMoney(
-      orderEditForm.customer_price_eur
-    );
     const quantity = Number(orderEditForm.quantity);
+    const costBreakdown = parseCostBreakdownForm(
+      orderEditForm.cost_breakdown
+    );
 
     if (revisedPrice === undefined) {
       setOrderEditError(
@@ -512,9 +779,9 @@ export default function StudioPage() {
       return;
     }
 
-    if (revisedPrice === null && customerPrice === undefined) {
+    if (!costBreakdown) {
       setOrderEditError(
-        'Customer price must be a non-negative number.'
+        'Cost breakdown values must be non-negative numbers.'
       );
       return;
     }
@@ -529,10 +796,10 @@ export default function StudioPage() {
     try {
       const payload: {
         revised_price_eur: number | null;
-        customer_price_eur?: number | null;
         quantity: number;
         production_notes: string[];
         team_message: string | null;
+        cost_breakdown: CostBreakdown;
       } = {
         revised_price_eur: revisedPrice,
         quantity,
@@ -540,11 +807,8 @@ export default function StudioPage() {
           orderEditForm.production_notes
         ),
         team_message: orderEditForm.team_message.trim() || null,
+        cost_breakdown: costBreakdown,
       };
-
-      if (revisedPrice === null) {
-        payload.customer_price_eur = customerPrice;
-      }
 
       const response = await fetch(
         `/api/orders/${selectedOrder.id}`,
@@ -580,7 +844,9 @@ export default function StudioPage() {
 
       setOrderEditStatus('Order details saved.');
       setSelectedOrder(updatedOrder);
-      setOrderEditForm(getOrderEditForm(updatedOrder));
+      setOrderEditForm(
+        getOrderEditForm(updatedOrder, pricingSettings)
+      );
       updateStoredOrder(updatedOrder);
     } catch (error) {
       setOrderEditError('Could not save order details.');
@@ -673,6 +939,7 @@ export default function StudioPage() {
       setUnlocked(true);
       setGateError('');
       void loadOrders();
+      void loadPricingSettings();
       return;
     }
 
@@ -745,7 +1012,9 @@ export default function StudioPage() {
 
       const quote =
         (await estimateResponse.json()) as EstimateResponse;
-      setEstimate(quote);
+      setEstimate(
+        applyPricingToEstimate(quote, pricingSettings, placement)
+      );
       setStatus('Studio quote ready.');
     } catch {
       setError('Could not calculate this studio quote.');
@@ -831,6 +1100,20 @@ export default function StudioPage() {
           >
             Orders
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView('pricing');
+              void loadPricingSettings();
+            }}
+            style={
+              activeView === 'pricing'
+                ? primaryButton
+                : secondaryButton
+            }
+          >
+            Pricing
+          </button>
           <Link href="/" style={secondaryButton}>
             Public website
           </Link>
@@ -853,7 +1136,9 @@ export default function StudioPage() {
           sendingOfferId={sendingOfferId}
           offerEmailStatus={offerEmailStatus}
           offerEmailError={offerEmailError}
+          pricingSettings={pricingSettings}
           onOrderEditChange={updateOrderEditField}
+          onOrderCostBreakdownChange={updateOrderCostBreakdownField}
           onSaveOrderDetails={saveOrderDetails}
           onCopyCustomerLink={copyCustomerLink}
           onSendOfferToCustomer={sendOfferToCustomer}
@@ -864,6 +1149,19 @@ export default function StudioPage() {
           onSelectOrder={selectOrder}
           onRefresh={() => void loadOrders()}
           onChangeStatus={changeOrderStatus}
+        />
+      )}
+
+      {activeView === 'pricing' && (
+        <PricingSettingsPanel
+          form={pricingForm}
+          loading={pricingLoading}
+          saving={pricingSaving}
+          status={pricingStatus}
+          error={pricingError}
+          onChange={updatePricingFormField}
+          onSave={savePricingSettings}
+          onRefresh={() => void loadPricingSettings()}
         />
       )}
 
@@ -1031,7 +1329,7 @@ export default function StudioPage() {
             <div style={panel}>
               <h2 style={panelTitle}>Internal cost breakdown</h2>
               <div style={breakdownTable}>
-                {breakdownLabels.map(([key, label]) => (
+                {costBreakdownLabels.map(([key, label]) => (
                   <div key={key} style={breakdownRow}>
                     <span>{label}</span>
                     <strong>
@@ -1065,6 +1363,83 @@ function Meta({
   );
 }
 
+function PricingSettingsPanel({
+  form,
+  loading,
+  saving,
+  status,
+  error,
+  onChange,
+  onSave,
+  onRefresh,
+}: {
+  form: PricingSettingsForm;
+  loading: boolean;
+  saving: boolean;
+  status: string;
+  error: string;
+  onChange: (field: PricingSettingKey, value: string) => void;
+  onSave: () => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <section style={ordersShell}>
+      <div style={ordersToolbar}>
+        <div>
+          <p style={eyebrow}>Pricing</p>
+          <h2 style={panelTitle}>Cost settings</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          style={secondaryButton}
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div style={panel}>
+        <p style={mutedText}>
+          These values are used for new public orders and studio
+          quote calculations. Saved orders keep their own pricing
+          snapshot until the team edits their cost breakdown.
+        </p>
+        {loading && <p style={successText}>Loading settings...</p>}
+        <div style={controlGrid}>
+          {pricingSettingLabels.map(([key, label]) => (
+            <label key={key} style={fieldLabel}>
+              {label}
+              <input
+                value={form[key]}
+                onChange={(event) =>
+                  onChange(key, event.target.value)
+                }
+                inputMode="decimal"
+                style={inputStyle}
+              />
+            </label>
+          ))}
+        </div>
+        <div style={orderActions}>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            style={{
+              ...primaryButton,
+              opacity: saving ? 0.68 : 1,
+            }}
+          >
+            {saving ? 'Saving...' : 'Save pricing settings'}
+          </button>
+        </div>
+        {error && <p style={errorText}>{error}</p>}
+        {status && <p style={successText}>{status}</p>}
+      </div>
+    </section>
+  );
+}
+
 function OrdersDashboard({
   orders,
   selectedOrder,
@@ -1080,7 +1455,9 @@ function OrdersDashboard({
   sendingOfferId,
   offerEmailStatus,
   offerEmailError,
+  pricingSettings,
   onOrderEditChange,
+  onOrderCostBreakdownChange,
   onSaveOrderDetails,
   onCopyCustomerLink,
   onSendOfferToCustomer,
@@ -1103,8 +1480,13 @@ function OrdersDashboard({
   sendingOfferId: string | null;
   offerEmailStatus: string;
   offerEmailError: string;
+  pricingSettings: PricingSettings;
   onOrderEditChange: (
-    field: keyof OrderEditForm,
+    field: OrderEditTextField,
+    value: string
+  ) => void;
+  onOrderCostBreakdownChange: (
+    field: CostBreakdownKey,
     value: string
   ) => void;
   onSaveOrderDetails: () => void;
@@ -1118,6 +1500,34 @@ function OrdersDashboard({
     status: OrderStatus
   ) => void;
 }) {
+  const parsedCostBreakdown = parseCostBreakdownForm(
+    orderEditForm.cost_breakdown
+  );
+  const parsedRevisedPrice = parseEditableMoney(
+    orderEditForm.revised_price_eur
+  );
+  const previewPricing =
+    selectedOrder &&
+    parsedCostBreakdown &&
+    parsedRevisedPrice !== undefined
+      ? calculatePricing({
+          stitches: selectedOrder.stitches,
+          colors: selectedOrder.colors,
+          placement: selectedOrder.placement,
+          settings: pricingSettings,
+          costBreakdown: parsedCostBreakdown,
+          revisedPrice: parsedRevisedPrice,
+        })
+      : null;
+  const previewCustomerPrice =
+    previewPricing && parsedRevisedPrice !== undefined
+      ? parsedRevisedPrice ?? previewPricing.customer_price_eur
+      : selectedOrder
+        ? getEffectiveCustomerPrice(selectedOrder)
+        : null;
+  const previewManualQuote =
+    previewPricing?.manual_quote ?? selectedOrder?.manual_quote ?? false;
+
   return (
     <section style={ordersShell}>
       <div style={ordersToolbar}>
@@ -1321,18 +1731,39 @@ function OrdersDashboard({
                 />
                 <Metric
                   label="Customer price"
-                  value={formatOrderCustomerPrice(selectedOrder)}
+                  value={
+                    previewManualQuote && previewCustomerPrice === null
+                      ? 'Manual quote'
+                      : formatMoney(previewCustomerPrice)
+                  }
                 />
                 <Metric
                   label="Internal cost"
-                  value={formatMoney(selectedOrder.internal_cost_eur)}
+                  value={formatMoney(
+                    previewPricing?.internal_cost_eur ??
+                      selectedOrder.internal_cost_eur
+                  )}
+                />
+                <Metric
+                  label="Profit"
+                  value={formatMoney(
+                    previewPricing
+                      ? previewPricing.estimated_profit_eur
+                      : selectedOrder.estimated_profit_eur
+                  )}
                 />
                 <Metric
                   label="Margin"
                   value={
-                    selectedOrder.profit_margin_percent === null
+                    (previewPricing
+                      ? previewPricing.profit_margin_percent
+                      : selectedOrder.profit_margin_percent) === null
                       ? 'Pending'
-                      : `${selectedOrder.profit_margin_percent}%`
+                      : `${
+                          previewPricing
+                            ? previewPricing.profit_margin_percent
+                            : selectedOrder.profit_margin_percent
+                        }%`
                   }
                 />
               </section>
@@ -1416,32 +1847,20 @@ function OrdersDashboard({
                       style={inputStyle}
                     />
                   </label>
-                  <label style={fieldLabel}>
-                    Customer price EUR
-                    <input
-                      value={orderEditForm.customer_price_eur}
-                      onChange={(event) =>
-                        onOrderEditChange(
-                          'customer_price_eur',
-                          event.target.value
-                        )
-                      }
-                      disabled={
-                        orderEditForm.revised_price_eur.trim()
-                          .length > 0
-                      }
-                      placeholder="Customer-facing price"
-                      inputMode="decimal"
-                      style={{
-                        ...inputStyle,
-                        opacity:
-                          orderEditForm.revised_price_eur.trim()
-                            .length > 0
-                            ? 0.55
-                            : 1,
-                      }}
-                    />
-                  </label>
+                  <div style={metaCard}>
+                    <span style={mutedText}>
+                      Suggested customer price:
+                    </span>
+                    <strong>
+                      {previewManualQuote &&
+                      previewPricing?.customer_price_eur === null
+                        ? 'Manual quote'
+                        : formatMoney(
+                            previewPricing?.customer_price_eur ??
+                              selectedOrder.customer_price_eur
+                          )}
+                    </strong>
+                  </div>
                   <label style={fieldLabel}>
                     Quantity
                     <input
@@ -1458,6 +1877,29 @@ function OrdersDashboard({
                       style={inputStyle}
                     />
                   </label>
+                </div>
+                <div style={editSubsection}>
+                  <h4 style={sectionMiniTitle}>
+                    Internal cost breakdown
+                  </h4>
+                  <div style={controlGrid}>
+                    {costBreakdownLabels.map(([key, label]) => (
+                      <label key={key} style={fieldLabel}>
+                        {label}
+                        <input
+                          value={orderEditForm.cost_breakdown[key]}
+                          onChange={(event) =>
+                            onOrderCostBreakdownChange(
+                              key,
+                              event.target.value
+                            )
+                          }
+                          inputMode="decimal"
+                          style={inputStyle}
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <label style={fieldLabel}>
                   Production notes
@@ -1549,11 +1991,15 @@ function OrdersDashboard({
               <div style={panel}>
                 <h3 style={panelTitle}>Cost breakdown</h3>
                 <div style={breakdownTable}>
-                  {breakdownLabels.map(([key, label]) => (
+                  {costBreakdownLabels.map(([key, label]) => (
                     <div key={key} style={breakdownRow}>
                       <span>{label}</span>
                       <strong>
-                        €{(selectedOrder.cost_breakdown[key] ?? 0).toFixed(2)}
+                        €
+                        {(
+                          parsedCostBreakdown?.[key] ??
+                          selectedOrder.cost_breakdown[key]
+                        ).toFixed(2)}
                       </strong>
                     </div>
                   ))}
@@ -1772,6 +2218,12 @@ const editPanel: CSSProperties = {
   marginBottom: 20,
 };
 
+const editSubsection: CSSProperties = {
+  borderTop: '1px solid rgba(255,255,255,0.08)',
+  marginTop: 4,
+  paddingTop: 18,
+};
+
 const customerLinkBox: CSSProperties = {
   border: '1px solid rgba(255,255,255,0.09)',
   borderRadius: 16,
@@ -1788,6 +2240,11 @@ const customerLinkBox: CSSProperties = {
 const panelTitle: CSSProperties = {
   margin: '0 0 18px',
   fontSize: 22,
+};
+
+const sectionMiniTitle: CSSProperties = {
+  margin: '0 0 14px',
+  fontSize: 16,
 };
 
 const controlGrid: CSSProperties = {

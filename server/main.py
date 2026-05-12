@@ -1,4 +1,5 @@
 import base64
+import math
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -41,12 +42,16 @@ BLANK_TSHIRT_EUR = 2.50
 BACKING_LEFT_EUR = 0.15
 BACKING_CENTER_EUR = 0.35
 THREAD_AND_BOBBIN_PER_1000_STITCHES_EUR = 0.035
+THREAD_AND_BOBBIN_BASE_EUR = 0.35
 NEEDLE_WEAR_EUR = 0.05
 ELECTRICITY_EUR = 0.03
 PACKAGING_EUR = 0.30
 WASTE_BUFFER_EUR = 0.50
 MACHINE_PAYBACK_EUR = 0.75
-COLOR_COMPLEXITY_FEE_EUR = 0.60
+COLOR_COMPLEXITY_FEE_EUR = 1.20
+TARGET_MARGIN_PERCENT = 30
+MIN_PRICE_LEFT_CHEST_EUR = 9
+MIN_PRICE_CENTER_FRONT_EUR = 13
 
 
 PRODUCT_PRESETS = {
@@ -614,30 +619,12 @@ def calculate_price(
     colors: int,
     placement: str,
 ) -> tuple[float | None, float, float | None, bool, str, dict]:
-    """Affordable student-market pricing for embroidered T-shirts."""
+    """Margin-based quote used as a fallback by the estimator."""
     is_left_chest = placement == "left"
-    backing = BACKING_LEFT_EUR if is_left_chest else BACKING_CENTER_EUR
-    thread_and_bobbin = (
-        stitches / 1000.0
-    ) * THREAD_AND_BOBBIN_PER_1000_STITCHES_EUR
-    color_complexity_fee = (
-        max(0, colors - CHEAP_PRODUCT_COLOR_LIMIT) * COLOR_COMPLEXITY_FEE_EUR
-    )
-
-    if is_left_chest:
-        if stitches < 18000:
-            labor = 2.50
-        elif stitches <= 25000:
-            labor = 3.50
-        else:
-            labor = 3.50
-    else:
-        if stitches < 35000:
-            labor = 4.50
-        elif stitches <= 50000:
-            labor = 6.50
-        else:
-            labor = 6.50
+    backing = BACKING_LEFT_EUR
+    thread_and_bobbin = THREAD_AND_BOBBIN_BASE_EUR
+    labor = 2.50
+    color_complexity_fee = COLOR_COMPLEXITY_FEE_EUR
 
     internal_cost = (
         BLANK_TSHIRT_EUR
@@ -664,42 +651,31 @@ def calculate_price(
     profit: float | None = None
 
     if not manual_quote:
-        if is_left_chest:
-            if stitches <= 10000 and colors <= 4:
-                price = 9.99
-                pricing_tier = "Simple left chest"
-            elif stitches <= 18000 and colors <= CHEAP_PRODUCT_COLOR_LIMIT:
-                price = 11.99
-                pricing_tier = "Standard left chest"
-            elif stitches <= 25000:
-                price = 15.99
-                pricing_tier = "Detailed left chest"
-            price = max(9.99, min(15.99, price or 15.99))
-        else:
-            if stitches <= 25000 and colors <= CHEAP_PRODUCT_COLOR_LIMIT:
-                price = 19.99
-                pricing_tier = "Simple center front"
-            elif stitches <= 35000:
-                price = 24.99
-                pricing_tier = "Standard center front"
-            else:
-                price = 29.99
-                pricing_tier = "Detailed center front"
-            price = max(17.99, min(29.99, price))
-
+        raw_price = internal_cost / (1 - TARGET_MARGIN_PERCENT / 100)
+        minimum_price = (
+            MIN_PRICE_LEFT_CHEST_EUR
+            if is_left_chest
+            else MIN_PRICE_CENTER_FRONT_EUR
+        )
+        price = max(minimum_price, math.ceil(raw_price))
+        pricing_tier = (
+            "Left chest calculated"
+            if is_left_chest
+            else "Center front calculated"
+        )
         profit = price - internal_cost
 
     breakdown = {
-        "blank_tshirt_eur": round(BLANK_TSHIRT_EUR, 2),
+        "blank_shirt_eur": round(BLANK_TSHIRT_EUR, 2),
         "backing_eur": round(backing, 2),
-        "thread_and_bobbin_eur": round(thread_and_bobbin, 2),
+        "thread_and_bobbin_base_eur": round(thread_and_bobbin, 2),
         "needle_wear_eur": round(NEEDLE_WEAR_EUR, 2),
         "electricity_eur": round(ELECTRICITY_EUR, 2),
         "packaging_eur": round(PACKAGING_EUR, 2),
         "waste_buffer_eur": round(WASTE_BUFFER_EUR, 2),
-        "machine_payback_eur": round(MACHINE_PAYBACK_EUR, 2),
-        "labor_eur": round(labor, 2),
-        "color_complexity_fee_eur": round(color_complexity_fee, 2),
+        "studio_payback_eur": round(MACHINE_PAYBACK_EUR, 2),
+        "labor_base_eur": round(labor, 2),
+        "color_complexity_eur": round(color_complexity_fee, 2),
     }
 
     return (

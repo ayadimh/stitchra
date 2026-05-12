@@ -7,6 +7,7 @@ import {
   updateOrder,
   type OrderStatus,
 } from '@/lib/orders';
+import type { CostBreakdown } from '@/lib/pricing';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,7 @@ type OrderPatchBody = {
   revised_price_eur?: unknown;
   customer_price_eur?: unknown;
   quantity?: unknown;
+  cost_breakdown?: unknown;
 };
 
 function hasOwn(
@@ -133,6 +135,18 @@ export async function PATCH(
         errors.quantity = 'Quantity must be at least 1.';
       } else {
         updates.quantity = quantity;
+      }
+    }
+
+    if (hasOwn(body, 'cost_breakdown')) {
+      if (
+        !body.cost_breakdown ||
+        typeof body.cost_breakdown !== 'object' ||
+        Array.isArray(body.cost_breakdown)
+      ) {
+        errors.cost_breakdown = 'Cost breakdown must be an object.';
+      } else {
+        updates.cost_breakdown = body.cost_breakdown as CostBreakdown;
       }
     }
 

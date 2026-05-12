@@ -24,11 +24,7 @@ function hasRequiredOrderFields(
       value.shirt_color &&
       Number.isFinite(value.stitches) &&
       Number.isFinite(value.colors) &&
-      Number.isFinite(value.coverage) &&
-      (typeof value.customer_price_eur === 'number' ||
-        value.customer_price_eur === null) &&
-      value.pricing_tier &&
-      typeof value.manual_quote === 'boolean'
+      Number.isFinite(value.coverage)
   );
 }
 
