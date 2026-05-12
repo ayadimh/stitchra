@@ -50,6 +50,7 @@ export type OrderRecord = {
   customer_decision: CustomerDecision;
   customer_decision_at: string | null;
   customer_viewed_at: string | null;
+  offer_sent_at: string | null;
 };
 
 export type CreateOrderInput = {
@@ -110,6 +111,19 @@ const publicOrderSelect = [
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^[+\d\s()-]+$/;
+const publicSiteUrl = 'https://stitchra.com';
+
+function getResendApiKey() {
+  return process.env.RESEND_API_KEY ?? '';
+}
+
+function getFromEmail() {
+  return process.env.FROM_EMAIL ?? '';
+}
+
+export function isOfferEmailConfigured() {
+  return Boolean(getResendApiKey() && getFromEmail());
+}
 
 function hasOwn(
   value: object,
@@ -343,6 +357,7 @@ function parseOrder(row: SupabaseOrderRow): OrderRecord {
     customer_decision: parseCustomerDecision(row.customer_decision),
     customer_decision_at: parseDate(row.customer_decision_at),
     customer_viewed_at: parseDate(row.customer_viewed_at),
+    offer_sent_at: parseDate(row.offer_sent_at),
   };
 }
 
@@ -492,6 +507,110 @@ export async function listOrders(status?: string | null) {
   return rows.map(parseOrder);
 }
 
+export async function getOrderById(id: string) {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    id: `eq.${id}`,
+    select: '*',
+  });
+
+  const rows = await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${params.toString()}`
+  );
+
+  return rows[0] ? parseOrder(rows[0]) : null;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatEmailPrice(value: number | null) {
+  return value === null ? 'Manual quote' : `€${value.toFixed(2)}`;
+}
+
+export async function sendOfferEmail(order: OrderRecord) {
+  const resendApiKey = getResendApiKey();
+  const fromEmail = getFromEmail();
+
+  if (!resendApiKey || !fromEmail) {
+    throw new Error('Email not configured.');
+  }
+
+  if (!order.public_token) {
+    throw new Error('Order is missing a customer link.');
+  }
+
+  const customerLink = `${publicSiteUrl}/order/${order.public_token}`;
+  const price = formatEmailPrice(
+    order.revised_price_eur ?? order.customer_price_eur
+  );
+  const teamMessage = order.team_message?.trim() || '';
+  const emailTeamMessage = teamMessage || 'No message added.';
+  const safeName = escapeHtml(order.customer_name);
+  const safePrice = escapeHtml(price);
+  const safeTeamMessage = escapeHtml(emailTeamMessage).replace(
+    /\n/g,
+    '<br />'
+  );
+  const safeLink = escapeHtml(customerLink);
+  const text = [
+    `Hi ${order.customer_name},`,
+    '',
+    'Your Stitchra embroidery quote is ready.',
+    `Price: ${price}`,
+    `Message from the studio: ${emailTeamMessage}`,
+    '',
+    `Review your secure offer here: ${customerLink}`,
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: order.customer_email,
+      subject: 'Your Stitchra embroidery quote',
+      text,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.6;">
+          <p>Hi ${safeName},</p>
+          <p>Your Stitchra embroidery quote is ready.</p>
+          <p><strong>Price:</strong> ${safePrice}</p>
+          <p><strong>Message from the studio:</strong><br />${safeTeamMessage}</p>
+          <p>
+            <a href="${safeLink}" style="color: #047857;">Review your secure offer</a>
+          </p>
+          <p>${safeLink}</p>
+        </div>
+      `,
+    }),
+  });
+
+  const payload = (await response
+    .json()
+    .catch(() => ({}))) as { message?: string; error?: string };
+
+  if (!response.ok) {
+    throw new Error(
+      payload.message ?? payload.error ?? 'Could not send offer email.'
+    );
+  }
+}
+
 export async function getPublicOrderByToken(token: string) {
   if (!isDatabaseConfigured()) {
     return null;
@@ -557,6 +676,7 @@ export async function updateOrder(
     revised_price_eur?: number | null;
     customer_price_eur?: number | null;
     quantity?: number;
+    offer_sent_at?: string;
   }
 ) {
   if (!isDatabaseConfigured()) {
@@ -589,6 +709,10 @@ export async function updateOrder(
 
   if (hasOwn(input, 'quantity')) {
     updates.quantity = input.quantity;
+  }
+
+  if (hasOwn(input, 'offer_sent_at')) {
+    updates.offer_sent_at = input.offer_sent_at;
   }
 
   const params = new URLSearchParams({

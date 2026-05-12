@@ -3,6 +3,7 @@ import {
   createOrder,
   getOrderErrorMessage,
   isDatabaseConfigured,
+  isOfferEmailConfigured,
   isStudioRequest,
   listOrders,
   validatePublicOrderFields,
@@ -150,7 +151,10 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ orders });
+    return NextResponse.json({
+      orders,
+      emailConfigured: isOfferEmailConfigured(),
+    });
   } catch (error) {
     return NextResponse.json(
       {

@@ -100,6 +100,7 @@ type OrderRecord = {
   customer_decision: 'pending' | 'accepted' | 'declined';
   customer_decision_at: string | null;
   customer_viewed_at: string | null;
+  offer_sent_at: string | null;
 };
 
 type OrderEditForm = {
@@ -337,6 +338,14 @@ export default function StudioPage() {
   const [orderEditStatus, setOrderEditStatus] = useState('');
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [customerLinkStatus, setCustomerLinkStatus] = useState('');
+  const [emailConfigured, setEmailConfigured] = useState<
+    boolean | null
+  >(null);
+  const [sendingOfferId, setSendingOfferId] = useState<string | null>(
+    null
+  );
+  const [offerEmailStatus, setOfferEmailStatus] = useState('');
+  const [offerEmailError, setOfferEmailError] = useState('');
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -359,6 +368,8 @@ export default function StudioPage() {
     setOrderEditError('');
     setOrderEditStatus('');
     setCustomerLinkStatus('');
+    setOfferEmailStatus('');
+    setOfferEmailError('');
   };
 
   const loadOrders = async (
@@ -378,6 +389,7 @@ export default function StudioPage() {
         .json()
         .catch(() => ({}))) as {
         orders?: OrderRecord[];
+        emailConfigured?: boolean;
         message?: string;
         details?: string;
       };
@@ -392,6 +404,8 @@ export default function StudioPage() {
         );
         return;
       }
+
+      setEmailConfigured(Boolean(payload.emailConfigured));
 
       const nextOrders = payload.orders ?? [];
       const nextSelected = selectedOrder
@@ -408,6 +422,15 @@ export default function StudioPage() {
     } finally {
       setOrdersLoading(false);
     }
+  };
+
+  const updateStoredOrder = (updatedOrder: OrderRecord) => {
+    setSelectedOrder(updatedOrder);
+    setOrders((current) =>
+      current.map((item) =>
+        item.id === updatedOrder.id ? updatedOrder : item
+      )
+    );
   };
 
   const changeOrderStatus = async (
@@ -447,11 +470,7 @@ export default function StudioPage() {
       const updatedOrder = payload.order;
 
       selectOrder(updatedOrder);
-      setOrders((current) =>
-        current.map((item) =>
-          item.id === updatedOrder.id ? updatedOrder : item
-        )
-      );
+      updateStoredOrder(updatedOrder);
     } catch (error) {
       setOrdersError('Could not update order.');
       console.error(error);
@@ -562,11 +581,7 @@ export default function StudioPage() {
       setOrderEditStatus('Order details saved.');
       setSelectedOrder(updatedOrder);
       setOrderEditForm(getOrderEditForm(updatedOrder));
-      setOrders((current) =>
-        current.map((item) =>
-          item.id === updatedOrder.id ? updatedOrder : item
-        )
-      );
+      updateStoredOrder(updatedOrder);
     } catch (error) {
       setOrderEditError('Could not save order details.');
       console.error(error);
@@ -588,6 +603,61 @@ export default function StudioPage() {
       setCustomerLinkStatus('Customer link copied.');
     } catch {
       setCustomerLinkStatus('Could not copy the customer link.');
+    }
+  };
+
+  const sendOfferToCustomer = async (order: OrderRecord) => {
+    setOfferEmailStatus('');
+    setOfferEmailError('');
+
+    if (!emailConfigured) {
+      setOfferEmailError(
+        'Email not configured. Copy customer link manually.'
+      );
+      return;
+    }
+
+    setSendingOfferId(order.id);
+
+    try {
+      const response = await fetch(
+        `/api/orders/${order.id}/send-offer`,
+        {
+          method: 'POST',
+          headers: {
+            'x-studio-passcode': passcode,
+          },
+        }
+      );
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as {
+        order?: OrderRecord;
+        emailConfigured?: boolean;
+        message?: string;
+        details?: string;
+      };
+
+      if (typeof payload.emailConfigured === 'boolean') {
+        setEmailConfigured(payload.emailConfigured);
+      }
+
+      if (!response.ok || !payload.order) {
+        setOfferEmailError(
+          payload.details ??
+            payload.message ??
+            'Could not send offer email.'
+        );
+        return;
+      }
+
+      updateStoredOrder(payload.order);
+      setOfferEmailStatus('Offer email sent.');
+    } catch (error) {
+      setOfferEmailError('Could not send offer email.');
+      console.error(error);
+    } finally {
+      setSendingOfferId(null);
     }
   };
 
@@ -779,9 +849,14 @@ export default function StudioPage() {
           orderEditStatus={orderEditStatus}
           savingOrder={isSavingOrder}
           customerLinkStatus={customerLinkStatus}
+          emailConfigured={emailConfigured}
+          sendingOfferId={sendingOfferId}
+          offerEmailStatus={offerEmailStatus}
+          offerEmailError={offerEmailError}
           onOrderEditChange={updateOrderEditField}
           onSaveOrderDetails={saveOrderDetails}
           onCopyCustomerLink={copyCustomerLink}
+          onSendOfferToCustomer={sendOfferToCustomer}
           onFilterChange={(nextFilter) => {
             setOrderStatusFilter(nextFilter);
             void loadOrders(nextFilter);
@@ -1001,9 +1076,14 @@ function OrdersDashboard({
   orderEditStatus,
   savingOrder,
   customerLinkStatus,
+  emailConfigured,
+  sendingOfferId,
+  offerEmailStatus,
+  offerEmailError,
   onOrderEditChange,
   onSaveOrderDetails,
   onCopyCustomerLink,
+  onSendOfferToCustomer,
   onFilterChange,
   onSelectOrder,
   onRefresh,
@@ -1019,12 +1099,17 @@ function OrdersDashboard({
   orderEditStatus: string;
   savingOrder: boolean;
   customerLinkStatus: string;
+  emailConfigured: boolean | null;
+  sendingOfferId: string | null;
+  offerEmailStatus: string;
+  offerEmailError: string;
   onOrderEditChange: (
     field: keyof OrderEditForm,
     value: string
   ) => void;
   onSaveOrderDetails: () => void;
   onCopyCustomerLink: (order: OrderRecord) => void;
+  onSendOfferToCustomer: (order: OrderRecord) => void;
   onFilterChange: (value: OrderStatus | 'all') => void;
   onSelectOrder: (order: OrderRecord) => void;
   onRefresh: () => void;
@@ -1070,6 +1155,11 @@ function OrdersDashboard({
       </div>
 
       {error && <p style={warningCard}>{error}</p>}
+      {emailConfigured === false && (
+        <p style={warningCard}>
+          Email not configured. Copy customer link manually.
+        </p>
+      )}
       {loading && <p style={successText}>Loading orders...</p>}
 
       {!loading && !error && orders.length === 0 && (
@@ -1195,6 +1285,16 @@ function OrdersDashboard({
                       ]
                     }
                   />
+                  <Meta
+                    label="Offer sent"
+                    value={
+                      selectedOrder.offer_sent_at
+                        ? new Date(
+                            selectedOrder.offer_sent_at
+                          ).toLocaleString()
+                        : 'Not sent'
+                    }
+                  />
                 </div>
               </div>
 
@@ -1260,12 +1360,45 @@ function OrdersDashboard({
                         {customerLinkStatus}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSendOfferToCustomer(selectedOrder)
+                      }
+                      disabled={
+                        emailConfigured !== true ||
+                        sendingOfferId === selectedOrder.id
+                      }
+                      style={{
+                        ...primaryButton,
+                        opacity:
+                          emailConfigured !== true ||
+                          sendingOfferId === selectedOrder.id
+                            ? 0.68
+                            : 1,
+                      }}
+                    >
+                      {sendingOfferId === selectedOrder.id
+                        ? 'Sending...'
+                        : 'Send offer to customer'}
+                    </button>
                   </div>
                 ) : (
                   <p style={warningCard}>
                     Customer link unavailable. Apply the public token
                     database migration for existing orders.
                   </p>
+                )}
+                {emailConfigured === false && (
+                  <p style={warningCard}>
+                    Email not configured. Copy customer link manually.
+                  </p>
+                )}
+                {offerEmailStatus && (
+                  <p style={successText}>{offerEmailStatus}</p>
+                )}
+                {offerEmailError && (
+                  <p style={errorText}>{offerEmailError}</p>
                 )}
                 <div style={controlGrid}>
                   <label style={fieldLabel}>
