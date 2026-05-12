@@ -125,6 +125,7 @@ export type PublicOrderRecord = {
   quantity: number | null;
   customer_price_eur: number | null;
   revised_price_eur: number | null;
+  manual_quote: boolean;
   team_message: string | null;
   customer_decision: CustomerDecision;
   payment_status: PaymentStatus;
@@ -139,12 +140,14 @@ const publicOrderSelect = [
   'quantity',
   'customer_price_eur',
   'revised_price_eur',
+  'manual_quote',
   'team_message',
   'customer_decision',
   'payment_status',
 ].join(',');
 
 const pricingSettingsSelect = [
+  'stitch_cost_per_1000_eur',
   'blank_shirt_eur',
   'backing_eur',
   'thread_and_bobbin_base_eur',
@@ -158,6 +161,7 @@ const pricingSettingsSelect = [
   'target_margin_percent',
   'min_price_left_chest_eur',
   'min_price_center_front_eur',
+  'manual_quote_review_fee_eur',
   'round_mode',
 ].join(',');
 
@@ -476,6 +480,7 @@ function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
         : Number(row.quantity),
     customer_price_eur: parseNumber(row.customer_price_eur),
     revised_price_eur: parseNumber(row.revised_price_eur),
+    manual_quote: Boolean(row.manual_quote),
     team_message: row.team_message
       ? String(row.team_message)
       : null,
@@ -735,7 +740,7 @@ function getSuggestedOrderPrice(
     placement: order.placement,
     settings,
     costBreakdown: order.cost_breakdown,
-  }).customer_price_eur;
+  }).suggested_customer_price_eur;
 }
 
 function getEffectiveOrderPrice(
@@ -745,7 +750,7 @@ function getEffectiveOrderPrice(
   return (
     order.revised_price_eur ??
     order.customer_price_eur ??
-    getSuggestedOrderPrice(order, settings)
+    (order.manual_quote ? null : getSuggestedOrderPrice(order, settings))
   );
 }
 
@@ -922,6 +927,12 @@ function buildCustomerOfferHtml(input: {
 export async function sendOfferEmail(order: OrderRecord) {
   if (!order.public_token) {
     throw new Error('Order is missing a customer link.');
+  }
+
+  if (order.manual_quote && order.revised_price_eur === null) {
+    throw new Error(
+      'Enter a final customer price before sending a manual quote.'
+    );
   }
 
   const pricingSettings = await getPricingSettings();
@@ -1299,7 +1310,11 @@ export async function updateOrder(
     updates.profit_margin_percent = pricing.profit_margin_percent;
     updates.pricing_tier = pricing.pricing_tier;
     updates.manual_quote = pricing.manual_quote;
-    if (pricing.manual_quote && !input.status) {
+    if (
+      pricing.manual_quote &&
+      !input.status &&
+      existingOrder.status === 'new'
+    ) {
       updates.status = 'needs_review';
     }
   }

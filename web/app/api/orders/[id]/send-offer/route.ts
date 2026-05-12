@@ -57,6 +57,19 @@ export async function POST(
       );
     }
 
+    if (
+      existingOrder.manual_quote &&
+      existingOrder.revised_price_eur === null
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            'Enter a final customer price before sending a manual quote.',
+        },
+        { status: 400 }
+      );
+    }
+
     await sendOfferEmail(existingOrder);
 
     const order = await updateOrder(id, {

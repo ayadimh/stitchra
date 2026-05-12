@@ -1,6 +1,7 @@
 export type RoundMode = 'ceil_to_whole_euro';
 
 export type PricingSettings = {
+  stitch_cost_per_1000_eur: number;
   blank_shirt_eur: number;
   backing_eur: number;
   thread_and_bobbin_base_eur: number;
@@ -14,6 +15,7 @@ export type PricingSettings = {
   target_margin_percent: number;
   min_price_left_chest_eur: number;
   min_price_center_front_eur: number;
+  manual_quote_review_fee_eur: number;
   round_mode: RoundMode;
 };
 
@@ -36,6 +38,7 @@ export type CostBreakdown = Pick<
 export type CostBreakdownKey = keyof CostBreakdown;
 
 export const defaultPricingSettings: PricingSettings = {
+  stitch_cost_per_1000_eur: 0.05,
   blank_shirt_eur: 2.5,
   backing_eur: 0.15,
   thread_and_bobbin_base_eur: 0.35,
@@ -49,6 +52,7 @@ export const defaultPricingSettings: PricingSettings = {
   target_margin_percent: 30,
   min_price_left_chest_eur: 9,
   min_price_center_front_eur: 13,
+  manual_quote_review_fee_eur: 0,
   round_mode: 'ceil_to_whole_euro',
 };
 
@@ -176,6 +180,9 @@ export function normalizePricingSettings(value: unknown): PricingSettings {
 
   return {
     blank_shirt_eur: parseSetting('blank_shirt_eur'),
+    stitch_cost_per_1000_eur: parseSetting(
+      'stitch_cost_per_1000_eur'
+    ),
     backing_eur: parseSetting('backing_eur'),
     thread_and_bobbin_base_eur: parseSetting(
       'thread_and_bobbin_base_eur'
@@ -195,6 +202,9 @@ export function normalizePricingSettings(value: unknown): PricingSettings {
     min_price_center_front_eur: parseSetting(
       'min_price_center_front_eur'
     ),
+    manual_quote_review_fee_eur: parseSetting(
+      'manual_quote_review_fee_eur'
+    ),
     round_mode: 'ceil_to_whole_euro',
   };
 }
@@ -203,9 +213,21 @@ export function normalizePlacement(value: string) {
   return value.toLowerCase().includes('center') ? 'center' : 'left';
 }
 
-export function getInternalCost(costBreakdown: CostBreakdown) {
+export function getCostBreakdownTotal(costBreakdown: CostBreakdown) {
   return roundCurrency(
     costKeys.reduce((sum, key) => sum + costBreakdown[key], 0)
+  );
+}
+
+export function getInternalCost(input: {
+  costBreakdown: CostBreakdown;
+  stitchCost: number;
+  manualQuoteReviewFee?: number;
+}) {
+  return roundCurrency(
+    getCostBreakdownTotal(input.costBreakdown) +
+      input.stitchCost +
+      (input.manualQuoteReviewFee ?? 0)
   );
 }
 
@@ -243,14 +265,26 @@ export function calculatePricing(input: {
   const placement = normalizePlacement(input.placement);
   const costBreakdown =
     input.costBreakdown ?? getDefaultCostBreakdown(input.settings);
-  const internalCost = getInternalCost(costBreakdown);
   const manualQuote = isManualQuoteRequired(input);
+  const stitchCost = roundCurrency(
+    (input.stitches / 1000) *
+      input.settings.stitch_cost_per_1000_eur
+  );
+  const manualQuoteReviewFee = manualQuote
+    ? input.settings.manual_quote_review_fee_eur
+    : 0;
+  const internalCost = getInternalCost({
+    costBreakdown,
+    stitchCost,
+    manualQuoteReviewFee,
+  });
   const marginRate = input.settings.target_margin_percent / 100;
   const rawCustomerPrice =
     marginRate >= 1 ? internalCost : internalCost / (1 - marginRate);
-  const suggestedPrice = manualQuote
-    ? null
-    : roundCustomerPrice(rawCustomerPrice, input.settings.round_mode);
+  const suggestedPrice = roundCustomerPrice(
+    rawCustomerPrice,
+    input.settings.round_mode
+  );
   const effectivePrice = input.revisedPrice ?? suggestedPrice;
   const estimatedProfit =
     effectivePrice === null
@@ -263,12 +297,13 @@ export function calculatePricing(input: {
 
   return {
     cost_breakdown: costBreakdown,
+    stitch_cost_eur: stitchCost,
+    manual_quote_review_fee_eur: manualQuoteReviewFee,
     internal_cost_eur: internalCost,
-    raw_customer_price_eur: manualQuote
-      ? null
-      : roundCurrency(rawCustomerPrice),
+    raw_customer_price_eur: roundCurrency(rawCustomerPrice),
+    suggested_customer_price_eur: roundCurrency(suggestedPrice),
     customer_price_eur:
-      suggestedPrice === null ? null : roundCurrency(suggestedPrice),
+      manualQuote ? null : roundCurrency(suggestedPrice),
     estimated_profit_eur: estimatedProfit,
     profit_margin_percent: profitMarginPercent,
     manual_quote: manualQuote,

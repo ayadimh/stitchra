@@ -150,12 +150,7 @@ type LogoAnalysis = {
 };
 
 type CostBreakdownForm = Record<CostBreakdownKey, string>;
-type PricingSettingKey = Exclude<
-  keyof PricingSettings,
-  | 'round_mode'
-  | 'min_price_left_chest_eur'
-  | 'min_price_center_front_eur'
->;
+type PricingSettingKey = Exclude<keyof PricingSettings, 'round_mode'>;
 type PricingSettingsForm = Record<PricingSettingKey, string>;
 type OrderEditTextField = Exclude<
   keyof OrderEditForm,
@@ -176,6 +171,7 @@ const costBreakdownKeys: CostBreakdownKey[] =
   costBreakdownLabels.map(([key]) => key);
 
 const pricingSettingLabels: Record<PricingSettingKey, string> = {
+  stitch_cost_per_1000_eur: 'Stitch cost per 1,000',
   blank_shirt_eur: 'Blank shirt cost',
   backing_eur: 'Backing',
   thread_and_bobbin_base_eur: 'Thread and bobbin',
@@ -187,6 +183,9 @@ const pricingSettingLabels: Record<PricingSettingKey, string> = {
   labor_base_eur: 'Labor',
   color_complexity_eur: 'Color complexity',
   target_margin_percent: 'Target margin percent',
+  min_price_left_chest_eur: 'Minimum left chest price',
+  min_price_center_front_eur: 'Minimum center front price',
+  manual_quote_review_fee_eur: 'Manual quote review fee',
 };
 
 const pricingSettingGroups: Array<{
@@ -203,6 +202,7 @@ const pricingSettingGroups: Array<{
     title: 'Embroidery materials',
     text: 'Consumables used directly by the embroidery process.',
     fields: [
+      'stitch_cost_per_1000_eur',
       'backing_eur',
       'thread_and_bobbin_base_eur',
       'needle_wear_eur',
@@ -217,12 +217,17 @@ const pricingSettingGroups: Array<{
       'color_complexity_eur',
       'waste_buffer_eur',
       'studio_payback_eur',
+      'manual_quote_review_fee_eur',
     ],
   },
   {
     title: 'Business margin',
     text: 'Margin target used to calculate the suggested customer price.',
-    fields: ['target_margin_percent'],
+    fields: [
+      'target_margin_percent',
+      'min_price_left_chest_eur',
+      'min_price_center_front_eur',
+    ],
   },
 ];
 
@@ -531,7 +536,9 @@ function getEditableFinalPrice(
   return (
     order.revised_price_eur ??
     order.customer_price_eur ??
-    getOrderPricing(order, settings).customer_price_eur
+    (order.manual_quote
+      ? null
+      : getOrderPricing(order, settings).customer_price_eur)
   );
 }
 
@@ -562,6 +569,110 @@ function formatCustomerMoney(value: number | null) {
   return Number.isInteger(value)
     ? `€${value}`
     : `€${value.toFixed(2)}`;
+}
+
+function formatMargin(value: number | null | undefined) {
+  return value === null || value === undefined ? 'Pending' : `${value}%`;
+}
+
+function getInternalCalculatorRows(input: {
+  order: OrderRecord;
+  costBreakdown: CostBreakdown;
+  pricing: ReturnType<typeof calculatePricing>;
+}) {
+  const rows: Array<{
+    label: string;
+    value: string;
+    emphasis?: boolean;
+  }> = [
+    {
+      label: 'Stitches',
+      value: input.order.stitches.toLocaleString(),
+    },
+    {
+      label: 'Stitch cost',
+      value: formatMoney(input.pricing.stitch_cost_eur),
+    },
+    {
+      label: 'Blank shirt',
+      value: formatMoney(input.costBreakdown.blank_shirt_eur),
+    },
+    {
+      label: 'Backing',
+      value: formatMoney(input.costBreakdown.backing_eur),
+    },
+    {
+      label: 'Thread and bobbin',
+      value: formatMoney(
+        input.costBreakdown.thread_and_bobbin_base_eur
+      ),
+    },
+    {
+      label: 'Needle wear',
+      value: formatMoney(input.costBreakdown.needle_wear_eur),
+    },
+    {
+      label: 'Electricity',
+      value: formatMoney(input.costBreakdown.electricity_eur),
+    },
+    {
+      label: 'Packaging',
+      value: formatMoney(input.costBreakdown.packaging_eur),
+    },
+    {
+      label: 'Waste buffer',
+      value: formatMoney(input.costBreakdown.waste_buffer_eur),
+    },
+    {
+      label: 'Studio payback',
+      value: formatMoney(input.costBreakdown.studio_payback_eur),
+    },
+    {
+      label: 'Labor',
+      value: formatMoney(input.costBreakdown.labor_base_eur),
+    },
+    {
+      label: 'Color complexity',
+      value: formatMoney(input.costBreakdown.color_complexity_eur),
+    },
+  ];
+
+  if (
+    input.order.manual_quote ||
+    input.pricing.manual_quote_review_fee_eur > 0
+  ) {
+    rows.push({
+      label: 'Manual quote review fee',
+      value: formatMoney(input.pricing.manual_quote_review_fee_eur),
+    });
+  }
+
+  rows.push(
+    {
+      label: 'Total internal cost',
+      value: formatMoney(input.pricing.internal_cost_eur),
+      emphasis: true,
+    },
+    {
+      label: 'Suggested customer price',
+      value: formatCustomerMoney(
+        input.pricing.suggested_customer_price_eur
+      ),
+      emphasis: true,
+    },
+    {
+      label: 'Expected profit',
+      value: formatMoney(input.pricing.estimated_profit_eur),
+      emphasis: true,
+    },
+    {
+      label: 'Expected margin',
+      value: formatMargin(input.pricing.profit_margin_percent),
+      emphasis: true,
+    }
+  );
+
+  return rows;
 }
 
 function getPricingSettingSuffix(key: PricingSettingKey) {
@@ -683,10 +794,6 @@ function parsePricingSettingsForm(form: PricingSettingsForm) {
   }
 
   return normalizePricingSettings({
-    min_price_left_chest_eur:
-      defaultPricingSettings.min_price_left_chest_eur,
-    min_price_center_front_eur:
-      defaultPricingSettings.min_price_center_front_eur,
     ...parsed,
     round_mode: 'ceil_to_whole_euro',
   });
@@ -1360,6 +1467,14 @@ export default function StudioPage() {
       return;
     }
 
+    if (order.manual_quote && order.revised_price_eur === null) {
+      const message =
+        'Enter a final customer price before sending a manual quote.';
+      setOfferEmailError(message);
+      showToast(message, 'error', false);
+      return;
+    }
+
     setSendingOfferId(order.id);
 
     try {
@@ -2026,7 +2141,7 @@ function PricingSettingsPanel({
             <Metric
               label="Suggested price"
               value={getSuggestedCustomerPriceLabel(
-                previewPricing?.customer_price_eur ?? null
+                previewPricing?.suggested_customer_price_eur ?? null
               )}
             />
             <Metric
@@ -2166,6 +2281,18 @@ function OrdersDashboard({
         : null;
   const previewManualQuote =
     previewPricing?.manual_quote ?? selectedOrder?.manual_quote ?? false;
+  const suggestedCustomerPrice =
+    suggestedPricing?.suggested_customer_price_eur ?? null;
+  const calculatorCostBreakdown =
+    parsedCostBreakdown ?? selectedOrder?.cost_breakdown ?? null;
+  const internalCalculatorRows =
+    selectedOrder && suggestedPricing && calculatorCostBreakdown
+      ? getInternalCalculatorRows({
+          order: selectedOrder,
+          costBreakdown: calculatorCostBreakdown,
+          pricing: suggestedPricing,
+        })
+      : [];
   const visibleOrders = getPipelineOrders(
     orders,
     pipelineStage,
@@ -2296,6 +2423,12 @@ function OrdersDashboard({
                 order.revised_price_eur ??
                 order.customer_price_eur ??
                 orderPricing.customer_price_eur;
+              const orderCustomerPriceLabel =
+                order.manual_quote && order.revised_price_eur !== null
+                  ? `Final price: ${formatCustomerMoney(order.revised_price_eur)}`
+                  : order.manual_quote
+                    ? 'Manual quote'
+                    : formatCustomerMoney(orderCustomerPrice);
 
               return (
                 <button
@@ -2318,6 +2451,11 @@ function OrdersDashboard({
                     >
                       {getOrderBadgeLabel(order)}
                     </span>
+                    {order.manual_quote && (
+                      <span style={manualQuoteBadge}>
+                        Manual quote
+                      </span>
+                    )}
                     <span style={tinyText}>
                       {new Date(order.created_at).toLocaleString()}
                     </span>
@@ -2342,12 +2480,7 @@ function OrdersDashboard({
                     <Meta label="Colors" value={String(order.colors)} />
                     <Meta
                       label="Customer price"
-                      value={
-                        orderPricing.manual_quote &&
-                        orderCustomerPrice === null
-                          ? 'Manual quote'
-                          : formatCustomerMoney(orderCustomerPrice)
-                      }
+                      value={orderCustomerPriceLabel}
                     />
                     <Meta
                       label="Profit"
@@ -2385,6 +2518,16 @@ function OrdersDashboard({
                   {getOrderBadgeLabel(selectedOrder)}
                 </span>
               </div>
+
+              {selectedOrder.manual_quote && (
+                <div style={manualQuoteNotice}>
+                  <span style={manualQuoteBadge}>Manual quote</span>
+                  <span>
+                    Customer sees manual quote. This calculator is
+                    internal for the team.
+                  </span>
+                </div>
+              )}
 
               <div style={orderDetailGrid}>
                 <div style={previewBox}>
@@ -2534,15 +2677,19 @@ function OrdersDashboard({
                 <Metric
                   label="Suggested price"
                   value={getSuggestedCustomerPriceLabel(
-                    suggestedPricing?.customer_price_eur ??
-                      selectedOrder.customer_price_eur
+                    suggestedCustomerPrice
                   )}
                 />
                 <Metric
                   label="Original price"
-                  value={formatCustomerMoney(
-                    selectedOrder.customer_price_eur
-                  )}
+                  value={
+                    selectedOrder.manual_quote &&
+                    selectedOrder.customer_price_eur === null
+                      ? 'Manual quote'
+                      : formatCustomerMoney(
+                          selectedOrder.customer_price_eur
+                        )
+                  }
                 />
                 <Metric
                   label="Final customer price"
@@ -2556,6 +2703,7 @@ function OrdersDashboard({
                   label="Internal cost"
                   value={formatMoney(
                     previewPricing?.internal_cost_eur ??
+                      suggestedPricing?.internal_cost_eur ??
                       selectedOrder.internal_cost_eur
                   )}
                 />
@@ -2582,6 +2730,59 @@ function OrdersDashboard({
                   }
                 />
               </section>
+
+              <div style={calculatorPanel}>
+                <div style={calculatorHeader}>
+                  <div>
+                    <h3 style={panelTitle}>
+                      Internal pricing calculator
+                    </h3>
+                    {selectedOrder.manual_quote && (
+                      <p style={compactMutedText}>
+                        Customer sees manual quote. This calculator
+                        is internal for the team.
+                      </p>
+                    )}
+                  </div>
+                  <div style={suggestedPriceCard}>
+                    <span style={mutedText}>Suggested price</span>
+                    <strong>
+                      {getSuggestedCustomerPriceLabel(
+                        suggestedCustomerPrice
+                      )}
+                    </strong>
+                  </div>
+                </div>
+                <div style={calculatorGrid}>
+                  {internalCalculatorRows.map((row) => (
+                    <div
+                      key={row.label}
+                      style={
+                        row.emphasis
+                          ? calculatorRowEmphasis
+                          : calculatorRow
+                      }
+                    >
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </div>
+                  ))}
+                </div>
+                {suggestedCustomerPrice !== null && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOrderEditChange(
+                        'revised_price_eur',
+                        String(suggestedCustomerPrice)
+                      )
+                    }
+                    style={secondaryButton}
+                  >
+                    Use suggested price
+                  </button>
+                )}
+              </div>
 
               <div style={editPanel}>
                 <h3 style={panelTitle}>Offer details</h3>
@@ -2711,9 +2912,12 @@ function OrdersDashboard({
                       Original price:
                     </span>
                     <strong>
-                      {formatCustomerMoney(
-                        selectedOrder.customer_price_eur
-                      )}
+                      {selectedOrder.manual_quote &&
+                      selectedOrder.customer_price_eur === null
+                        ? 'Manual quote'
+                        : formatCustomerMoney(
+                            selectedOrder.customer_price_eur
+                          )}
                     </strong>
                   </div>
                   <div style={metaCard}>
@@ -2722,8 +2926,7 @@ function OrdersDashboard({
                     </span>
                     <strong>
                       {getSuggestedCustomerPriceLabel(
-                        suggestedPricing?.customer_price_eur ??
-                          selectedOrder.customer_price_eur
+                        suggestedCustomerPrice
                       )}
                     </strong>
                   </div>
@@ -3418,6 +3621,30 @@ const decisionLabel: CSSProperties = {
   fontWeight: 800,
 };
 
+const manualQuoteBadge: CSSProperties = {
+  padding: '8px 11px',
+  borderRadius: 999,
+  border: '1px solid rgba(255,190,92,0.36)',
+  background: 'rgba(255,190,92,0.12)',
+  color: '#ffcf7a',
+  fontSize: 12,
+  fontWeight: 900,
+};
+
+const manualQuoteNotice: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  flexWrap: 'wrap',
+  border: '1px solid rgba(255,190,92,0.22)',
+  borderRadius: 16,
+  padding: 14,
+  background: 'rgba(255,190,92,0.07)',
+  color: '#ffdc9f',
+  margin: '0 0 18px',
+  fontWeight: 750,
+};
+
 const noteStack: CSSProperties = {
   display: 'grid',
   gap: 10,
@@ -3453,6 +3680,58 @@ const breakdownRow: CSSProperties = {
   gap: 16,
   borderBottom: '1px solid rgba(255,255,255,0.08)',
   padding: '10px 0',
+};
+
+const calculatorPanel: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 22,
+  padding: 18,
+  background:
+    'linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025))',
+  marginBottom: 18,
+};
+
+const calculatorHeader: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 16,
+  flexWrap: 'wrap',
+  marginBottom: 16,
+};
+
+const suggestedPriceCard: CSSProperties = {
+  minWidth: 190,
+  border: '1px solid rgba(0,255,136,0.24)',
+  borderRadius: 18,
+  padding: 16,
+  background: 'rgba(0,255,136,0.08)',
+  display: 'grid',
+  gap: 6,
+};
+
+const calculatorGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+  gap: 10,
+  marginBottom: 14,
+};
+
+const calculatorRow: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 14,
+  padding: 12,
+  background: 'rgba(0,0,0,0.22)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+};
+
+const calculatorRowEmphasis: CSSProperties = {
+  ...calculatorRow,
+  borderColor: 'rgba(157,255,196,0.24)',
+  background: 'rgba(157,255,196,0.075)',
+  color: '#e8fff0',
 };
 
 const successText: CSSProperties = {

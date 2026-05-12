@@ -38,6 +38,14 @@ function formatMoney(value: number | null) {
   return value === null ? 'Pending' : `€${value.toFixed(2)}`;
 }
 
+function formatPublicPrice(order: PublicOrderRecord, value: number | null) {
+  if (order.manual_quote && order.revised_price_eur === null) {
+    return 'Manual quote';
+  }
+
+  return formatMoney(value);
+}
+
 function formatValue(value: string) {
   return value
     .replace(/_/g, ' ')
@@ -67,6 +75,9 @@ export function OrderResponseClient({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const paymentHref = `/pay/${order.public_token}`;
+  const hasFinalOfferPrice =
+    order.revised_price_eur !== null ||
+    order.customer_price_eur !== null;
 
   const submitDecision = async (
     decision: Exclude<CustomerDecision, 'pending'>
@@ -167,7 +178,7 @@ export function OrderResponseClient({
             />
             <Detail
               label="Original price"
-              value={formatMoney(order.customer_price_eur)}
+              value={formatPublicPrice(order, order.customer_price_eur)}
             />
             {order.revised_price_eur !== null && (
               <Detail
@@ -176,6 +187,16 @@ export function OrderResponseClient({
               />
             )}
           </div>
+
+          {order.manual_quote && order.revised_price_eur === null && (
+            <div style={messageCard}>
+              <span style={detailLabel}>Manual quote</span>
+              <p style={messageText}>
+                The studio will review this design and confirm the
+                final offer before production.
+              </p>
+            </div>
+          )}
 
           {order.team_message && (
             <div style={messageCard}>
@@ -223,10 +244,20 @@ export function OrderResponseClient({
             )}
 
           {order.payment_status !== 'paid' &&
-            order.customer_decision === 'accepted' && (
+            order.customer_decision === 'accepted' &&
+            hasFinalOfferPrice && (
               <a href={paymentHref} style={payButton}>
                 Pay now
               </a>
+            )}
+
+          {order.payment_status !== 'paid' &&
+            order.customer_decision === 'accepted' &&
+            !hasFinalOfferPrice && (
+              <p style={successText}>
+                Your response is saved. The studio will confirm the
+                final offer before payment.
+              </p>
             )}
 
           {order.payment_status !== 'paid' &&

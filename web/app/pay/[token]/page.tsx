@@ -6,6 +6,7 @@ import {
   type CustomerDecision,
   type OrderStatus,
   type PaymentStatus,
+  type PublicOrderRecord,
 } from '@/lib/orders';
 
 export const runtime = 'nodejs';
@@ -43,6 +44,14 @@ const paymentLabels: Record<PaymentStatus, string> = {
 
 function formatMoney(value: number | null) {
   return value === null ? 'Pending' : `€${value.toFixed(2)}`;
+}
+
+function formatPublicPrice(order: PublicOrderRecord, value: number | null) {
+  if (order.manual_quote && order.revised_price_eur === null) {
+    return 'Manual quote';
+  }
+
+  return formatMoney(value);
 }
 
 function formatValue(value: string) {
@@ -105,7 +114,7 @@ export default async function PaymentPage({
           <div style={amountPanel}>
             <span style={detailLabel}>Final amount</span>
             <strong style={amountText}>
-              {formatMoney(finalAmount)}
+              {formatPublicPrice(order, finalAmount)}
             </strong>
           </div>
 
@@ -159,7 +168,10 @@ export default async function PaymentPage({
               label="Quantity"
               value={String(order.quantity ?? 1)}
             />
-            <Detail label="Price" value={formatMoney(finalAmount)} />
+            <Detail
+              label="Price"
+              value={formatPublicPrice(order, finalAmount)}
+            />
           </div>
 
           {order.team_message && (
