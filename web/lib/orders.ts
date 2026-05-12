@@ -109,7 +109,8 @@ const publicOrderSelect = [
   'customer_decision',
 ].join(',');
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailPattern =
+  /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const phonePattern = /^[+\d\s()-]+$/;
 const publicSiteUrl = 'https://stitchra.com';
 

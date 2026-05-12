@@ -34,16 +34,6 @@ function hasRequiredOrderFields(
 
 export async function POST(request: Request) {
   try {
-    if (!isDatabaseConfigured()) {
-      return NextResponse.json(
-        {
-          databaseConfigured: false,
-          message: databaseMessage,
-        },
-        { status: 503 }
-      );
-    }
-
     const body = (await request.json()) as Partial<CreateOrderInput>;
     const validationErrors = validatePublicOrderFields(body);
 
@@ -54,6 +44,16 @@ export async function POST(request: Request) {
           errors: validationErrors,
         },
         { status: 400 }
+      );
+    }
+
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        {
+          databaseConfigured: false,
+          message: databaseMessage,
+        },
+        { status: 503 }
       );
     }
 

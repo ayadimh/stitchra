@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import type {
   CSSProperties,
+  FormEvent,
   ReactNode,
 } from 'react';
 import { useMemo, useState } from 'react';
@@ -115,7 +116,8 @@ type OrderFormErrors = Partial<
   Record<keyof OrderFormState, string>
 >;
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailPattern =
+  /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const phonePattern = /^[+\d\s()-]+$/;
 
 const placementPresets = {
@@ -461,7 +463,8 @@ export default function Home() {
     }
   };
 
-  const requestOrder = async () => {
+  const requestOrder = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setOrderError('');
     setOrderStatus('');
 
@@ -474,7 +477,13 @@ export default function Home() {
 
     if (Object.keys(validationErrors).length > 0) {
       setOrderFieldErrors(validationErrors);
-      setOrderError('Please fix the highlighted fields.');
+      setOrderError(
+        validationErrors.email ??
+          validationErrors.name ??
+          validationErrors.phone ??
+          validationErrors.quantity ??
+          'Please fix the highlighted fields.'
+      );
       return;
     }
 
@@ -2388,7 +2397,9 @@ export default function Home() {
                   </button>
 
                   {orderOpen && (
-                    <div
+                    <form
+                      noValidate
+                      onSubmit={(event) => void requestOrder(event)}
                       style={{
                         ...analysisPanel,
                         marginTop: 12,
@@ -2453,6 +2464,7 @@ export default function Home() {
                               orderFieldErrors.email
                             )}
                             type="email"
+                            autoComplete="email"
                             style={{
                               ...input,
                               ...(orderFieldErrors.email
@@ -2543,8 +2555,7 @@ export default function Home() {
                       />
 
                       <button
-                        type="button"
-                        onClick={requestOrder}
+                        type="submit"
                         disabled={isRequestingOrder}
                         className="lux-button"
                         style={{
@@ -2558,20 +2569,21 @@ export default function Home() {
                           ? 'Sending...'
                           : 'Send request'}
                       </button>
-                    </div>
+                      {orderError && (
+                        <div style={formError}>{orderError}</div>
+                      )}
+                    </form>
                   )}
 
-                  {(orderStatus || orderError) && (
+                  {orderStatus && (
                     <div
                       style={{
                         fontSize: 13,
-                        color: orderError
-                          ? '#ffb4b4'
-                          : '#9dffc4',
+                        color: '#9dffc4',
                         marginTop: 10,
                       }}
                     >
-                      {orderError || orderStatus}
+                      {orderStatus}
                     </div>
                   )}
                 </>
@@ -4808,6 +4820,13 @@ const fieldError: CSSProperties = {
   color: '#ffb4b4',
   fontSize: 12,
   lineHeight: 1.35,
+};
+
+const formError: CSSProperties = {
+  color: '#ffb4b4',
+  fontSize: 13,
+  lineHeight: 1.45,
+  marginTop: 2,
 };
 
 const label: CSSProperties = {
