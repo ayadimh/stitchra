@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 
 // TODO(Stripe): add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
 // TODO(Stripe): implement POST /api/payments/create-checkout-session and POST /api/payments/webhook.
+// TODO(Stripe): create Checkout Sessions server-side and redirect customers to Stripe-hosted checkout.
 
 const statusLabels: Record<OrderStatus, string> = {
   new: 'New request',
