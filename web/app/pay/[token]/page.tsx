@@ -15,10 +15,13 @@ export const dynamic = 'force-dynamic';
 // TODO(Stripe): implement POST /api/payments/create-checkout-session and POST /api/payments/webhook.
 
 const statusLabels: Record<OrderStatus, string> = {
-  new: 'New',
+  new: 'New request',
   needs_review: 'Needs review',
   approved: 'Approved',
-  sent_to_production: 'Sent to production',
+  offer_sent: 'Offer sent',
+  customer_accepted: 'Customer accepted',
+  pre_production: 'Pre-production',
+  sent_to_production: 'In production',
   declined: 'Declined',
   completed: 'Completed',
 };

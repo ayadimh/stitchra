@@ -61,6 +61,7 @@ export async function POST(
 
     const order = await updateOrder(id, {
       offer_sent_at: new Date().toISOString(),
+      status: 'offer_sent',
     });
 
     if (!order) {

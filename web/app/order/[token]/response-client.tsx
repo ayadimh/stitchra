@@ -8,10 +8,13 @@ import type {
 } from '@/lib/orders';
 
 const statusLabels: Record<PublicOrderRecord['status'], string> = {
-  new: 'New',
+  new: 'New request',
   needs_review: 'Needs review',
   approved: 'Approved',
-  sent_to_production: 'Sent to production',
+  offer_sent: 'Offer sent',
+  customer_accepted: 'Customer accepted',
+  pre_production: 'Pre-production',
+  sent_to_production: 'In production',
   declined: 'Declined',
   completed: 'Completed',
 };

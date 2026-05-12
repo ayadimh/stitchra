@@ -11,6 +11,9 @@ export const ORDER_STATUSES = [
   'new',
   'needs_review',
   'approved',
+  'offer_sent',
+  'customer_accepted',
+  'pre_production',
   'sent_to_production',
   'declined',
   'completed',
@@ -77,6 +80,9 @@ export type OrderRecord = {
   payment_completed_at: string | null;
   payment_provider: string | null;
   payment_session_id: string | null;
+  completed_at: string | null;
+  archived_at: string | null;
+  archive_reason: string | null;
 };
 
 export type CreateOrderInput = {
@@ -435,6 +441,11 @@ function parseOrder(
       : null,
     payment_session_id: row.payment_session_id
       ? String(row.payment_session_id)
+      : null,
+    completed_at: parseDate(row.completed_at),
+    archived_at: parseDate(row.archived_at),
+    archive_reason: row.archive_reason
+      ? String(row.archive_reason)
       : null,
   };
 }
@@ -1125,6 +1136,21 @@ export async function updatePublicOrderDecision(
     select: '*',
   });
 
+  const decidedAt = new Date().toISOString();
+  const nextStatus: OrderStatus =
+    decision === 'accepted' ? 'customer_accepted' : 'declined';
+  const decisionUpdates: Record<string, unknown> = {
+    customer_decision: decision,
+    customer_decision_at: decidedAt,
+    status: nextStatus,
+    updated_at: decidedAt,
+  };
+
+  if (decision === 'declined') {
+    decisionUpdates.archived_at = decidedAt;
+    decisionUpdates.archive_reason = 'customer_declined';
+  }
+
   const rows = await supabaseRequest<SupabaseOrderRow[]>(
     `orders?${params.toString()}`,
     {
@@ -1132,10 +1158,7 @@ export async function updatePublicOrderDecision(
       headers: {
         Prefer: 'return=representation',
       },
-      body: JSON.stringify({
-        customer_decision: decision,
-        customer_decision_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(decisionUpdates),
     }
   );
 
@@ -1188,6 +1211,30 @@ export async function updateOrder(
 
   if (input.status) {
     updates.status = input.status;
+
+    if (input.status === 'completed') {
+      updates.completed_at = new Date().toISOString();
+      updates.archived_at = updates.completed_at;
+      updates.archive_reason = 'completed';
+    }
+
+    if (input.status === 'declined') {
+      updates.archived_at = new Date().toISOString();
+      updates.archive_reason = 'studio_declined';
+    }
+
+    if (input.status === 'needs_review') {
+      updates.archived_at = null;
+      updates.archive_reason = null;
+
+      if (
+        existingOrder.status === 'declined' ||
+        existingOrder.customer_decision === 'declined'
+      ) {
+        updates.customer_decision = 'pending';
+        updates.customer_decision_at = null;
+      }
+    }
   }
 
   if (hasOwn(input, 'production_notes') && Array.isArray(input.production_notes)) {

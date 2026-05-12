@@ -60,6 +60,9 @@ type OrderStatus =
   | 'new'
   | 'needs_review'
   | 'approved'
+  | 'offer_sent'
+  | 'customer_accepted'
+  | 'pre_production'
   | 'sent_to_production'
   | 'declined'
   | 'completed';
@@ -111,7 +114,19 @@ type OrderRecord = {
   payment_completed_at: string | null;
   payment_provider: string | null;
   payment_session_id: string | null;
+  completed_at: string | null;
+  archived_at: string | null;
+  archive_reason: string | null;
 };
+
+type PipelineStage =
+  | 'new'
+  | 'waiting_customer'
+  | 'pre_production'
+  | 'production'
+  | 'archive';
+
+type ArchiveFilter = 'all' | 'completed' | 'declined';
 
 type OrderEditForm = {
   revised_price_eur: string;
@@ -206,24 +221,34 @@ const pricingSettingGroups: Array<{
   },
 ];
 
-const orderStatuses: Array<{
-  value: OrderStatus | 'all';
+const pipelineTabs: Array<{
+  value: PipelineStage;
   label: string;
 }> = [
-  { value: 'all', label: 'All' },
   { value: 'new', label: 'New' },
-  { value: 'needs_review', label: 'Needs review' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'sent_to_production', label: 'Production' },
-  { value: 'declined', label: 'Declined' },
+  { value: 'waiting_customer', label: 'Waiting customer' },
+  { value: 'pre_production', label: 'Pre-production' },
+  { value: 'production', label: 'Production' },
+  { value: 'archive', label: 'Archive' },
+];
+
+const archiveFilters: Array<{
+  value: ArchiveFilter;
+  label: string;
+}> = [
+  { value: 'all', label: 'All archived' },
   { value: 'completed', label: 'Completed' },
+  { value: 'declined', label: 'Declined' },
 ];
 
 const statusLabels: Record<OrderStatus, string> = {
-  new: 'New',
+  new: 'New request',
   needs_review: 'Needs review',
   approved: 'Approved',
-  sent_to_production: 'Sent to production',
+  offer_sent: 'Offer sent',
+  customer_accepted: 'Customer accepted',
+  pre_production: 'Pre-production',
+  sent_to_production: 'In production',
   declined: 'Declined',
   completed: 'Completed',
 };
@@ -249,6 +274,9 @@ const statusToastLabels: Record<OrderStatus, string> = {
   new: 'Order updated',
   needs_review: 'Order updated',
   approved: 'Order approved',
+  offer_sent: 'Offer sent',
+  customer_accepted: 'Customer accepted',
+  pre_production: 'Moved to pre-production',
   sent_to_production: 'Sent to production',
   declined: 'Order declined',
   completed: 'Marked completed',
@@ -291,6 +319,147 @@ function getCustomerOrderLink(publicToken: string) {
 
 function getPaymentLink(publicToken: string) {
   return `${publicSiteUrl}/pay/${publicToken}`;
+}
+
+function getOrderPipelineStage(order: OrderRecord): PipelineStage {
+  if (
+    order.status === 'completed' ||
+    order.status === 'declined' ||
+    order.customer_decision === 'declined'
+  ) {
+    return 'archive';
+  }
+
+  if (order.status === 'sent_to_production') {
+    return 'production';
+  }
+
+  if (
+    order.status === 'customer_accepted' ||
+    order.status === 'pre_production' ||
+    order.customer_decision === 'accepted'
+  ) {
+    return 'pre_production';
+  }
+
+  if (
+    order.status === 'offer_sent' ||
+    (order.offer_sent_at && order.customer_decision === 'pending')
+  ) {
+    return 'waiting_customer';
+  }
+
+  return 'new';
+}
+
+function getPipelineStageLabel(order: OrderRecord) {
+  const stage = getOrderPipelineStage(order);
+
+  if (stage === 'waiting_customer') {
+    return 'Waiting customer';
+  }
+
+  if (stage === 'pre_production') {
+    return 'Pre-production';
+  }
+
+  if (stage === 'production') {
+    return 'Production';
+  }
+
+  if (stage === 'archive') {
+    return order.status === 'completed'
+      ? 'Archive / Completed'
+      : 'Archive / Declined';
+  }
+
+  return 'New';
+}
+
+function getOrderBadgeLabel(order: OrderRecord) {
+  if (
+    order.status === 'declined' ||
+    order.customer_decision === 'declined'
+  ) {
+    return 'Declined';
+  }
+
+  if (order.status === 'completed') {
+    return 'Completed';
+  }
+
+  if (order.status === 'sent_to_production') {
+    return 'In production';
+  }
+
+  if (order.status === 'pre_production') {
+    return 'Pre-production';
+  }
+
+  if (
+    order.status === 'customer_accepted' ||
+    order.customer_decision === 'accepted'
+  ) {
+    return 'Customer accepted';
+  }
+
+  if (order.status === 'offer_sent' || order.offer_sent_at) {
+    return 'Offer sent';
+  }
+
+  if (order.status === 'needs_review') {
+    return 'Needs review';
+  }
+
+  if (order.status === 'approved') {
+    return 'Approved';
+  }
+
+  return 'New request';
+}
+
+function getPipelineOrders(
+  orders: OrderRecord[],
+  stage: PipelineStage,
+  archiveFilter: ArchiveFilter
+) {
+  return orders.filter((order) => {
+    if (getOrderPipelineStage(order) !== stage) {
+      return false;
+    }
+
+    if (stage !== 'archive' || archiveFilter === 'all') {
+      return true;
+    }
+
+    if (archiveFilter === 'completed') {
+      return order.status === 'completed';
+    }
+
+    return (
+      order.status === 'declined' ||
+      order.customer_decision === 'declined'
+    );
+  });
+}
+
+function getOrderForPipeline(
+  orders: OrderRecord[],
+  stage: PipelineStage,
+  archiveFilter: ArchiveFilter,
+  preferredId?: string | null
+) {
+  const visibleOrders = getPipelineOrders(
+    orders,
+    stage,
+    archiveFilter
+  );
+
+  return (
+    visibleOrders.find((order) => order.id === preferredId) ??
+    visibleOrders[0] ??
+    null
+  );
 }
 
 function getCostBreakdownForm(
@@ -609,8 +778,10 @@ export default function StudioPage() {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [selectedOrder, setSelectedOrder] =
     useState<OrderRecord | null>(null);
-  const [orderStatusFilter, setOrderStatusFilter] =
-    useState<OrderStatus | 'all'>('all');
+  const [orderPipelineStage, setOrderPipelineStage] =
+    useState<PipelineStage>('new');
+  const [archiveFilter, setArchiveFilter] =
+    useState<ArchiveFilter>('all');
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState('');
   const [orderEditForm, setOrderEditForm] =
@@ -694,15 +865,12 @@ export default function StudioPage() {
     setOfferEmailError('');
   };
 
-  const loadOrders = async (
-    filter: OrderStatus | 'all' = orderStatusFilter
-  ) => {
+  const loadOrders = async () => {
     setOrdersLoading(true);
     setOrdersError('');
 
     try {
-      const query = filter === 'all' ? '' : `?status=${filter}`;
-      const response = await fetch(`/api/orders${query}`, {
+      const response = await fetch('/api/orders', {
         headers: {
           'x-studio-passcode': passcode,
         },
@@ -730,11 +898,12 @@ export default function StudioPage() {
       setEmailConfigured(Boolean(payload.emailConfigured));
 
       const nextOrders = payload.orders ?? [];
-      const nextSelected = selectedOrder
-        ? (nextOrders.find(
-            (order) => order.id === selectedOrder.id
-          ) ?? nextOrders[0] ?? null)
-        : (nextOrders[0] ?? null);
+      const nextSelected = getOrderForPipeline(
+        nextOrders,
+        orderPipelineStage,
+        archiveFilter,
+        selectedOrder?.id
+      );
 
       setOrders(nextOrders);
       selectOrder(nextSelected);
@@ -800,6 +969,47 @@ export default function StudioPage() {
     );
   };
 
+  const replaceStoredOrderForCurrentPipeline = (
+    updatedOrder: OrderRecord
+  ) => {
+    const nextOrders = orders.map((item) =>
+      item.id === updatedOrder.id ? updatedOrder : item
+    );
+    const nextSelected = getOrderForPipeline(
+      nextOrders,
+      orderPipelineStage,
+      archiveFilter,
+      updatedOrder.id
+    );
+
+    setOrders(nextOrders);
+    selectOrder(nextSelected);
+  };
+
+  const changeOrderPipelineStage = (nextStage: PipelineStage) => {
+    setOrderPipelineStage(nextStage);
+    selectOrder(
+      getOrderForPipeline(
+        orders,
+        nextStage,
+        archiveFilter,
+        selectedOrder?.id
+      )
+    );
+  };
+
+  const changeArchiveFilter = (nextFilter: ArchiveFilter) => {
+    setArchiveFilter(nextFilter);
+    selectOrder(
+      getOrderForPipeline(
+        orders,
+        'archive',
+        nextFilter,
+        selectedOrder?.id
+      )
+    );
+  };
+
   const changeOrderStatus = async (
     order: OrderRecord,
     nextStatus: OrderStatus
@@ -852,8 +1062,7 @@ export default function StudioPage() {
 
       const updatedOrder = payload.order;
 
-      selectOrder(updatedOrder);
-      updateStoredOrder(updatedOrder);
+      replaceStoredOrderForCurrentPipeline(updatedOrder);
       showToast(statusToastLabels[nextStatus]);
     } catch (error) {
       const message = 'Could not update order.';
@@ -1159,7 +1368,7 @@ export default function StudioPage() {
         return;
       }
 
-      updateStoredOrder(payload.order);
+      replaceStoredOrderForCurrentPipeline(payload.order);
       setOfferEmailStatus('Offer email sent.');
       showToast('Offer sent');
     } catch (error) {
@@ -1376,7 +1585,8 @@ export default function StudioPage() {
         <OrdersDashboard
           orders={orders}
           selectedOrder={selectedOrder}
-          statusFilter={orderStatusFilter}
+          pipelineStage={orderPipelineStage}
+          archiveFilter={archiveFilter}
           loading={ordersLoading}
           error={ordersError}
           orderEditForm={orderEditForm}
@@ -1397,10 +1607,8 @@ export default function StudioPage() {
           onCopyCustomerLink={copyCustomerLink}
           onCopyPaymentLink={copyPaymentLink}
           onSendOfferToCustomer={sendOfferToCustomer}
-          onFilterChange={(nextFilter) => {
-            setOrderStatusFilter(nextFilter);
-            void loadOrders(nextFilter);
-          }}
+          onPipelineStageChange={changeOrderPipelineStage}
+          onArchiveFilterChange={changeArchiveFilter}
           onSelectOrder={selectOrder}
           onRefresh={() => void loadOrders()}
           onChangeStatus={changeOrderStatus}
@@ -1825,7 +2033,8 @@ function PricingSettingsPanel({
 function OrdersDashboard({
   orders,
   selectedOrder,
-  statusFilter,
+  pipelineStage,
+  archiveFilter,
   loading,
   error,
   orderEditForm,
@@ -1846,14 +2055,16 @@ function OrdersDashboard({
   onCopyCustomerLink,
   onCopyPaymentLink,
   onSendOfferToCustomer,
-  onFilterChange,
+  onPipelineStageChange,
+  onArchiveFilterChange,
   onSelectOrder,
   onRefresh,
   onChangeStatus,
 }: {
   orders: OrderRecord[];
   selectedOrder: OrderRecord | null;
-  statusFilter: OrderStatus | 'all';
+  pipelineStage: PipelineStage;
+  archiveFilter: ArchiveFilter;
   loading: boolean;
   error: string;
   orderEditForm: OrderEditForm;
@@ -1880,7 +2091,8 @@ function OrdersDashboard({
   onCopyCustomerLink: (order: OrderRecord) => void;
   onCopyPaymentLink: (order: OrderRecord) => void;
   onSendOfferToCustomer: (order: OrderRecord) => void;
-  onFilterChange: (value: OrderStatus | 'all') => void;
+  onPipelineStageChange: (value: PipelineStage) => void;
+  onArchiveFilterChange: (value: ArchiveFilter) => void;
   onSelectOrder: (order: OrderRecord) => void;
   onRefresh: () => void;
   onChangeStatus: (
@@ -1927,6 +2139,37 @@ function OrdersDashboard({
         : null;
   const previewManualQuote =
     previewPricing?.manual_quote ?? selectedOrder?.manual_quote ?? false;
+  const visibleOrders = getPipelineOrders(
+    orders,
+    pipelineStage,
+    archiveFilter
+  );
+  const pipelineCounts = pipelineTabs.reduce(
+    (counts, tab) => ({
+      ...counts,
+      [tab.value]: getPipelineOrders(orders, tab.value, 'all')
+        .length,
+    }),
+    {} as Record<PipelineStage, number>
+  );
+  const archiveCounts = archiveFilters.reduce(
+    (counts, filter) => ({
+      ...counts,
+      [filter.value]: getPipelineOrders(
+        orders,
+        'archive',
+        filter.value
+      ).length,
+    }),
+    {} as Record<ArchiveFilter, number>
+  );
+  const selectedOrderPipelineStage = selectedOrder
+    ? getOrderPipelineStage(selectedOrder)
+    : null;
+  const canSendOffer =
+    selectedOrder?.customer_decision === 'pending' &&
+    (selectedOrderPipelineStage === 'new' ||
+      selectedOrderPipelineStage === 'waiting_customer');
 
   return (
     <section style={ordersShell}>
@@ -1936,24 +2179,6 @@ function OrdersDashboard({
           <h2 style={panelTitle}>Customer requests</h2>
         </div>
         <div style={headerActions}>
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              onFilterChange(
-                event.target.value as OrderStatus | 'all'
-              )
-            }
-            style={{
-              ...inputStyle,
-              width: 190,
-            }}
-          >
-            {orderStatuses.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             onClick={onRefresh}
@@ -1963,6 +2188,48 @@ function OrdersDashboard({
           </button>
         </div>
       </div>
+
+      <div style={pipelineTabsStyle}>
+        {pipelineTabs.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => onPipelineStageChange(tab.value)}
+            style={
+              pipelineStage === tab.value
+                ? pipelineTabActive
+                : pipelineTab
+            }
+          >
+            {tab.label}
+            <span style={pipelineCount}>
+              {pipelineCounts[tab.value]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {pipelineStage === 'archive' && (
+        <div style={archiveFilterBar}>
+          {archiveFilters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              onClick={() => onArchiveFilterChange(filter.value)}
+              style={
+                archiveFilter === filter.value
+                  ? smallTabActive
+                  : smallTab
+              }
+            >
+              {filter.label}
+              <span style={pipelineCount}>
+                {archiveCounts[filter.value]}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && <p style={warningCard}>{error}</p>}
       {emailConfigured === false && (
@@ -1982,10 +2249,18 @@ function OrdersDashboard({
         </div>
       )}
 
-      {orders.length > 0 && (
+      {!loading && !error && orders.length > 0 && visibleOrders.length === 0 && (
+        <div style={panel}>
+          <p style={mutedText}>
+            No orders in this workflow stage.
+          </p>
+        </div>
+      )}
+
+      {visibleOrders.length > 0 && (
         <div style={ordersGrid}>
           <div style={ordersList}>
-            {orders.map((order) => {
+            {visibleOrders.map((order) => {
               const orderPricing = getOrderPricing(
                 order,
                 pricingSettings
@@ -2010,7 +2285,7 @@ function OrdersDashboard({
                 >
                   <div style={orderCardHeader}>
                     <span style={statusBadge(order.status)}>
-                      {statusLabels[order.status]}
+                      {getOrderBadgeLabel(order)}
                     </span>
                     <span style={tinyText}>
                       {new Date(order.created_at).toLocaleString()}
@@ -2071,7 +2346,7 @@ function OrdersDashboard({
                   </p>
                 </div>
                 <span style={statusBadge(selectedOrder.status)}>
-                  {statusLabels[selectedOrder.status]}
+                  {getOrderBadgeLabel(selectedOrder)}
                 </span>
               </div>
 
@@ -2104,6 +2379,14 @@ function OrdersDashboard({
                   <Meta
                     label="Manual quote"
                     value={selectedOrder.manual_quote ? 'Yes' : 'No'}
+                  />
+                  <Meta
+                    label="Status"
+                    value={statusLabels[selectedOrder.status]}
+                  />
+                  <Meta
+                    label="Workflow stage"
+                    value={getPipelineStageLabel(selectedOrder)}
                   />
                   <Meta
                     label="Customer response"
@@ -2149,6 +2432,36 @@ function OrdersDashboard({
                       paymentStatusLabels[
                         selectedOrder.payment_status
                       ]
+                    }
+                  />
+                  <Meta
+                    label="Completed at"
+                    value={
+                      selectedOrder.completed_at
+                        ? new Date(
+                            selectedOrder.completed_at
+                          ).toLocaleString()
+                        : 'Not completed'
+                    }
+                  />
+                  <Meta
+                    label="Archived at"
+                    value={
+                      selectedOrder.archived_at
+                        ? new Date(
+                            selectedOrder.archived_at
+                          ).toLocaleString()
+                        : 'Not archived'
+                    }
+                  />
+                  <Meta
+                    label="Archive reason"
+                    value={
+                      selectedOrder.archive_reason
+                        ? formatOrderValue(
+                            selectedOrder.archive_reason
+                          )
+                        : 'None'
                     }
                   />
                 </div>
@@ -2257,28 +2570,33 @@ function OrdersDashboard({
                         {customerLinkStatus}
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onSendOfferToCustomer(selectedOrder)
-                      }
-                      disabled={
-                        emailConfigured !== true ||
-                        sendingOfferId === selectedOrder.id
-                      }
-                      style={{
-                        ...primaryButton,
-                        opacity:
+                    {canSendOffer && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onSendOfferToCustomer(selectedOrder)
+                        }
+                        disabled={
                           emailConfigured !== true ||
                           sendingOfferId === selectedOrder.id
-                            ? 0.68
-                            : 1,
-                      }}
-                    >
-                      {sendingOfferId === selectedOrder.id
-                        ? 'Sending...'
-                        : 'Send offer to customer'}
-                    </button>
+                        }
+                        style={{
+                          ...primaryButton,
+                          opacity:
+                            emailConfigured !== true ||
+                            sendingOfferId === selectedOrder.id
+                              ? 0.68
+                              : 1,
+                        }}
+                      >
+                        {sendingOfferId === selectedOrder.id
+                          ? 'Sending...'
+                          : selectedOrderPipelineStage ===
+                              'waiting_customer'
+                            ? 'Send offer again'
+                            : 'Send offer to customer'}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <p style={warningCard}>
@@ -2525,66 +2843,130 @@ function OrdersDashboard({
               </div>
 
               <div style={orderActions}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChangeStatus(selectedOrder, 'approved')
-                  }
-                  disabled={statusActionLoading !== null}
-                  style={{
-                    ...primaryButton,
-                    opacity: statusActionLoading ? 0.68 : 1,
-                  }}
-                >
-                  {statusActionLoading === 'approved'
-                    ? 'Approving...'
-                    : 'Approve'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChangeStatus(selectedOrder, 'sent_to_production')
-                  }
-                  disabled={statusActionLoading !== null}
-                  style={{
-                    ...secondaryButton,
-                    opacity: statusActionLoading ? 0.68 : 1,
-                  }}
-                >
-                  {statusActionLoading === 'sent_to_production'
-                    ? 'Sending...'
-                    : 'Send to production'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChangeStatus(selectedOrder, 'declined')
-                  }
-                  disabled={statusActionLoading !== null}
-                  style={{
-                    ...secondaryButton,
-                    opacity: statusActionLoading ? 0.68 : 1,
-                  }}
-                >
-                  {statusActionLoading === 'declined'
-                    ? 'Declining...'
-                    : 'Decline'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChangeStatus(selectedOrder, 'completed')
-                  }
-                  disabled={statusActionLoading !== null}
-                  style={{
-                    ...secondaryButton,
-                    opacity: statusActionLoading ? 0.68 : 1,
-                  }}
-                >
-                  {statusActionLoading === 'completed'
-                    ? 'Marking...'
-                    : 'Mark completed'}
-                </button>
+                {selectedOrderPipelineStage === 'new' &&
+                  (selectedOrder.status === 'new' ||
+                    selectedOrder.status === 'needs_review') && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeStatus(selectedOrder, 'approved')
+                    }
+                    disabled={statusActionLoading !== null}
+                    style={{
+                      ...primaryButton,
+                      opacity: statusActionLoading ? 0.68 : 1,
+                    }}
+                  >
+                    {statusActionLoading === 'approved'
+                      ? 'Approving...'
+                      : 'Approve'}
+                  </button>
+                )}
+
+                {selectedOrderPipelineStage === 'pre_production' &&
+                  selectedOrder.status !== 'pre_production' && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeStatus(selectedOrder, 'pre_production')
+                    }
+                    disabled={statusActionLoading !== null}
+                    style={{
+                      ...primaryButton,
+                      opacity: statusActionLoading ? 0.68 : 1,
+                    }}
+                  >
+                    {statusActionLoading === 'pre_production'
+                      ? 'Moving...'
+                      : 'Move to pre-production'}
+                  </button>
+                )}
+
+                {selectedOrderPipelineStage === 'pre_production' && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeStatus(
+                        selectedOrder,
+                        'sent_to_production'
+                      )
+                    }
+                    disabled={statusActionLoading !== null}
+                    style={{
+                      ...secondaryButton,
+                      opacity: statusActionLoading ? 0.68 : 1,
+                    }}
+                  >
+                    {statusActionLoading === 'sent_to_production'
+                      ? 'Sending...'
+                      : 'Send to production'}
+                  </button>
+                )}
+
+                {(selectedOrderPipelineStage === 'new' ||
+                  selectedOrderPipelineStage ===
+                    'waiting_customer') && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeStatus(selectedOrder, 'declined')
+                    }
+                    disabled={statusActionLoading !== null}
+                    style={{
+                      ...secondaryButton,
+                      opacity: statusActionLoading ? 0.68 : 1,
+                    }}
+                  >
+                    {statusActionLoading === 'declined'
+                      ? 'Declining...'
+                      : 'Decline'}
+                  </button>
+                )}
+
+                {selectedOrderPipelineStage === 'production' && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeStatus(selectedOrder, 'completed')
+                    }
+                    disabled={statusActionLoading !== null}
+                    style={{
+                      ...secondaryButton,
+                      opacity: statusActionLoading ? 0.68 : 1,
+                    }}
+                  >
+                    {statusActionLoading === 'completed'
+                      ? 'Marking...'
+                      : 'Mark completed'}
+                  </button>
+                )}
+
+                {selectedOrderPipelineStage === 'archive' &&
+                  selectedOrder.status !== 'completed' && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeStatus(selectedOrder, 'needs_review')
+                    }
+                    disabled={statusActionLoading !== null}
+                    style={{
+                      ...primaryButton,
+                      opacity: statusActionLoading ? 0.68 : 1,
+                    }}
+                  >
+                    {statusActionLoading === 'needs_review'
+                      ? 'Restoring...'
+                      : 'Restore to review'}
+                  </button>
+                )}
+
+                {selectedOrderPipelineStage === 'archive' &&
+                  selectedOrder.status === 'completed' && (
+                  <p style={mutedText}>
+                    Completed order archived. No production actions
+                    are available.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -3056,6 +3438,56 @@ const ordersToolbar: CSSProperties = {
   marginBottom: 18,
 };
 
+const pipelineTabsStyle: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  margin: '0 0 14px',
+};
+
+const pipelineTab: CSSProperties = {
+  ...secondaryButton,
+  justifyContent: 'space-between',
+  minWidth: 154,
+};
+
+const pipelineTabActive: CSSProperties = {
+  ...primaryButton,
+  justifyContent: 'space-between',
+  minWidth: 154,
+};
+
+const archiveFilterBar: CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  flexWrap: 'wrap',
+  margin: '0 0 18px',
+};
+
+const smallTab: CSSProperties = {
+  ...secondaryButton,
+  padding: '9px 12px',
+  fontSize: 13,
+};
+
+const smallTabActive: CSSProperties = {
+  ...primaryButton,
+  padding: '9px 12px',
+  fontSize: 13,
+};
+
+const pipelineCount: CSSProperties = {
+  minWidth: 24,
+  height: 24,
+  display: 'inline-grid',
+  placeItems: 'center',
+  borderRadius: 999,
+  background: 'rgba(0,0,0,0.24)',
+  color: 'inherit',
+  fontSize: 12,
+  fontWeight: 900,
+};
+
 const ordersGrid: CSSProperties = {
   display: 'grid',
   gridTemplateColumns:
@@ -3127,9 +3559,13 @@ function statusBadge(status: OrderStatus): CSSProperties {
       ? '#ff9d9d'
       : status === 'completed'
         ? '#00c8ff'
-        : status === 'needs_review'
-          ? '#ffe083'
-          : '#9dffc4';
+        : status === 'sent_to_production'
+          ? '#7ed7ff'
+          : status === 'offer_sent' ||
+              status === 'needs_review' ||
+              status === 'approved'
+            ? '#ffe083'
+            : '#9dffc4';
 
   return {
     display: 'inline-flex',
