@@ -62,10 +62,12 @@ type OrderStatus =
   | 'needs_review'
   | 'approved'
   | 'offer_sent'
+  | 'change_requested'
   | 'customer_accepted'
   | 'pre_production'
   | 'sent_to_production'
   | 'customer_declined'
+  | 'customer_cancelled'
   | 'team_declined'
   | 'completed';
 
@@ -105,12 +107,23 @@ type OrderRecord = {
   team_message: string | null;
   cost_breakdown: CostBreakdown;
   status: OrderStatus;
-  customer_decision: 'pending' | 'accepted' | 'declined';
+  customer_decision:
+    | 'pending'
+    | 'accepted'
+    | 'declined'
+    | 'change_requested'
+    | 'cancelled';
   customer_decision_at: string | null;
   customer_viewed_at: string | null;
   offer_sent_at: string | null;
   team_notified_at: string | null;
   team_notification_error: string | null;
+  proposed_price_eur: number | null;
+  requested_quantity: number | null;
+  customer_change_note: string | null;
+  wants_logo_change: boolean;
+  change_requested_at: string | null;
+  cancelled_at: string | null;
   payment_status: PaymentStatus;
   payment_requested_at: string | null;
   payment_completed_at: string | null;
@@ -124,6 +137,7 @@ type OrderRecord = {
 type PipelineStage =
   | 'new'
   | 'waiting_customer'
+  | 'changes_requested'
   | 'pre_production'
   | 'production'
   | 'archive';
@@ -132,6 +146,7 @@ type ArchiveFilter =
   | 'all'
   | 'completed'
   | 'customer_declined'
+  | 'customer_cancelled'
   | 'team_declined';
 
 type OrderDetailSection =
@@ -260,6 +275,7 @@ const pipelineTabs: Array<{
 }> = [
   { value: 'new', label: 'New' },
   { value: 'waiting_customer', label: 'Waiting customer' },
+  { value: 'changes_requested', label: 'Changes requested' },
   { value: 'pre_production', label: 'Pre-production' },
   { value: 'production', label: 'Production' },
   { value: 'archive', label: 'Archive' },
@@ -272,6 +288,7 @@ const archiveFilters: Array<{
   { value: 'all', label: 'All archived' },
   { value: 'completed', label: 'Completed' },
   { value: 'customer_declined', label: 'Customer declined' },
+  { value: 'customer_cancelled', label: 'Customer cancelled' },
   { value: 'team_declined', label: 'Team declined' },
 ];
 
@@ -290,10 +307,12 @@ const statusLabels: Record<OrderStatus, string> = {
   needs_review: 'Needs review',
   approved: 'Approved',
   offer_sent: 'Offer sent',
+  change_requested: 'Changes requested',
   customer_accepted: 'Customer accepted',
   pre_production: 'Pre-production',
   sent_to_production: 'In production',
   customer_declined: 'Customer declined',
+  customer_cancelled: 'Customer cancelled',
   team_declined: 'Team declined',
   completed: 'Completed',
 };
@@ -305,6 +324,8 @@ const customerDecisionLabels: Record<
   pending: 'Pending',
   accepted: 'Accepted',
   declined: 'Declined',
+  change_requested: 'Changes requested',
+  cancelled: 'Cancelled',
 };
 
 const paymentStatusLabels: Record<PaymentStatus, string> = {
@@ -320,10 +341,12 @@ const statusToastLabels: Record<OrderStatus, string> = {
   needs_review: 'Order updated',
   approved: 'Order approved',
   offer_sent: 'Offer sent',
+  change_requested: 'Changes requested',
   customer_accepted: 'Customer accepted',
   pre_production: 'Moved to pre-production',
   sent_to_production: 'Sent to production',
   customer_declined: 'Customer declined',
+  customer_cancelled: 'Customer cancelled',
   team_declined: 'Order declined',
   completed: 'Marked completed',
 };
@@ -383,12 +406,31 @@ function getDeclinedStatus(order: OrderRecord) {
   return null;
 }
 
+function getCancelledStatus(order: OrderRecord) {
+  if (
+    order.status === 'customer_cancelled' ||
+    order.customer_decision === 'cancelled'
+  ) {
+    return 'customer_cancelled';
+  }
+
+  return null;
+}
+
 function getOrderPipelineStage(order: OrderRecord): PipelineStage {
   if (
     order.status === 'completed' ||
-    getDeclinedStatus(order) !== null
+    getDeclinedStatus(order) !== null ||
+    getCancelledStatus(order) !== null
   ) {
     return 'archive';
+  }
+
+  if (
+    order.status === 'change_requested' ||
+    order.customer_decision === 'change_requested'
+  ) {
+    return 'changes_requested';
   }
 
   if (order.status === 'sent_to_production') {
@@ -420,6 +462,10 @@ function getPipelineStageLabel(order: OrderRecord) {
     return 'Waiting customer';
   }
 
+  if (stage === 'changes_requested') {
+    return 'Changes requested';
+  }
+
   if (stage === 'pre_production') {
     return 'Pre-production';
   }
@@ -439,6 +485,10 @@ function getPipelineStageLabel(order: OrderRecord) {
       return 'Archive / Customer declined';
     }
 
+    if (getCancelledStatus(order)) {
+      return 'Archive / Customer cancelled';
+    }
+
     return 'Archive / Team declined';
   }
 
@@ -450,6 +500,17 @@ function getOrderBadgeLabel(order: OrderRecord) {
 
   if (declinedStatus) {
     return statusLabels[declinedStatus];
+  }
+
+  if (getCancelledStatus(order)) {
+    return 'Customer cancelled';
+  }
+
+  if (
+    order.status === 'change_requested' ||
+    order.customer_decision === 'change_requested'
+  ) {
+    return 'Changes requested';
   }
 
   if (order.status === 'completed') {
@@ -502,6 +563,10 @@ function getPipelineOrders(
 
     if (archiveFilter === 'completed') {
       return order.status === 'completed';
+    }
+
+    if (archiveFilter === 'customer_cancelled') {
+      return getCancelledStatus(order) === 'customer_cancelled';
     }
 
     return getDeclinedStatus(order) === archiveFilter;
@@ -1170,6 +1235,74 @@ export default function StudioPage() {
     }
   };
 
+  const acceptRequestedChanges = async (order: OrderRecord) => {
+    setOrdersError('');
+    setStatusActionLoading('change_requested');
+
+    try {
+      const payload: {
+        status: OrderStatus;
+        revised_price_eur?: number;
+        quantity?: number;
+      } = {
+        status: 'needs_review',
+      };
+
+      if (order.proposed_price_eur !== null) {
+        payload.revised_price_eur = order.proposed_price_eur;
+      }
+
+      if (order.requested_quantity !== null) {
+        payload.quantity = order.requested_quantity;
+      }
+
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-studio-passcode': passcode,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as {
+        order?: OrderRecord;
+        message?: string;
+        details?: string;
+      };
+
+      if (!response.ok || !result.order) {
+        const message =
+          result.details ??
+          result.message ??
+          'Could not accept requested changes.';
+        setOrdersError(message);
+        showToast(message, 'error', false);
+        return;
+      }
+
+      const updatedOrder = result.order;
+
+      setOrders((current) =>
+        current.map((item) =>
+          item.id === updatedOrder.id ? updatedOrder : item
+        )
+      );
+      setOrderPipelineStage('new');
+      selectOrder(updatedOrder);
+      setOrderEditForm(getOrderEditForm(updatedOrder, pricingSettings));
+      showToast('Requested changes accepted');
+    } catch (error) {
+      const message = 'Could not accept requested changes.';
+      setOrdersError(message);
+      showToast(message, 'error', false);
+      console.error(error);
+    } finally {
+      setStatusActionLoading(null);
+    }
+  };
+
   const updateOrderEditField = (
     field: OrderEditTextField,
     value: string
@@ -1294,9 +1427,15 @@ export default function StudioPage() {
     showToast('Defaults loaded');
   };
 
-  const saveOrderDetails = async () => {
+  const persistOrderDetails = async ({
+    successStatus = 'Calculator and final price saved.',
+    successToast = 'Calculator saved',
+  }: {
+    successStatus?: string;
+    successToast?: string;
+  } = {}) => {
     if (!selectedOrder) {
-      return;
+      return null;
     }
 
     setOrderEditError('');
@@ -1324,7 +1463,7 @@ export default function StudioPage() {
       const message = 'Enter a valid customer price.';
       setOrderEditError(message);
       showToast(message, 'error', false);
-      return;
+      return null;
     }
 
     if (targetMargin === null) {
@@ -1332,7 +1471,7 @@ export default function StudioPage() {
         'Target margin must be greater than 0 and below 90.';
       setOrderEditError(message);
       showToast(message, 'error', false);
-      return;
+      return null;
     }
 
     if (!costBreakdown) {
@@ -1340,14 +1479,14 @@ export default function StudioPage() {
         'Cost breakdown values must be non-negative numbers.';
       setOrderEditError(message);
       showToast(message, 'error', false);
-      return;
+      return null;
     }
 
     if (!Number.isInteger(quantity) || quantity < 1) {
       const message = 'Quantity must be at least 1.';
       setOrderEditError(message);
       showToast(message, 'error', false);
-      return;
+      return null;
     }
 
     setIsSavingOrder(true);
@@ -1397,26 +1536,32 @@ export default function StudioPage() {
           'Could not save order details.';
         setOrderEditError(message);
         showToast(message, 'error', false);
-        return;
+        return null;
       }
 
       const updatedOrder = result.order;
 
-      setOrderEditStatus('Calculator and final price saved.');
+      setOrderEditStatus(successStatus);
       setSelectedOrder(updatedOrder);
       setOrderEditForm(
         getOrderEditForm(updatedOrder, pricingSettings)
       );
       updateStoredOrder(updatedOrder);
-      showToast('Calculator saved');
+      showToast(successToast);
+      return updatedOrder;
     } catch (error) {
       const message = 'Could not save order details.';
       setOrderEditError(message);
       showToast(message, 'error', false);
       console.error(error);
+      return null;
     } finally {
       setIsSavingOrder(false);
     }
+  };
+
+  const saveOrderDetails = async () => {
+    await persistOrderDetails();
   };
 
   const copyCustomerLink = async (order: OrderRecord) => {
@@ -1460,6 +1605,8 @@ export default function StudioPage() {
   const sendOfferToCustomer = async (order: OrderRecord) => {
     setOfferEmailStatus('');
     setOfferEmailError('');
+    setOrderEditError('');
+    setOrderEditStatus('');
 
     if (!emailConfigured) {
       const message =
@@ -1469,22 +1616,21 @@ export default function StudioPage() {
       return;
     }
 
-    if (
-      order.manual_quote &&
-      (order.revised_price_eur === null || order.revised_price_eur <= 0)
-    ) {
-      const message =
-        'Enter a final customer price before sending this manual quote.';
-      setOfferEmailError(message);
-      showToast(message, 'error', false);
-      return;
-    }
-
     setSendingOfferId(order.id);
 
     try {
+      const savedOrder = await persistOrderDetails({
+        successStatus: 'Final price saved. Sending offer...',
+        successToast: 'Final price saved',
+      });
+
+      if (!savedOrder) {
+        setSendingOfferId(null);
+        return;
+      }
+
       const response = await fetch(
-        `/api/orders/${order.id}/send-offer`,
+        `/api/orders/${savedOrder.id}/send-offer`,
         {
           method: 'POST',
           headers: {
@@ -1516,8 +1662,14 @@ export default function StudioPage() {
       }
 
       replaceStoredOrderForCurrentPipeline(payload.order);
-      setOfferEmailStatus('Offer email sent.');
-      showToast('Offer sent');
+      const finalPriceLabel = formatCustomerMoney(
+        payload.order.revised_price_eur
+      );
+
+      setOfferEmailStatus(
+        `Offer sent with final price ${finalPriceLabel}.`
+      );
+      showToast(`Offer sent with final price ${finalPriceLabel}`);
     } catch (error) {
       const message = 'Could not send offer email.';
       setOfferEmailError(message);
@@ -1760,6 +1912,7 @@ export default function StudioPage() {
           onSelectOrder={selectOrder}
           onRefresh={() => void loadOrders()}
           onChangeStatus={changeOrderStatus}
+          onAcceptRequestedChanges={acceptRequestedChanges}
         />
       )}
 
@@ -2209,6 +2362,7 @@ function OrdersDashboard({
   onSelectOrder,
   onRefresh,
   onChangeStatus,
+  onAcceptRequestedChanges,
 }: {
   orders: OrderRecord[];
   selectedOrder: OrderRecord | null;
@@ -2249,6 +2403,7 @@ function OrdersDashboard({
     order: OrderRecord,
     status: OrderStatus
   ) => void;
+  onAcceptRequestedChanges: (order: OrderRecord) => void;
 }) {
   const [orderSearch, setOrderSearch] = useState('');
   const [openSections, setOpenSections] = useState<
@@ -2358,9 +2513,11 @@ function OrdersDashboard({
     ? getOrderPipelineStage(selectedOrder)
     : null;
   const canSendOffer =
-    selectedOrder?.customer_decision === 'pending' &&
+    (selectedOrder?.customer_decision === 'pending' ||
+      selectedOrder?.customer_decision === 'change_requested') &&
     (selectedOrderPipelineStage === 'new' ||
-      selectedOrderPipelineStage === 'waiting_customer');
+      selectedOrderPipelineStage === 'waiting_customer' ||
+      selectedOrderPipelineStage === 'changes_requested');
   const statusActionInFlight = statusActionLoading !== null;
 
   const toggleSection = (section: OrderDetailSection) => {
@@ -2408,6 +2565,13 @@ function OrdersDashboard({
             ? `${customerDecisionLabels[selectedOrder.customer_decision]} - ${formatDateTime(selectedOrder.customer_decision_at)}`
             : customerDecisionLabels[selectedOrder.customer_decision],
           complete: selectedOrder.customer_decision !== 'pending',
+        },
+        {
+          label: 'Change requested',
+          value: selectedOrder.change_requested_at
+            ? formatDateTime(selectedOrder.change_requested_at)
+            : 'No change request',
+          complete: Boolean(selectedOrder.change_requested_at),
         },
         {
           label: 'Team notified',
@@ -2577,6 +2741,9 @@ function OrdersDashboard({
                         ? 'Manual quote'
                         : formatCustomerMoney(orderCustomerPrice);
                   const declinedStatus = getDeclinedStatus(order);
+                  const cancelledStatus = getCancelledStatus(order);
+                  const archiveStatus =
+                    declinedStatus ?? cancelledStatus;
 
                   return (
                     <button
@@ -2588,7 +2755,7 @@ function OrdersDashboard({
                         borderColor:
                           selectedOrder?.id === order.id
                             ? 'rgba(0,255,136,0.54)'
-                            : declinedStatus
+                            : archiveStatus
                               ? 'rgba(255,143,179,0.22)'
                               : 'rgba(255,255,255,0.10)',
                         boxShadow:
@@ -2600,7 +2767,7 @@ function OrdersDashboard({
                       <div style={orderCardHeader}>
                         <span
                           style={statusBadge(
-                            declinedStatus ?? order.status
+                            archiveStatus ?? order.status
                           )}
                         >
                           {getOrderBadgeLabel(order)}
@@ -2661,6 +2828,19 @@ function OrdersDashboard({
                             orderPricing.estimated_profit_eur
                           )}
                         />
+                        {order.customer_decision ===
+                          'change_requested' && (
+                          <Meta
+                            label="Proposed"
+                            value={
+                              order.proposed_price_eur === null
+                                ? 'Not provided'
+                                : formatCustomerMoney(
+                                    order.proposed_price_eur
+                                  )
+                            }
+                          />
+                        )}
                       </div>
                     </button>
                   );
@@ -2699,6 +2879,7 @@ function OrdersDashboard({
                       <span
                         style={statusBadge(
                           getDeclinedStatus(selectedOrder) ??
+                            getCancelledStatus(selectedOrder) ??
                             selectedOrder.status
                         )}
                       >
@@ -2729,20 +2910,36 @@ function OrdersDashboard({
                           onClick={() => onSendOfferToCustomer(selectedOrder)}
                           disabled={
                             emailConfigured !== true ||
-                            sendingOfferId === selectedOrder.id
+                            sendingOfferId === selectedOrder.id ||
+                            savingOrder
                           }
                           style={actionButtonStyle(
                             'primary',
                             emailConfigured !== true ||
-                              sendingOfferId === selectedOrder.id
+                              sendingOfferId === selectedOrder.id ||
+                              savingOrder
                           )}
                         >
                           {sendingOfferId === selectedOrder.id
-                            ? 'Sending...'
-                            : selectedOrderPipelineStage ===
-                                'waiting_customer'
-                              ? 'Send offer again'
-                              : 'Send offer to customer'}
+                            ? 'Saving & sending...'
+                            : 'Save & send offer'}
+                        </button>
+                      )}
+                      {selectedOrderPipelineStage === 'changes_requested' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onAcceptRequestedChanges(selectedOrder)
+                          }
+                          disabled={statusActionInFlight}
+                          style={actionButtonStyle(
+                            'primary',
+                            statusActionInFlight
+                          )}
+                        >
+                          {statusActionLoading === 'change_requested'
+                            ? 'Accepting...'
+                            : 'Accept requested changes'}
                         </button>
                       )}
                       {selectedOrderPipelineStage === 'new' &&
@@ -2806,15 +3003,28 @@ function OrdersDashboard({
                           'needs_review',
                           'secondary'
                         )}
+                      {selectedOrderPipelineStage ===
+                        'changes_requested' &&
+                        renderStatusButton(
+                          'Restore to review',
+                          'Restoring...',
+                          'needs_review',
+                          'secondary'
+                        )}
                     </div>
 
                     {(selectedOrderPipelineStage === 'new' ||
                       selectedOrderPipelineStage ===
-                        'waiting_customer') && (
+                        'waiting_customer' ||
+                      selectedOrderPipelineStage ===
+                        'changes_requested') && (
                       <div style={actionGroup}>
                         <span style={actionGroupLabel}>Danger</span>
                         {renderStatusButton(
-                          'Decline',
+                          selectedOrderPipelineStage ===
+                            'changes_requested'
+                            ? 'Decline request'
+                            : 'Decline',
                           'Declining...',
                           'team_declined',
                           'danger'
@@ -2855,6 +3065,59 @@ function OrdersDashboard({
                     Team notification warning:{' '}
                     {selectedOrder.team_notification_error}
                   </p>
+                )}
+                {selectedOrder.customer_decision ===
+                  'change_requested' && (
+                  <div style={changeRequestNotice}>
+                    <div>
+                      <span style={customerDecisionBadge('change_requested')}>
+                        Changes requested
+                      </span>
+                      <p style={mutedText}>
+                        Review the customer request, accept the requested
+                        values, or edit the final price and save & send a
+                        counter offer.
+                      </p>
+                    </div>
+                    <div style={summaryGridWide}>
+                      <Meta
+                        label="Proposed price"
+                        value={
+                          selectedOrder.proposed_price_eur === null
+                            ? 'Not provided'
+                            : formatCustomerMoney(
+                                selectedOrder.proposed_price_eur
+                              )
+                        }
+                      />
+                      <Meta
+                        label="Requested quantity"
+                        value={
+                          selectedOrder.requested_quantity === null
+                            ? 'Not provided'
+                            : String(selectedOrder.requested_quantity)
+                        }
+                      />
+                      <Meta
+                        label="Logo/design change"
+                        value={
+                          selectedOrder.wants_logo_change ? 'Yes' : 'No'
+                        }
+                      />
+                    </div>
+                    <div style={noteCardStrong}>
+                      <span style={detailLabel}>Customer change note</span>
+                      <p style={messageText}>
+                        {selectedOrder.customer_change_note ||
+                          'No change note provided.'}
+                      </p>
+                    </div>
+                    {selectedOrder.wants_logo_change && (
+                      <p style={warningCard}>
+                        Customer wants to change logo/design.
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 <div style={detailSectionNav}>
@@ -3766,6 +4029,16 @@ const manualQuoteNotice: CSSProperties = {
   fontWeight: 750,
 };
 
+const changeRequestNotice: CSSProperties = {
+  display: 'grid',
+  gap: 14,
+  border: '1px solid rgba(255,224,131,0.24)',
+  borderRadius: 20,
+  padding: 16,
+  background: 'rgba(255,224,131,0.075)',
+  margin: '0 0 18px',
+};
+
 const noteStack: CSSProperties = {
   display: 'grid',
   gap: 10,
@@ -4273,12 +4546,16 @@ function statusBadge(status: OrderStatus): CSSProperties {
   const color =
     status === 'customer_declined'
       ? '#ff8fb3'
+      : status === 'customer_cancelled'
+        ? '#ff8fb3'
       : status === 'team_declined'
         ? '#ff9f6e'
         : status === 'completed'
           ? '#00c8ff'
           : status === 'sent_to_production'
             ? '#7ed7ff'
+            : status === 'change_requested'
+              ? '#ffe083'
             : status === 'offer_sent' ||
                 status === 'needs_review' ||
                 status === 'approved'
@@ -4305,8 +4582,10 @@ function customerDecisionBadge(
   const color =
     decision === 'accepted'
       ? '#9dffc4'
-      : decision === 'declined'
+      : decision === 'declined' || decision === 'cancelled'
         ? '#ff8fb3'
+        : decision === 'change_requested'
+          ? '#ffe083'
         : '#ffe083';
 
   return compactBadge(color);
@@ -4349,6 +4628,8 @@ function pipelineTabButtonStyle(
   const color =
     stage === 'waiting_customer'
       ? '#ffe083'
+      : stage === 'changes_requested'
+        ? '#ffe083'
       : stage === 'production'
         ? '#7ed7ff'
         : stage === 'archive'
@@ -4372,6 +4653,8 @@ function archiveTabButtonStyle(
   const color =
     filter === 'customer_declined'
       ? '#ff8fb3'
+      : filter === 'customer_cancelled'
+        ? '#ff8fb3'
       : filter === 'team_declined'
         ? '#ff9f6e'
         : filter === 'completed'

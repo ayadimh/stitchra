@@ -14,10 +14,12 @@ const statusLabels: Record<PublicOrderRecord['status'], string> = {
   needs_review: 'Needs review',
   approved: 'Approved',
   offer_sent: 'Offer sent',
+  change_requested: 'Changes requested',
   customer_accepted: 'Customer accepted',
   pre_production: 'Pre-production',
   sent_to_production: 'In production',
   customer_declined: 'Customer declined',
+  customer_cancelled: 'Customer cancelled',
   team_declined: 'Team declined',
   completed: 'Completed',
 };
@@ -26,6 +28,8 @@ const decisionLabels: Record<CustomerDecision, string> = {
   pending: 'Pending',
   accepted: 'Accepted',
   declined: 'Declined',
+  change_requested: 'Changes requested',
+  cancelled: 'Cancelled',
 };
 
 const paymentLabels: Record<PublicOrderRecord['payment_status'], string> = {
@@ -132,6 +136,13 @@ export function OrderResponseClient({
   const [order, setOrder] = useState(initialOrder);
   const [submittingDecision, setSubmittingDecision] =
     useState<CustomerDecision | null>(null);
+  const [showChangePanel, setShowChangePanel] = useState(false);
+  const [changeForm, setChangeForm] = useState({
+    proposed_price_eur: '',
+    requested_quantity: '',
+    customer_change_note: '',
+    wants_logo_change: false,
+  });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const paymentHref = `/pay/${order.public_token}`;
@@ -150,9 +161,15 @@ export function OrderResponseClient({
     !hasFinalOfferPrice;
   const showDeclinedMessage =
     !paymentReceived && order.customer_decision === 'declined';
+  const showChangeRequestedMessage =
+    !paymentReceived &&
+    order.customer_decision === 'change_requested';
+  const showCancelledMessage =
+    !paymentReceived && order.customer_decision === 'cancelled';
 
   const submitDecision = async (
-    decision: Exclude<CustomerDecision, 'pending'>
+    decision: Exclude<CustomerDecision, 'pending'>,
+    extraBody: Record<string, unknown> = {}
   ) => {
     setMessage('');
     setError('');
@@ -166,7 +183,7 @@ export function OrderResponseClient({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ decision }),
+          body: JSON.stringify({ decision, ...extraBody }),
         }
       );
       const payload = (await response
@@ -187,16 +204,59 @@ export function OrderResponseClient({
       }
 
       setOrder(payload.order);
+      setShowChangePanel(false);
       setMessage(
         decision === 'accepted'
           ? 'Your offer is accepted. Continue to secure payment.'
-          : 'Offer declined. The studio has received your response.'
+          : decision === 'declined'
+            ? 'Offer declined. The studio has received your response.'
+            : decision === 'cancelled'
+              ? 'This request has been cancelled.'
+              : 'Your change request was sent to the studio.'
       );
     } catch {
       setError('Could not save your response.');
     } finally {
       setSubmittingDecision(null);
     }
+  };
+
+  const submitChangeRequest = async () => {
+    const note = changeForm.customer_change_note.trim();
+    const proposedPrice = changeForm.proposed_price_eur.trim();
+    const requestedQuantity = changeForm.requested_quantity.trim();
+
+    if (!note) {
+      setError('Add a note for the studio before requesting changes.');
+      return;
+    }
+
+    if (proposedPrice) {
+      const price = Number(proposedPrice);
+
+      if (!Number.isFinite(price) || price <= 0) {
+        setError('Proposed price must be greater than 0.');
+        return;
+      }
+    }
+
+    if (requestedQuantity) {
+      const quantity = Number(requestedQuantity);
+
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        setError('Requested quantity must be at least 1.');
+        return;
+      }
+    }
+
+    await submitDecision('change_requested', {
+      proposed_price_eur: proposedPrice ? Number(proposedPrice) : null,
+      requested_quantity: requestedQuantity
+        ? Number(requestedQuantity)
+        : null,
+      customer_change_note: note,
+      wants_logo_change: changeForm.wants_logo_change,
+    });
   };
 
   return (
@@ -322,6 +382,10 @@ export function OrderResponseClient({
                 <p style={mutedText}>
                   No payment is taken until you accept.
                 </p>
+                <p style={mutedText}>
+                  Need a different quantity, price or design? Send a
+                  change request to the studio.
+                </p>
                 <div style={actionRow}>
                   <button
                     type="button"
@@ -337,15 +401,125 @@ export function OrderResponseClient({
                   <button
                     type="button"
                     className="offer-action-button offer-secondary-button"
-                    onClick={() => void submitDecision('declined')}
+                    onClick={() => setShowChangePanel((current) => !current)}
                     disabled={submittingDecision !== null}
                     style={secondaryButton}
+                  >
+                    Request changes
+                  </button>
+                  <button
+                    type="button"
+                    className="offer-action-button offer-secondary-button"
+                    onClick={() => void submitDecision('declined')}
+                    disabled={submittingDecision !== null}
+                    style={dangerButton}
                   >
                     {submittingDecision === 'declined'
                       ? 'Declining...'
                       : 'Decline offer'}
                   </button>
                 </div>
+                {showChangePanel && (
+                  <div style={changePanel}>
+                    <div>
+                      <span style={detailLabel}>Request changes</span>
+                      <p style={mutedText}>
+                        Tell the studio what you would like adjusted.
+                      </p>
+                    </div>
+                    <div style={changeGrid}>
+                      <label style={changeFieldLabel}>
+                        Proposed price EUR (optional)
+                        <input
+                          value={changeForm.proposed_price_eur}
+                          onChange={(event) =>
+                            setChangeForm((current) => ({
+                              ...current,
+                              proposed_price_eur: event.target.value,
+                            }))
+                          }
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputMode="decimal"
+                          style={changeInput}
+                        />
+                      </label>
+                      <label style={changeFieldLabel}>
+                        Requested quantity (optional)
+                        <input
+                          value={changeForm.requested_quantity}
+                          onChange={(event) =>
+                            setChangeForm((current) => ({
+                              ...current,
+                              requested_quantity: event.target.value,
+                            }))
+                          }
+                          type="number"
+                          min="1"
+                          step="1"
+                          inputMode="numeric"
+                          style={changeInput}
+                        />
+                      </label>
+                    </div>
+                    <label style={changeFieldLabel}>
+                      Change note
+                      <textarea
+                        value={changeForm.customer_change_note}
+                        onChange={(event) =>
+                          setChangeForm((current) => ({
+                            ...current,
+                            customer_change_note: event.target.value,
+                          }))
+                        }
+                        rows={4}
+                        placeholder="Describe the price, quantity or design change you need."
+                        style={{
+                          ...changeInput,
+                          resize: 'vertical',
+                        }}
+                      />
+                    </label>
+                    <label style={checkboxRow}>
+                      <input
+                        type="checkbox"
+                        checked={changeForm.wants_logo_change}
+                        onChange={(event) =>
+                          setChangeForm((current) => ({
+                            ...current,
+                            wants_logo_change: event.target.checked,
+                          }))
+                        }
+                      />
+                      I want to upload a new logo/design
+                    </label>
+                    <div style={actionRow}>
+                      <button
+                        type="button"
+                        className="offer-action-button offer-primary-button"
+                        onClick={() => void submitChangeRequest()}
+                        disabled={submittingDecision !== null}
+                        style={primaryButton}
+                      >
+                        {submittingDecision === 'change_requested'
+                          ? 'Sending request...'
+                          : 'Send change request'}
+                      </button>
+                      <button
+                        type="button"
+                        className="offer-action-button offer-secondary-button"
+                        onClick={() => void submitDecision('cancelled')}
+                        disabled={submittingDecision !== null}
+                        style={dangerButton}
+                      >
+                        {submittingDecision === 'cancelled'
+                          ? 'Cancelling...'
+                          : 'Cancel this request'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -374,6 +548,44 @@ export function OrderResponseClient({
             {showDeclinedMessage && (
               <p style={errorText}>
                 Offer declined. The studio has received your response.
+              </p>
+            )}
+
+            {showChangeRequestedMessage && (
+              <div style={changeSummaryCard}>
+                <p style={successText}>
+                  Your change request was sent to the studio.
+                </p>
+                <p style={mutedText}>
+                  We will send you an updated offer.
+                </p>
+                <div style={detailGrid}>
+                  {order.proposed_price_eur !== null && (
+                    <Detail
+                      label="Proposed price"
+                      value={formatMoney(order.proposed_price_eur)}
+                    />
+                  )}
+                  {order.requested_quantity !== null && (
+                    <Detail
+                      label="Requested quantity"
+                      value={String(order.requested_quantity)}
+                    />
+                  )}
+                  <Detail
+                    label="Logo/design change"
+                    value={order.wants_logo_change ? 'Yes' : 'No'}
+                  />
+                </div>
+                {order.customer_change_note && (
+                  <p style={messageText}>{order.customer_change_note}</p>
+                )}
+              </div>
+            )}
+
+            {showCancelledMessage && (
+              <p style={errorText}>
+                This request has been cancelled.
               </p>
             )}
 
@@ -485,9 +697,13 @@ function statusBadge(
   const color =
     tone === 'accepted' || tone === 'paid'
       ? '#9dffc4'
-      : tone === 'declined' || tone === 'failed'
+      : tone === 'declined' ||
+          tone === 'cancelled' ||
+          tone === 'failed'
         ? '#ffb4b4'
-        : tone === 'pending' || tone === 'unpaid'
+        : tone === 'pending' ||
+            tone === 'unpaid' ||
+            tone === 'change_requested'
           ? '#ffe083'
           : '#9ee8ff';
 
@@ -788,11 +1004,70 @@ const secondaryButton: CSSProperties = {
   justifyContent: 'center',
 };
 
+const dangerButton: CSSProperties = {
+  ...secondaryButton,
+  border: '1px solid rgba(255,180,180,0.28)',
+  color: '#ffb4b4',
+  background: 'rgba(255,90,120,0.08)',
+};
+
 const payButton: CSSProperties = {
   ...primaryButton,
   width: '100%',
   fontSize: 18,
   padding: '18px 22px',
+};
+
+const changePanel: CSSProperties = {
+  border: '1px solid rgba(255,224,131,0.22)',
+  borderRadius: 18,
+  padding: 16,
+  background: 'rgba(255,224,131,0.07)',
+  display: 'grid',
+  gap: 14,
+};
+
+const changeGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  gap: 12,
+};
+
+const changeFieldLabel: CSSProperties = {
+  display: 'grid',
+  gap: 8,
+  color: 'rgba(245,247,248,0.74)',
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const changeInput: CSSProperties = {
+  width: '100%',
+  border: '1px solid rgba(255,255,255,0.14)',
+  borderRadius: 14,
+  padding: '13px 14px',
+  background: 'rgba(0,0,0,0.30)',
+  color: '#f5f7f8',
+  font: 'inherit',
+  boxSizing: 'border-box',
+};
+
+const checkboxRow: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  color: 'rgba(245,247,248,0.78)',
+  fontSize: 14,
+  lineHeight: 1.4,
+};
+
+const changeSummaryCard: CSSProperties = {
+  border: '1px solid rgba(255,224,131,0.22)',
+  borderRadius: 18,
+  padding: 16,
+  background: 'rgba(255,224,131,0.07)',
+  display: 'grid',
+  gap: 12,
 };
 
 const contentSection: CSSProperties = {

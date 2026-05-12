@@ -12,10 +12,12 @@ export const ORDER_STATUSES = [
   'needs_review',
   'approved',
   'offer_sent',
+  'change_requested',
   'customer_accepted',
   'pre_production',
   'sent_to_production',
   'customer_declined',
+  'customer_cancelled',
   'team_declined',
   'completed',
 ] as const;
@@ -26,6 +28,8 @@ export const CUSTOMER_DECISIONS = [
   'pending',
   'accepted',
   'declined',
+  'change_requested',
+  'cancelled',
 ] as const;
 
 export type CustomerDecision = (typeof CUSTOMER_DECISIONS)[number];
@@ -76,6 +80,12 @@ export type OrderRecord = {
   offer_sent_at: string | null;
   team_notified_at: string | null;
   team_notification_error: string | null;
+  proposed_price_eur: number | null;
+  requested_quantity: number | null;
+  customer_change_note: string | null;
+  wants_logo_change: boolean;
+  change_requested_at: string | null;
+  cancelled_at: string | null;
   payment_status: PaymentStatus;
   payment_requested_at: string | null;
   payment_completed_at: string | null;
@@ -128,6 +138,10 @@ export type PublicOrderRecord = {
   manual_quote: boolean;
   team_message: string | null;
   customer_decision: CustomerDecision;
+  proposed_price_eur: number | null;
+  requested_quantity: number | null;
+  customer_change_note: string | null;
+  wants_logo_change: boolean;
   payment_status: PaymentStatus;
 };
 
@@ -143,6 +157,10 @@ const publicOrderSelect = [
   'manual_quote',
   'team_message',
   'customer_decision',
+  'proposed_price_eur',
+  'requested_quantity',
+  'customer_change_note',
+  'wants_logo_change',
   'payment_status',
 ].join(',');
 
@@ -364,6 +382,18 @@ function parseStatus(row: SupabaseOrderRow): OrderStatus {
   return 'new';
 }
 
+function parseBoolean(value: unknown) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+
+  return Boolean(value);
+}
+
 function parsePaymentStatus(value: unknown): PaymentStatus {
   return PAYMENT_STATUSES.includes(value as PaymentStatus)
     ? (value as PaymentStatus)
@@ -452,6 +482,18 @@ function parseOrder(
     team_notification_error: row.team_notification_error
       ? String(row.team_notification_error)
       : null,
+    proposed_price_eur: parseNumber(row.proposed_price_eur),
+    requested_quantity:
+      row.requested_quantity === null ||
+      row.requested_quantity === undefined
+        ? null
+        : Number(row.requested_quantity),
+    customer_change_note: row.customer_change_note
+      ? String(row.customer_change_note)
+      : null,
+    wants_logo_change: parseBoolean(row.wants_logo_change),
+    change_requested_at: parseDate(row.change_requested_at),
+    cancelled_at: parseDate(row.cancelled_at),
     payment_status: parsePaymentStatus(row.payment_status),
     payment_requested_at: parseDate(row.payment_requested_at),
     payment_completed_at: parseDate(row.payment_completed_at),
@@ -489,6 +531,16 @@ function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
       ? String(row.team_message)
       : null,
     customer_decision: parseCustomerDecision(row.customer_decision),
+    proposed_price_eur: parseNumber(row.proposed_price_eur),
+    requested_quantity:
+      row.requested_quantity === null ||
+      row.requested_quantity === undefined
+        ? null
+        : Number(row.requested_quantity),
+    customer_change_note: row.customer_change_note
+      ? String(row.customer_change_note)
+      : null,
+    wants_logo_change: parseBoolean(row.wants_logo_change),
     payment_status: parsePaymentStatus(row.payment_status),
   };
 }
@@ -1081,6 +1133,20 @@ function buildTeamDecisionText(
     `Quantity: ${order.quantity ?? 1}`,
     `Customer note: ${formatEmailValue(order.note)}`,
     `Team message: ${formatEmailValue(order.team_message)}`,
+    `Proposed price: ${
+      order.proposed_price_eur === null
+        ? 'Not provided'
+        : formatEmailPrice(order.proposed_price_eur)
+    }`,
+    `Requested quantity: ${
+      order.requested_quantity ?? 'Not provided'
+    }`,
+    `Customer change note: ${formatEmailValue(
+      order.customer_change_note
+    )}`,
+    `Wants logo/design change: ${
+      order.wants_logo_change ? 'Yes' : 'No'
+    }`,
     '',
     `Studio: ${publicSiteUrl}/studio`,
     `Customer order: ${customerLink}`,
@@ -1106,6 +1172,26 @@ function buildTeamDecisionHtml(
     ['Quantity', String(order.quantity ?? 1)],
     ['Customer note', formatEmailValue(order.note)],
     ['Team message', formatEmailValue(order.team_message)],
+    [
+      'Proposed price',
+      order.proposed_price_eur === null
+        ? 'Not provided'
+        : formatEmailPrice(order.proposed_price_eur),
+    ],
+    [
+      'Requested quantity',
+      order.requested_quantity === null
+        ? 'Not provided'
+        : String(order.requested_quantity),
+    ],
+    [
+      'Customer change note',
+      formatEmailValue(order.customer_change_note),
+    ],
+    [
+      'Wants logo/design change',
+      order.wants_logo_change ? 'Yes' : 'No',
+    ],
   ]
     .map(([label, value]) => buildEmailDetailRow(label, value))
     .join('');
@@ -1244,12 +1330,19 @@ export async function getPublicOrderByToken(token: string) {
 
 export async function updatePublicOrderDecision(
   token: string,
-  decision: Exclude<CustomerDecision, 'pending'>
+  input: {
+    decision: Exclude<CustomerDecision, 'pending'>;
+    proposed_price_eur?: number | null;
+    requested_quantity?: number | null;
+    customer_change_note?: string | null;
+    wants_logo_change?: boolean;
+  }
 ) {
   if (!isDatabaseConfigured()) {
     return null;
   }
 
+  const decision = input.decision;
   const pricingSettings = await getPricingSettings();
   const params = new URLSearchParams({
     public_token: `eq.${token}`,
@@ -1258,7 +1351,13 @@ export async function updatePublicOrderDecision(
 
   const decidedAt = new Date().toISOString();
   const nextStatus: OrderStatus =
-    decision === 'accepted' ? 'customer_accepted' : 'customer_declined';
+    decision === 'accepted'
+      ? 'customer_accepted'
+      : decision === 'declined'
+        ? 'customer_declined'
+        : decision === 'cancelled'
+          ? 'customer_cancelled'
+          : 'change_requested';
   const decisionUpdates: Record<string, unknown> = {
     customer_decision: decision,
     customer_decision_at: decidedAt,
@@ -1266,9 +1365,33 @@ export async function updatePublicOrderDecision(
     updated_at: decidedAt,
   };
 
+  if (decision === 'change_requested') {
+    decisionUpdates.proposed_price_eur =
+      input.proposed_price_eur ?? null;
+    decisionUpdates.requested_quantity =
+      input.requested_quantity ?? null;
+    decisionUpdates.customer_change_note =
+      input.customer_change_note?.trim() || null;
+    decisionUpdates.wants_logo_change = Boolean(input.wants_logo_change);
+    decisionUpdates.change_requested_at = decidedAt;
+    decisionUpdates.archived_at = null;
+    decisionUpdates.archive_reason = null;
+  }
+
   if (decision === 'declined') {
     decisionUpdates.archived_at = decidedAt;
     decisionUpdates.archive_reason = 'customer_declined';
+  }
+
+  if (decision === 'cancelled') {
+    decisionUpdates.cancelled_at = decidedAt;
+    decisionUpdates.archived_at = decidedAt;
+    decisionUpdates.archive_reason = 'customer_cancelled';
+  }
+
+  if (decision === 'accepted') {
+    decisionUpdates.archived_at = null;
+    decisionUpdates.archive_reason = null;
   }
 
   const rows = await supabaseRequest<SupabaseOrderRow[]>(
@@ -1343,9 +1466,22 @@ export async function updateOrder(
       updates.archive_reason = 'customer_declined';
     }
 
+    if (input.status === 'customer_cancelled') {
+      updates.cancelled_at = new Date().toISOString();
+      updates.archived_at = updates.cancelled_at;
+      updates.archive_reason = 'customer_cancelled';
+    }
+
     if (input.status === 'team_declined') {
       updates.archived_at = new Date().toISOString();
       updates.archive_reason = 'team_declined';
+    }
+
+    if (input.status === 'offer_sent') {
+      updates.customer_decision = 'pending';
+      updates.customer_decision_at = null;
+      updates.archived_at = null;
+      updates.archive_reason = null;
     }
 
     if (input.status === 'needs_review') {
@@ -1354,7 +1490,12 @@ export async function updateOrder(
 
       if (
         existingOrder.status === 'customer_declined' ||
-        existingOrder.customer_decision === 'declined'
+        existingOrder.status === 'customer_cancelled' ||
+        existingOrder.status === 'team_declined' ||
+        existingOrder.status === 'change_requested' ||
+        existingOrder.customer_decision === 'declined' ||
+        existingOrder.customer_decision === 'cancelled' ||
+        existingOrder.customer_decision === 'change_requested'
       ) {
         updates.customer_decision = 'pending';
         updates.customer_decision_at = null;

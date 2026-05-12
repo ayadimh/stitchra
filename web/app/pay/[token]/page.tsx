@@ -21,10 +21,12 @@ const statusLabels: Record<OrderStatus, string> = {
   needs_review: 'Needs review',
   approved: 'Approved',
   offer_sent: 'Offer sent',
+  change_requested: 'Changes requested',
   customer_accepted: 'Customer accepted',
   pre_production: 'Pre-production',
   sent_to_production: 'In production',
   customer_declined: 'Customer declined',
+  customer_cancelled: 'Customer cancelled',
   team_declined: 'Team declined',
   completed: 'Completed',
 };
@@ -33,6 +35,8 @@ const decisionLabels: Record<CustomerDecision, string> = {
   pending: 'Pending',
   accepted: 'Accepted',
   declined: 'Declined',
+  change_requested: 'Changes requested',
+  cancelled: 'Cancelled',
 };
 
 const paymentLabels: Record<PaymentStatus, string> = {
@@ -326,7 +330,7 @@ function decisionBadge(decision: CustomerDecision): CSSProperties {
   const color =
     decision === 'accepted'
       ? '#9dffc4'
-      : decision === 'declined'
+      : decision === 'declined' || decision === 'cancelled'
         ? '#ffb4b4'
         : '#ffe083';
 

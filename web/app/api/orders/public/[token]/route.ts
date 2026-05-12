@@ -15,7 +15,12 @@ const publicTokenPattern = /^[A-Za-z0-9_-]{16,128}$/;
 function isCustomerDecision(
   value: unknown
 ): value is Exclude<CustomerDecision, 'pending'> {
-  return value === 'accepted' || value === 'declined';
+  return (
+    value === 'accepted' ||
+    value === 'declined' ||
+    value === 'change_requested' ||
+    value === 'cancelled'
+  );
 }
 
 function isPublicToken(value: string) {
@@ -91,18 +96,79 @@ export async function PATCH(
       );
     }
 
-    const body = (await request.json()) as { decision?: unknown };
+    const body = (await request.json()) as {
+      decision?: unknown;
+      proposed_price_eur?: unknown;
+      requested_quantity?: unknown;
+      customer_change_note?: unknown;
+      wants_logo_change?: unknown;
+    };
 
     if (!isCustomerDecision(body.decision)) {
       return NextResponse.json(
-        { message: 'Decision must be accepted or declined.' },
+        { message: 'Decision must be accepted, declined, changed, or cancelled.' },
+        { status: 400 }
+      );
+    }
+
+    const errors: Record<string, string> = {};
+    const proposedPrice =
+      body.proposed_price_eur === null ||
+      body.proposed_price_eur === undefined ||
+      body.proposed_price_eur === ''
+        ? null
+        : Number(body.proposed_price_eur);
+    const requestedQuantity =
+      body.requested_quantity === null ||
+      body.requested_quantity === undefined ||
+      body.requested_quantity === ''
+        ? null
+        : Number(body.requested_quantity);
+    const changeNote =
+      typeof body.customer_change_note === 'string'
+        ? body.customer_change_note.trim()
+        : '';
+
+    if (
+      proposedPrice !== null &&
+      (!Number.isFinite(proposedPrice) || proposedPrice <= 0)
+    ) {
+      errors.proposed_price_eur =
+        'Proposed price must be greater than 0.';
+    }
+
+    if (
+      requestedQuantity !== null &&
+      (!Number.isInteger(requestedQuantity) || requestedQuantity < 1)
+    ) {
+      errors.requested_quantity =
+        'Requested quantity must be at least 1.';
+    }
+
+    if (body.decision === 'change_requested' && !changeNote) {
+      errors.customer_change_note =
+        'Add a note for the studio before requesting changes.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return NextResponse.json(
+        {
+          message: 'Check the highlighted change request fields.',
+          errors,
+        },
         { status: 400 }
       );
     }
 
     const order = await updatePublicOrderDecision(
       token,
-      body.decision
+      {
+        decision: body.decision,
+        proposed_price_eur: proposedPrice,
+        requested_quantity: requestedQuantity,
+        customer_change_note: changeNote,
+        wants_logo_change: Boolean(body.wants_logo_change),
+      }
     );
 
     if (!order) {
