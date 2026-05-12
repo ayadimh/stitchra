@@ -71,6 +71,7 @@ type OrderStatus =
 type OrderRecord = {
   id: string;
   created_at: string;
+  public_token: string | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string | null;
@@ -96,6 +97,9 @@ type OrderRecord = {
   team_message: string | null;
   cost_breakdown: CostBreakdown;
   status: OrderStatus;
+  customer_decision: 'pending' | 'accepted' | 'declined';
+  customer_decision_at: string | null;
+  customer_viewed_at: string | null;
 };
 
 type OrderEditForm = {
@@ -154,6 +158,17 @@ const statusLabels: Record<OrderStatus, string> = {
   completed: 'Completed',
 };
 
+const customerDecisionLabels: Record<
+  OrderRecord['customer_decision'],
+  string
+> = {
+  pending: 'Pending',
+  accepted: 'Accepted',
+  declined: 'Declined',
+};
+
+const publicSiteUrl = 'https://stitchra.com';
+
 const emptyOrderEditForm: OrderEditForm = {
   revised_price_eur: '',
   customer_price_eur: '',
@@ -194,6 +209,10 @@ function formatOrderCustomerPrice(order: OrderRecord) {
   return order.manual_quote && price === null
     ? 'Manual quote'
     : formatMoney(price);
+}
+
+function getCustomerOrderLink(publicToken: string) {
+  return `${publicSiteUrl}/order/${publicToken}`;
 }
 
 function getOrderEditForm(order: OrderRecord | null): OrderEditForm {
@@ -317,6 +336,7 @@ export default function StudioPage() {
   const [orderEditError, setOrderEditError] = useState('');
   const [orderEditStatus, setOrderEditStatus] = useState('');
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [customerLinkStatus, setCustomerLinkStatus] = useState('');
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -338,6 +358,7 @@ export default function StudioPage() {
     setOrderEditForm(getOrderEditForm(order));
     setOrderEditError('');
     setOrderEditStatus('');
+    setCustomerLinkStatus('');
   };
 
   const loadOrders = async (
@@ -554,6 +575,22 @@ export default function StudioPage() {
     }
   };
 
+  const copyCustomerLink = async (order: OrderRecord) => {
+    if (!order.public_token) {
+      setCustomerLinkStatus('No customer link is available yet.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        getCustomerOrderLink(order.public_token)
+      );
+      setCustomerLinkStatus('Customer link copied.');
+    } catch {
+      setCustomerLinkStatus('Could not copy the customer link.');
+    }
+  };
+
   const unlock = () => {
     if (!expectedPasscode) {
       setGateError(
@@ -741,8 +778,10 @@ export default function StudioPage() {
           orderEditError={orderEditError}
           orderEditStatus={orderEditStatus}
           savingOrder={isSavingOrder}
+          customerLinkStatus={customerLinkStatus}
           onOrderEditChange={updateOrderEditField}
           onSaveOrderDetails={saveOrderDetails}
+          onCopyCustomerLink={copyCustomerLink}
           onFilterChange={(nextFilter) => {
             setOrderStatusFilter(nextFilter);
             void loadOrders(nextFilter);
@@ -961,8 +1000,10 @@ function OrdersDashboard({
   orderEditError,
   orderEditStatus,
   savingOrder,
+  customerLinkStatus,
   onOrderEditChange,
   onSaveOrderDetails,
+  onCopyCustomerLink,
   onFilterChange,
   onSelectOrder,
   onRefresh,
@@ -977,11 +1018,13 @@ function OrdersDashboard({
   orderEditError: string;
   orderEditStatus: string;
   savingOrder: boolean;
+  customerLinkStatus: string;
   onOrderEditChange: (
     field: keyof OrderEditForm,
     value: string
   ) => void;
   onSaveOrderDetails: () => void;
+  onCopyCustomerLink: (order: OrderRecord) => void;
   onFilterChange: (value: OrderStatus | 'all') => void;
   onSelectOrder: (order: OrderRecord) => void;
   onRefresh: () => void;
@@ -1144,6 +1187,14 @@ function OrdersDashboard({
                     label="Manual quote"
                     value={selectedOrder.manual_quote ? 'Yes' : 'No'}
                   />
+                  <Meta
+                    label="Customer response"
+                    value={
+                      customerDecisionLabels[
+                        selectedOrder.customer_decision
+                      ]
+                    }
+                  />
                 </div>
               </div>
 
@@ -1188,6 +1239,34 @@ function OrdersDashboard({
 
               <div style={editPanel}>
                 <h3 style={panelTitle}>Offer details</h3>
+                {selectedOrder.public_token ? (
+                  <div style={customerLinkBox}>
+                    <span style={mutedText}>
+                      {getCustomerOrderLink(
+                        selectedOrder.public_token
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onCopyCustomerLink(selectedOrder)
+                      }
+                      style={secondaryButton}
+                    >
+                      Copy link
+                    </button>
+                    {customerLinkStatus && (
+                      <span style={tinyText}>
+                        {customerLinkStatus}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p style={warningCard}>
+                    Customer link unavailable. Apply the public token
+                    database migration for existing orders.
+                  </p>
+                )}
                 <div style={controlGrid}>
                   <label style={fieldLabel}>
                     Revised price EUR
@@ -1558,6 +1637,19 @@ const editPanel: CSSProperties = {
   padding: 20,
   background: 'rgba(0,0,0,0.22)',
   marginBottom: 20,
+};
+
+const customerLinkBox: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 16,
+  padding: 14,
+  background: 'rgba(255,255,255,0.04)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  flexWrap: 'wrap',
+  marginBottom: 16,
 };
 
 const panelTitle: CSSProperties = {

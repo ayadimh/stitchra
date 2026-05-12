@@ -9,10 +9,19 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export const CUSTOMER_DECISIONS = [
+  'pending',
+  'accepted',
+  'declined',
+] as const;
+
+export type CustomerDecision = (typeof CUSTOMER_DECISIONS)[number];
+
 export type OrderRecord = {
   id: string;
   created_at: string;
   updated_at: string;
+  public_token: string | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string | null;
@@ -38,6 +47,9 @@ export type OrderRecord = {
   team_message: string | null;
   cost_breakdown: Record<string, number>;
   status: OrderStatus;
+  customer_decision: CustomerDecision;
+  customer_decision_at: string | null;
+  customer_viewed_at: string | null;
 };
 
 export type CreateOrderInput = {
@@ -69,6 +81,32 @@ export type PublicOrderValidationErrors = Partial<
     string
   >
 >;
+
+export type PublicOrderRecord = {
+  public_token: string;
+  status: OrderStatus;
+  logo_preview_url: string | null;
+  placement: string;
+  shirt_color: string;
+  quantity: number | null;
+  customer_price_eur: number | null;
+  revised_price_eur: number | null;
+  team_message: string | null;
+  customer_decision: CustomerDecision;
+};
+
+const publicOrderSelect = [
+  'public_token',
+  'status',
+  'logo_preview_url',
+  'placement',
+  'shirt_color',
+  'quantity',
+  'customer_price_eur',
+  'revised_price_eur',
+  'team_message',
+  'customer_decision',
+].join(',');
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^[+\d\s()-]+$/;
@@ -216,6 +254,31 @@ function parseNumber(value: unknown) {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
+function parseDate(value: unknown) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function parseStatus(value: unknown): OrderStatus {
+  return ORDER_STATUSES.includes(value as OrderStatus)
+    ? (value as OrderStatus)
+    : 'new';
+}
+
+function parseCustomerDecision(value: unknown): CustomerDecision {
+  return CUSTOMER_DECISIONS.includes(value as CustomerDecision)
+    ? (value as CustomerDecision)
+    : 'pending';
+}
+
+function createPublicToken() {
+  return globalThis.crypto.randomUUID().replace(/-/g, '');
+}
+
 function parseOrder(row: SupabaseOrderRow): OrderRecord {
   const productionNotes = row.production_notes;
 
@@ -225,6 +288,9 @@ function parseOrder(row: SupabaseOrderRow): OrderRecord {
     updated_at: new Date(
       String(row.updated_at ?? row.created_at)
     ).toISOString(),
+    public_token: row.public_token
+      ? String(row.public_token)
+      : null,
     customer_name: String(row.customer_name),
     customer_email: String(row.customer_email),
     customer_phone: row.customer_phone
@@ -273,9 +339,32 @@ function parseOrder(row: SupabaseOrderRow): OrderRecord {
       !Array.isArray(row.cost_breakdown)
         ? (row.cost_breakdown as Record<string, number>)
         : {},
-    status: ORDER_STATUSES.includes(row.status as OrderStatus)
-      ? (row.status as OrderStatus)
-      : 'new',
+    status: parseStatus(row.status),
+    customer_decision: parseCustomerDecision(row.customer_decision),
+    customer_decision_at: parseDate(row.customer_decision_at),
+    customer_viewed_at: parseDate(row.customer_viewed_at),
+  };
+}
+
+function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
+  return {
+    public_token: String(row.public_token),
+    status: parseStatus(row.status),
+    logo_preview_url: row.logo_preview_url
+      ? String(row.logo_preview_url)
+      : null,
+    placement: String(row.placement),
+    shirt_color: String(row.shirt_color),
+    quantity:
+      row.quantity === null || row.quantity === undefined
+        ? null
+        : Number(row.quantity),
+    customer_price_eur: parseNumber(row.customer_price_eur),
+    revised_price_eur: parseNumber(row.revised_price_eur),
+    team_message: row.team_message
+      ? String(row.team_message)
+      : null,
+    customer_decision: parseCustomerDecision(row.customer_decision),
   };
 }
 
@@ -353,6 +442,7 @@ export async function createOrder(input: CreateOrderInput) {
       },
       body: JSON.stringify({
         customer_name: input.customer_name,
+        public_token: createPublicToken(),
         customer_email: input.customer_email,
         customer_phone: input.customer_phone || null,
         quantity: input.quantity,
@@ -371,6 +461,7 @@ export async function createOrder(input: CreateOrderInput) {
         recommendations: input.recommendations ?? [],
         production_notes: '',
         cost_breakdown: {},
+        customer_decision: 'pending',
         status,
       }),
     }
@@ -399,6 +490,62 @@ export async function listOrders(status?: string | null) {
   );
 
   return rows.map(parseOrder);
+}
+
+export async function getPublicOrderByToken(token: string) {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    public_token: `eq.${token}`,
+    select: publicOrderSelect,
+  });
+
+  const rows = await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${params.toString()}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        customer_viewed_at: new Date().toISOString(),
+      }),
+    }
+  );
+
+  return rows[0] ? parsePublicOrder(rows[0]) : null;
+}
+
+export async function updatePublicOrderDecision(
+  token: string,
+  decision: Exclude<CustomerDecision, 'pending'>
+) {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    public_token: `eq.${token}`,
+    select: publicOrderSelect,
+  });
+
+  const rows = await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${params.toString()}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        customer_decision: decision,
+        customer_decision_at: new Date().toISOString(),
+      }),
+    }
+  );
+
+  return rows[0] ? parsePublicOrder(rows[0]) : null;
 }
 
 export async function updateOrder(
