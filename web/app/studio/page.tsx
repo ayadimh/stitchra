@@ -97,6 +97,8 @@ type OrderRecord = {
   customer_decision_at: string | null;
   customer_viewed_at: string | null;
   offer_sent_at: string | null;
+  team_notified_at: string | null;
+  team_notification_error: string | null;
 };
 
 type OrderEditForm = {
@@ -122,6 +124,11 @@ type OrderEditTextField = Exclude<
   keyof OrderEditForm,
   'cost_breakdown'
 >;
+type StudioToast = {
+  id: number;
+  tone: 'success' | 'error';
+  message: string;
+};
 
 const placementSize = {
   left: { width: 90, height: 60, label: 'Left chest' },
@@ -176,6 +183,15 @@ const customerDecisionLabels: Record<
   pending: 'Pending',
   accepted: 'Accepted',
   declined: 'Declined',
+};
+
+const statusToastLabels: Record<OrderStatus, string> = {
+  new: 'Order updated',
+  needs_review: 'Order updated',
+  approved: 'Order approved',
+  sent_to_production: 'Sent to production',
+  declined: 'Order declined',
+  completed: 'Marked completed',
 };
 
 const publicSiteUrl = 'https://stitchra.com';
@@ -469,6 +485,8 @@ export default function StudioPage() {
   const [orderEditError, setOrderEditError] = useState('');
   const [orderEditStatus, setOrderEditStatus] = useState('');
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [statusActionLoading, setStatusActionLoading] =
+    useState<OrderStatus | null>(null);
   const [customerLinkStatus, setCustomerLinkStatus] = useState('');
   const [emailConfigured, setEmailConfigured] = useState<
     boolean | null
@@ -488,6 +506,7 @@ export default function StudioPage() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingStatus, setPricingStatus] = useState('');
   const [pricingError, setPricingError] = useState('');
+  const [toast, setToast] = useState<StudioToast | null>(null);
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -503,6 +522,32 @@ export default function StudioPage() {
 
     return Array.from(labels);
   }, [analysis, internalQuote]);
+
+  const triggerSuccessFeedback = () => {
+    if (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.vibrate === 'function'
+    ) {
+      navigator.vibrate(20);
+    }
+  };
+
+  const showToast = (
+    message: string,
+    tone: StudioToast['tone'] = 'success',
+    vibrate = tone === 'success'
+  ) => {
+    const id = Date.now();
+    setToast({ id, message, tone });
+
+    if (vibrate) {
+      triggerSuccessFeedback();
+    }
+
+    window.setTimeout(() => {
+      setToast((current) => (current?.id === id ? null : current));
+    }, 3200);
+  };
 
   const selectOrder = (order: OrderRecord | null) => {
     setSelectedOrder(order);
@@ -626,6 +671,21 @@ export default function StudioPage() {
   ) => {
     setOrdersError('');
 
+    if (
+      nextStatus === 'declined' &&
+      !window.confirm('Decline this order?')
+    ) {
+      return;
+    }
+
+    if (
+      nextStatus === 'completed' &&
+      !window.confirm('Mark this order as completed?')
+    ) {
+      return;
+    }
+
+    setStatusActionLoading(nextStatus);
     try {
       const response = await fetch(`/api/orders/${order.id}`, {
         method: 'PATCH',
@@ -646,11 +706,12 @@ export default function StudioPage() {
       };
 
       if (!response.ok || !payload.order) {
-        setOrdersError(
+        const message =
           payload.details ??
-            payload.message ??
-            'Could not update order.'
-        );
+          payload.message ??
+          'Could not update order.';
+        setOrdersError(message);
+        showToast(message, 'error', false);
         return;
       }
 
@@ -658,9 +719,14 @@ export default function StudioPage() {
 
       selectOrder(updatedOrder);
       updateStoredOrder(updatedOrder);
+      showToast(statusToastLabels[nextStatus]);
     } catch (error) {
-      setOrdersError('Could not update order.');
+      const message = 'Could not update order.';
+      setOrdersError(message);
+      showToast(message, 'error', false);
       console.error(error);
+    } finally {
+      setStatusActionLoading(null);
     }
   };
 
@@ -710,9 +776,10 @@ export default function StudioPage() {
     const parsedSettings = parsePricingSettingsForm(pricingForm);
 
     if (!parsedSettings) {
-      setPricingError(
-        'Pricing settings must be non-negative numbers and margin must be between 0 and 100.'
-      );
+      const message =
+        'Pricing settings must be non-negative numbers and margin must be between 0 and 100.';
+      setPricingError(message);
+      showToast(message, 'error', false);
       return;
     }
 
@@ -736,11 +803,12 @@ export default function StudioPage() {
       };
 
       if (!response.ok || !payload.settings) {
-        setPricingError(
+        const message =
           payload.details ??
-            payload.message ??
-            'Could not save pricing settings.'
-        );
+          payload.message ??
+          'Could not save pricing settings.';
+        setPricingError(message);
+        showToast(message, 'error', false);
         return;
       }
 
@@ -748,8 +816,11 @@ export default function StudioPage() {
       setPricingSettings(settings);
       setPricingForm(getPricingSettingsForm(settings));
       setPricingStatus('Pricing settings saved.');
+      showToast('Saved');
     } catch (error) {
-      setPricingError('Could not save pricing settings.');
+      const message = 'Could not save pricing settings.';
+      setPricingError(message);
+      showToast(message, 'error', false);
       console.error(error);
     } finally {
       setPricingSaving(false);
@@ -773,21 +844,25 @@ export default function StudioPage() {
     );
 
     if (revisedPrice === undefined) {
-      setOrderEditError(
-        'Revised price must be a non-negative number.'
-      );
+      const message =
+        'Revised price must be a non-negative number.';
+      setOrderEditError(message);
+      showToast(message, 'error', false);
       return;
     }
 
     if (!costBreakdown) {
-      setOrderEditError(
-        'Cost breakdown values must be non-negative numbers.'
-      );
+      const message =
+        'Cost breakdown values must be non-negative numbers.';
+      setOrderEditError(message);
+      showToast(message, 'error', false);
       return;
     }
 
     if (!Number.isInteger(quantity) || quantity < 1) {
-      setOrderEditError('Quantity must be at least 1.');
+      const message = 'Quantity must be at least 1.';
+      setOrderEditError(message);
+      showToast(message, 'error', false);
       return;
     }
 
@@ -831,12 +906,13 @@ export default function StudioPage() {
       };
 
       if (!response.ok || !result.order) {
-        setOrderEditError(
+        const message =
           result.details ??
-            Object.values(result.errors ?? {})[0] ??
-            result.message ??
-            'Could not save order details.'
-        );
+          Object.values(result.errors ?? {})[0] ??
+          result.message ??
+          'Could not save order details.';
+        setOrderEditError(message);
+        showToast(message, 'error', false);
         return;
       }
 
@@ -848,8 +924,11 @@ export default function StudioPage() {
         getOrderEditForm(updatedOrder, pricingSettings)
       );
       updateStoredOrder(updatedOrder);
+      showToast('Saved');
     } catch (error) {
-      setOrderEditError('Could not save order details.');
+      const message = 'Could not save order details.';
+      setOrderEditError(message);
+      showToast(message, 'error', false);
       console.error(error);
     } finally {
       setIsSavingOrder(false);
@@ -877,9 +956,10 @@ export default function StudioPage() {
     setOfferEmailError('');
 
     if (!emailConfigured) {
-      setOfferEmailError(
-        'Email not configured. Copy customer link manually.'
-      );
+      const message =
+        'Email not configured. Copy customer link manually.';
+      setOfferEmailError(message);
+      showToast(message, 'error', false);
       return;
     }
 
@@ -909,18 +989,22 @@ export default function StudioPage() {
       }
 
       if (!response.ok || !payload.order) {
-        setOfferEmailError(
+        const message =
           payload.details ??
-            payload.message ??
-            'Could not send offer email.'
-        );
+          payload.message ??
+          'Could not send offer email.';
+        setOfferEmailError(message);
+        showToast(message, 'error', false);
         return;
       }
 
       updateStoredOrder(payload.order);
       setOfferEmailStatus('Offer email sent.');
+      showToast('Offer sent');
     } catch (error) {
-      setOfferEmailError('Could not send offer email.');
+      const message = 'Could not send offer email.';
+      setOfferEmailError(message);
+      showToast(message, 'error', false);
       console.error(error);
     } finally {
       setSendingOfferId(null);
@@ -1026,7 +1110,8 @@ export default function StudioPage() {
 
   if (!unlocked) {
     return (
-      <main style={pageShell}>
+      <main className="studio-page" style={pageShell}>
+        <StudioInteractionStyles />
         <section style={gateCard}>
           <div style={brandMark}>S</div>
           <p style={eyebrow}>Private studio</p>
@@ -1068,7 +1153,13 @@ export default function StudioPage() {
   }
 
   return (
-    <main style={pageShell}>
+    <main className="studio-page" style={pageShell}>
+      <StudioInteractionStyles />
+      {toast && (
+        <div role="status" style={toastStyle(toast.tone)}>
+          {toast.message}
+        </div>
+      )}
       <header style={studioHeader}>
         <div>
           <p style={eyebrow}>Private studio</p>
@@ -1114,7 +1205,7 @@ export default function StudioPage() {
           >
             Pricing
           </button>
-          <Link href="/" style={secondaryButton}>
+          <Link href="/" data-button="true" style={secondaryButton}>
             Public website
           </Link>
         </div>
@@ -1131,6 +1222,7 @@ export default function StudioPage() {
           orderEditError={orderEditError}
           orderEditStatus={orderEditStatus}
           savingOrder={isSavingOrder}
+          statusActionLoading={statusActionLoading}
           customerLinkStatus={customerLinkStatus}
           emailConfigured={emailConfigured}
           sendingOfferId={sendingOfferId}
@@ -1363,6 +1455,39 @@ function Meta({
   );
 }
 
+function StudioInteractionStyles() {
+  return (
+    <style>{`
+      .studio-page button,
+      .studio-page a[data-button='true'] {
+        transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease, border-color 150ms ease;
+      }
+
+      .studio-page button:not(:disabled),
+      .studio-page a[data-button='true'] {
+        cursor: pointer;
+      }
+
+      .studio-page button:not(:disabled):hover,
+      .studio-page a[data-button='true']:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 38px rgba(0, 255, 136, 0.16), 0 10px 28px rgba(0, 200, 255, 0.10);
+      }
+
+      .studio-page button:not(:disabled):active,
+      .studio-page a[data-button='true']:active {
+        transform: scale(0.98);
+      }
+
+      .studio-page button:disabled {
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+    `}</style>
+  );
+}
+
 function PricingSettingsPanel({
   form,
   loading,
@@ -1450,6 +1575,7 @@ function OrdersDashboard({
   orderEditError,
   orderEditStatus,
   savingOrder,
+  statusActionLoading,
   customerLinkStatus,
   emailConfigured,
   sendingOfferId,
@@ -1475,6 +1601,7 @@ function OrdersDashboard({
   orderEditError: string;
   orderEditStatus: string;
   savingOrder: boolean;
+  statusActionLoading: OrderStatus | null;
   customerLinkStatus: string;
   emailConfigured: boolean | null;
   sendingOfferId: string | null;
@@ -1696,11 +1823,31 @@ function OrdersDashboard({
                     }
                   />
                   <Meta
+                    label="Responded at"
+                    value={
+                      selectedOrder.customer_decision_at
+                        ? new Date(
+                            selectedOrder.customer_decision_at
+                          ).toLocaleString()
+                        : 'Pending'
+                    }
+                  />
+                  <Meta
                     label="Offer sent"
                     value={
                       selectedOrder.offer_sent_at
                         ? new Date(
                             selectedOrder.offer_sent_at
+                          ).toLocaleString()
+                        : 'Not sent'
+                    }
+                  />
+                  <Meta
+                    label="Team notified"
+                    value={
+                      selectedOrder.team_notified_at
+                        ? new Date(
+                            selectedOrder.team_notified_at
                           ).toLocaleString()
                         : 'Not sent'
                     }
@@ -1716,6 +1863,13 @@ function OrdersDashboard({
               {selectedOrder.note && (
                 <p style={recommendationCard}>
                   Customer note: {selectedOrder.note}
+                </p>
+              )}
+              {selectedOrder.team_notification_error && (
+                <p style={warningCard}>
+                  Team notification warning:
+                  {' '}
+                  {selectedOrder.team_notification_error}
                 </p>
               )}
 
@@ -2012,36 +2166,60 @@ function OrdersDashboard({
                   onClick={() =>
                     onChangeStatus(selectedOrder, 'approved')
                   }
-                  style={primaryButton}
+                  disabled={statusActionLoading !== null}
+                  style={{
+                    ...primaryButton,
+                    opacity: statusActionLoading ? 0.68 : 1,
+                  }}
                 >
-                  Approve
+                  {statusActionLoading === 'approved'
+                    ? 'Approving...'
+                    : 'Approve'}
                 </button>
                 <button
                   type="button"
                   onClick={() =>
                     onChangeStatus(selectedOrder, 'sent_to_production')
                   }
-                  style={secondaryButton}
+                  disabled={statusActionLoading !== null}
+                  style={{
+                    ...secondaryButton,
+                    opacity: statusActionLoading ? 0.68 : 1,
+                  }}
                 >
-                  Send to production
+                  {statusActionLoading === 'sent_to_production'
+                    ? 'Sending...'
+                    : 'Send to production'}
                 </button>
                 <button
                   type="button"
                   onClick={() =>
                     onChangeStatus(selectedOrder, 'declined')
                   }
-                  style={secondaryButton}
+                  disabled={statusActionLoading !== null}
+                  style={{
+                    ...secondaryButton,
+                    opacity: statusActionLoading ? 0.68 : 1,
+                  }}
                 >
-                  Decline
+                  {statusActionLoading === 'declined'
+                    ? 'Declining...'
+                    : 'Decline'}
                 </button>
                 <button
                   type="button"
                   onClick={() =>
                     onChangeStatus(selectedOrder, 'completed')
                   }
-                  style={secondaryButton}
+                  disabled={statusActionLoading !== null}
+                  style={{
+                    ...secondaryButton,
+                    opacity: statusActionLoading ? 0.68 : 1,
+                  }}
                 >
-                  Mark completed
+                  {statusActionLoading === 'completed'
+                    ? 'Marking...'
+                    : 'Mark completed'}
                 </button>
               </div>
             </div>
@@ -2191,7 +2369,28 @@ const secondaryButton: CSSProperties = {
   background: 'rgba(255,255,255,0.045)',
   textDecoration: 'none',
   fontWeight: 800,
+  cursor: 'pointer',
 };
+
+function toastStyle(tone: StudioToast['tone']): CSSProperties {
+  const color = tone === 'success' ? '#9dffc4' : '#ffb4b4';
+
+  return {
+    position: 'fixed',
+    top: 22,
+    right: 22,
+    zIndex: 50,
+    maxWidth: 'min(360px, calc(100vw - 32px))',
+    border: `1px solid ${color}55`,
+    borderRadius: 16,
+    padding: '13px 16px',
+    background: 'rgba(5,6,7,0.94)',
+    color,
+    boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+    fontSize: 14,
+    fontWeight: 800,
+  };
+}
 
 const workspaceGrid: CSSProperties = {
   maxWidth: 1320,

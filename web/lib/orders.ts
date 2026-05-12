@@ -60,6 +60,8 @@ export type OrderRecord = {
   customer_decision_at: string | null;
   customer_viewed_at: string | null;
   offer_sent_at: string | null;
+  team_notified_at: string | null;
+  team_notification_error: string | null;
 };
 
 export type CreateOrderInput = {
@@ -146,6 +148,14 @@ function getResendApiKey() {
 
 function getFromEmail() {
   return process.env.FROM_EMAIL ?? '';
+}
+
+function getReplyToEmail() {
+  return process.env.REPLY_TO_EMAIL ?? '';
+}
+
+function getTeamEmail() {
+  return process.env.TEAM_EMAIL ?? '';
 }
 
 export function isOfferEmailConfigured() {
@@ -390,6 +400,10 @@ function parseOrder(
     customer_decision_at: parseDate(row.customer_decision_at),
     customer_viewed_at: parseDate(row.customer_viewed_at),
     offer_sent_at: parseDate(row.offer_sent_at),
+    team_notified_at: parseDate(row.team_notified_at),
+    team_notification_error: row.team_notification_error
+      ? String(row.team_notification_error)
+      : null,
   };
 }
 
@@ -629,6 +643,36 @@ function formatEmailPrice(value: number | null) {
   return value === null ? 'Manual quote' : `€${value.toFixed(2)}`;
 }
 
+function formatEmailValue(value: string | null | undefined) {
+  const text = value?.trim();
+
+  return text ? text : 'Not provided';
+}
+
+function formatOrderValue(value: string) {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPlacement(value: string) {
+  const normalized = value.toLowerCase();
+
+  if (normalized === 'left' || normalized.includes('left')) {
+    return 'Left chest';
+  }
+
+  if (normalized === 'center' || normalized.includes('center')) {
+    return 'Center front';
+  }
+
+  return formatOrderValue(value);
+}
+
+function getEffectiveOrderPrice(order: OrderRecord) {
+  return order.revised_price_eur ?? order.customer_price_eur;
+}
+
 function getResendErrorMessage(payload: unknown) {
   const text = JSON.stringify(payload).toLowerCase();
 
@@ -658,7 +702,13 @@ function getResendErrorMessage(payload: unknown) {
   return 'Could not send offer email.';
 }
 
-export async function sendOfferEmail(order: OrderRecord) {
+async function sendResendEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  replyTo?: string;
+}) {
   const resendApiKey = getResendApiKey();
   const fromEmail = getFromEmail();
 
@@ -666,34 +716,17 @@ export async function sendOfferEmail(order: OrderRecord) {
     throw new Error('Email not configured.');
   }
 
-  if (!order.public_token) {
-    throw new Error('Order is missing a customer link.');
-  }
+  const body: Record<string, unknown> = {
+    from: fromEmail,
+    to: input.to,
+    subject: input.subject,
+    text: input.text,
+    html: input.html,
+  };
 
-  const customerLink = `${publicSiteUrl}/order/${order.public_token}`;
-  const price = formatEmailPrice(
-    order.revised_price_eur ?? order.customer_price_eur
-  );
-  const teamMessage = order.team_message?.trim() || '';
-  const emailTeamMessage = teamMessage || 'No message added.';
-  const safeName = escapeHtml(order.customer_name);
-  const safePrice = escapeHtml(price);
-  const safeTeamMessage = escapeHtml(emailTeamMessage).replace(
-    /\n/g,
-    '<br />'
-  );
-  const safeLink = escapeHtml(customerLink);
-  const text = [
-    `Hi ${order.customer_name},`,
-    '',
-    'Your Stitchra embroidery quote is ready.',
-    `Price: ${price}`,
-    `Message from the studio: ${emailTeamMessage}`,
-    '',
-    `Review your secure offer here: ${customerLink}`,
-  ]
-    .filter((line) => line !== '')
-    .join('\n');
+  if (input.replyTo) {
+    body.reply_to = input.replyTo;
+  }
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -701,30 +734,290 @@ export async function sendOfferEmail(order: OrderRecord) {
       Authorization: `Bearer ${resendApiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: order.customer_email,
-      subject: 'Your Stitchra embroidery quote',
-      text,
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.6;">
-          <p>Hi ${safeName},</p>
-          <p>Your Stitchra embroidery quote is ready.</p>
-          <p><strong>Price:</strong> ${safePrice}</p>
-          <p><strong>Message from the studio:</strong><br />${safeTeamMessage}</p>
-          <p>
-            <a href="${safeLink}" style="color: #047857;">Review your secure offer</a>
-          </p>
-          <p>${safeLink}</p>
-        </div>
-      `,
-    }),
+    body: JSON.stringify(body),
   });
 
   const payload = (await response.json().catch(() => ({}))) as unknown;
 
   if (!response.ok) {
     throw new Error(getResendErrorMessage(payload));
+  }
+}
+
+function buildEmailDetailRow(label: string, value: string) {
+  return `
+    <tr>
+      <td style="padding: 10px 0; color: #8c9a96; font-size: 13px;">${label}</td>
+      <td style="padding: 10px 0; color: #f5f7f8; font-size: 14px; font-weight: 700; text-align: right;">${escapeHtml(value)}</td>
+    </tr>
+  `;
+}
+
+function buildCustomerOfferText(input: {
+  order: OrderRecord;
+  price: string;
+  customerLink: string;
+  teamMessage: string;
+}) {
+  return [
+    `Hi ${input.order.customer_name},`,
+    '',
+    'Your Stitchra embroidery quote is ready.',
+    '',
+    `Price: ${input.price}`,
+    `Placement: ${formatPlacement(input.order.placement)}`,
+    `Shirt color: ${formatOrderValue(input.order.shirt_color)}`,
+    `Quantity: ${input.order.quantity ?? 1}`,
+    '',
+    `Message from the studio: ${input.teamMessage}`,
+    '',
+    `Review your secure offer: ${input.customerLink}`,
+    '',
+    'This offer was prepared by the Stitchra studio.',
+  ].join('\n');
+}
+
+function buildCustomerOfferHtml(input: {
+  order: OrderRecord;
+  price: string;
+  customerLink: string;
+  teamMessage: string;
+}) {
+  const safeName = escapeHtml(input.order.customer_name);
+  const safePrice = escapeHtml(input.price);
+  const safeTeamMessage = escapeHtml(input.teamMessage).replace(
+    /\n/g,
+    '<br />'
+  );
+  const safeLink = escapeHtml(input.customerLink);
+  const details = [
+    ['Placement', formatPlacement(input.order.placement)],
+    ['Shirt color', formatOrderValue(input.order.shirt_color)],
+    ['Quantity', String(input.order.quantity ?? 1)],
+  ]
+    .map(([label, value]) => buildEmailDetailRow(label, value))
+    .join('');
+
+  return `
+    <!doctype html>
+    <html>
+      <body style="margin: 0; padding: 0; background: #050607; font-family: Arial, Helvetica, sans-serif;">
+        <div style="display: none; max-height: 0; overflow: hidden;">
+          Your Stitchra embroidery quote is ready.
+        </div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #050607; padding: 34px 14px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 620px; border: 1px solid rgba(255,255,255,0.12); border-radius: 28px; background: #0b0f0e; box-shadow: 0 28px 80px rgba(0,0,0,0.45); overflow: hidden;">
+                <tr>
+                  <td style="padding: 32px 30px 24px; background: radial-gradient(circle at 20% 10%, rgba(0,255,136,0.18), transparent 28%), radial-gradient(circle at 82% 22%, rgba(0,200,255,0.16), transparent 30%), #0b0f0e;">
+                    <div style="display: inline-block; padding: 8px 11px; border-radius: 999px; background: rgba(0,255,136,0.10); color: #9dffc4; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;">Stitchra studio</div>
+                    <h1 style="margin: 22px 0 12px; color: #f5f7f8; font-size: 34px; line-height: 1.02;">Your Stitchra embroidery quote is ready</h1>
+                    <p style="margin: 0; color: #b8c5c1; font-size: 16px; line-height: 1.55;">Hi ${safeName}, your custom embroidery offer is ready to review.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 30px 30px;">
+                    <div style="margin: 0 0 22px; padding: 22px; border-radius: 22px; background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,200,255,0.10)); border: 1px solid rgba(157,255,196,0.24);">
+                      <div style="color: #8c9a96; font-size: 13px; font-weight: 700;">Customer price</div>
+                      <div style="margin-top: 8px; color: #f5f7f8; font-size: 42px; font-weight: 900; letter-spacing: 0;">${safePrice}</div>
+                    </div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 22px; border-collapse: collapse; border-top: 1px solid rgba(255,255,255,0.10); border-bottom: 1px solid rgba(255,255,255,0.10);">
+                      ${details}
+                    </table>
+                    <div style="margin: 0 0 24px; padding: 18px; border-radius: 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);">
+                      <div style="color: #8c9a96; font-size: 13px; font-weight: 800;">Message from the studio</div>
+                      <p style="margin: 9px 0 0; color: #e6fff0; font-size: 15px; line-height: 1.6;">${safeTeamMessage}</p>
+                    </div>
+                    <a href="${safeLink}" style="display: block; width: 100%; box-sizing: border-box; padding: 16px 20px; border-radius: 18px; background: linear-gradient(135deg, #00ff88, #00c8ff); color: #03100d; text-align: center; text-decoration: none; font-size: 16px; font-weight: 900;">Review secure offer</a>
+                    <p style="margin: 18px 0 0; color: #8c9a96; font-size: 12px; line-height: 1.5;">If the button does not work, open this secure link:<br /><a href="${safeLink}" style="color: #9dffc4; word-break: break-all;">${safeLink}</a></p>
+                    <p style="margin: 26px 0 0; color: #68746f; font-size: 12px;">This offer was prepared by the Stitchra studio.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+}
+
+export async function sendOfferEmail(order: OrderRecord) {
+  if (!order.public_token) {
+    throw new Error('Order is missing a customer link.');
+  }
+
+  const customerLink = `${publicSiteUrl}/order/${order.public_token}`;
+  const price = formatEmailPrice(getEffectiveOrderPrice(order));
+  const teamMessage = order.team_message?.trim() || '';
+  const emailTeamMessage = teamMessage || 'No message added.';
+
+  await sendResendEmail({
+    to: order.customer_email,
+    subject: 'Your Stitchra embroidery quote',
+    replyTo: getReplyToEmail() || undefined,
+    text: buildCustomerOfferText({
+      order,
+      price,
+      customerLink,
+      teamMessage: emailTeamMessage,
+    }),
+    html: buildCustomerOfferHtml({
+      order,
+      price,
+      customerLink,
+      teamMessage: emailTeamMessage,
+    }),
+  });
+}
+
+function buildTeamDecisionText(order: OrderRecord) {
+  const decision = order.customer_decision;
+  const customerLink = order.public_token
+    ? `${publicSiteUrl}/order/${order.public_token}`
+    : 'No customer link available';
+
+  return [
+    `Customer decision: ${decision}`,
+    '',
+    `Customer name: ${order.customer_name}`,
+    `Customer email: ${order.customer_email}`,
+    `Customer phone: ${formatEmailValue(order.customer_phone)}`,
+    `Price: ${formatEmailPrice(getEffectiveOrderPrice(order))}`,
+    `Placement: ${formatPlacement(order.placement)}`,
+    `Shirt color: ${formatOrderValue(order.shirt_color)}`,
+    `Quantity: ${order.quantity ?? 1}`,
+    `Customer note: ${formatEmailValue(order.note)}`,
+    `Team message: ${formatEmailValue(order.team_message)}`,
+    '',
+    `Studio: ${publicSiteUrl}/studio`,
+    `Customer order: ${customerLink}`,
+  ].join('\n');
+}
+
+function buildTeamDecisionHtml(order: OrderRecord) {
+  const decision = order.customer_decision;
+  const customerLink = order.public_token
+    ? `${publicSiteUrl}/order/${order.public_token}`
+    : '';
+  const rows = [
+    ['Customer name', order.customer_name],
+    ['Customer email', order.customer_email],
+    ['Customer phone', formatEmailValue(order.customer_phone)],
+    ['Decision', decision],
+    ['Price', formatEmailPrice(getEffectiveOrderPrice(order))],
+    ['Placement', formatPlacement(order.placement)],
+    ['Shirt color', formatOrderValue(order.shirt_color)],
+    ['Quantity', String(order.quantity ?? 1)],
+    ['Customer note', formatEmailValue(order.note)],
+    ['Team message', formatEmailValue(order.team_message)],
+  ]
+    .map(([label, value]) => buildEmailDetailRow(label, value))
+    .join('');
+  const safeCustomerLink = customerLink ? escapeHtml(customerLink) : '';
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; background: #050607; color: #f5f7f8; padding: 28px;">
+      <div style="max-width: 640px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.12); border-radius: 22px; background: #0b0f0e; padding: 28px;">
+        <p style="margin: 0 0 10px; color: #9dffc4; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;">Stitchra order response</p>
+        <h1 style="margin: 0 0 18px; font-size: 28px; line-height: 1.1;">Order ${escapeHtml(decision)}: ${escapeHtml(order.customer_name)}</h1>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top: 1px solid rgba(255,255,255,0.10); border-bottom: 1px solid rgba(255,255,255,0.10);">
+          ${rows}
+        </table>
+        <p style="margin: 22px 0 0;">
+          <a href="${publicSiteUrl}/studio" style="color: #03100d; background: #00ff88; padding: 12px 16px; border-radius: 12px; text-decoration: none; font-weight: 800;">Open studio</a>
+        </p>
+        ${
+          safeCustomerLink
+            ? `<p style="margin: 18px 0 0; color: #8c9a96; font-size: 13px;">Customer order link:<br /><a href="${safeCustomerLink}" style="color: #9dffc4; word-break: break-all;">${safeCustomerLink}</a></p>`
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
+async function updateTeamNotificationStatus(input: {
+  id: string;
+  team_notified_at: string | null;
+  team_notification_error: string | null;
+}) {
+  const params = new URLSearchParams({
+    id: `eq.${input.id}`,
+    select: 'id',
+  });
+
+  await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${params.toString()}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        team_notified_at: input.team_notified_at,
+        team_notification_error: input.team_notification_error,
+        updated_at: new Date().toISOString(),
+      }),
+    }
+  );
+}
+
+async function recordTeamNotificationStatus(input: {
+  id: string;
+  team_notified_at: string | null;
+  team_notification_error: string | null;
+}) {
+  try {
+    await updateTeamNotificationStatus(input);
+  } catch (error) {
+    console.warn(
+      `[orders] Could not record team notification status for order ${input.id}: ${getOrderErrorMessage(error)}`
+    );
+  }
+}
+
+async function notifyTeamOfCustomerDecision(order: OrderRecord) {
+  const missing = [
+    getResendApiKey() ? '' : 'RESEND_API_KEY',
+    getFromEmail() ? '' : 'FROM_EMAIL',
+    getTeamEmail() ? '' : 'TEAM_EMAIL',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    const message = `Team notification skipped. Missing ${missing.join(', ')}.`;
+    console.warn(`[orders] ${message}`);
+    await recordTeamNotificationStatus({
+      id: order.id,
+      team_notified_at: null,
+      team_notification_error: message,
+    });
+    return;
+  }
+
+  try {
+    await sendResendEmail({
+      to: getTeamEmail(),
+      subject: `Stitchra order ${order.customer_decision}: ${order.customer_name}`,
+      text: buildTeamDecisionText(order),
+      html: buildTeamDecisionHtml(order),
+    });
+    await recordTeamNotificationStatus({
+      id: order.id,
+      team_notified_at: new Date().toISOString(),
+      team_notification_error: null,
+    });
+  } catch (error) {
+    const message = getOrderErrorMessage(error);
+    console.warn(
+      `[orders] Team notification failed for order ${order.id}: ${message}`
+    );
+    await recordTeamNotificationStatus({
+      id: order.id,
+      team_notified_at: null,
+      team_notification_error: message,
+    });
   }
 }
 
@@ -762,9 +1055,10 @@ export async function updatePublicOrderDecision(
     return null;
   }
 
+  const pricingSettings = await getPricingSettings();
   const params = new URLSearchParams({
     public_token: `eq.${token}`,
-    select: publicOrderSelect,
+    select: '*',
   });
 
   const rows = await supabaseRequest<SupabaseOrderRow[]>(
@@ -781,7 +1075,14 @@ export async function updatePublicOrderDecision(
     }
   );
 
-  return rows[0] ? parsePublicOrder(rows[0]) : null;
+  if (!rows[0]) {
+    return null;
+  }
+
+  const order = parseOrder(rows[0], pricingSettings);
+  await notifyTeamOfCustomerDecision(order);
+
+  return parsePublicOrder(rows[0]);
 }
 
 export async function updateOrder(
