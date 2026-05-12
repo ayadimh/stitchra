@@ -3,8 +3,10 @@ import {
   createOrder,
   getOrderErrorMessage,
   isDatabaseConfigured,
+  isOfferEmailConfigured,
   isStudioRequest,
   listOrders,
+  validatePublicOrderFields,
   type CreateOrderInput,
 } from '@/lib/orders';
 
@@ -23,7 +25,10 @@ function hasRequiredOrderFields(
       Number.isFinite(value.stitches) &&
       Number.isFinite(value.colors) &&
       Number.isFinite(value.coverage) &&
-      value.pricing_tier
+      (typeof value.customer_price_eur === 'number' ||
+        value.customer_price_eur === null) &&
+      value.pricing_tier &&
+      typeof value.manual_quote === 'boolean'
   );
 }
 
@@ -40,15 +45,46 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as Partial<CreateOrderInput>;
+    const validationErrors = validatePublicOrderFields(body);
 
-    if (!hasRequiredOrderFields(body)) {
+    if (Object.keys(validationErrors).length > 0) {
       return NextResponse.json(
-        { message: 'Missing required order information.' },
+        {
+          message: 'Check the highlighted order fields.',
+          errors: validationErrors,
+        },
         { status: 400 }
       );
     }
 
-    const order = await createOrder(body);
+    if (!hasRequiredOrderFields(body)) {
+      return NextResponse.json(
+        { message: 'Missing required quote information.' },
+        { status: 400 }
+      );
+    }
+
+    const order = await createOrder({
+      customer_name: body.customer_name.trim(),
+      customer_email: body.customer_email.trim(),
+      customer_phone: body.customer_phone?.trim() || undefined,
+      quantity: Number(body.quantity),
+      note: body.note?.trim() || undefined,
+      prompt: body.prompt?.trim() || undefined,
+      placement: body.placement,
+      shirt_color: body.shirt_color,
+      logo_preview_url: body.logo_preview_url || undefined,
+      stitches: body.stitches,
+      colors: body.colors,
+      coverage: body.coverage,
+      customer_price_eur: body.customer_price_eur,
+      pricing_tier: body.pricing_tier,
+      manual_quote: body.manual_quote,
+      warnings: Array.isArray(body.warnings) ? body.warnings : [],
+      recommendations: Array.isArray(body.recommendations)
+        ? body.recommendations
+        : [],
+    });
 
     if (!order) {
       return NextResponse.json(
@@ -115,7 +151,10 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ orders });
+    return NextResponse.json({
+      orders,
+      emailConfigured: isOfferEmailConfigured(),
+    });
   } catch (error) {
     return NextResponse.json(
       {

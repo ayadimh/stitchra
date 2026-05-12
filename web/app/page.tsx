@@ -104,6 +104,19 @@ type DesignPreparation = {
 
 type Placement = 'left' | 'center';
 type TeeColor = 'black' | 'white';
+type OrderFormState = {
+  name: string;
+  email: string;
+  phone: string;
+  quantity: string;
+  note: string;
+};
+type OrderFormErrors = Partial<
+  Record<keyof OrderFormState, string>
+>;
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[+\d\s()-]+$/;
 
 const placementPresets = {
   left: {
@@ -115,6 +128,41 @@ const placementPresets = {
     size: '250 × 200 mm',
   },
 } as const;
+
+function validateOrderForm(form: OrderFormState) {
+  const errors: OrderFormErrors = {};
+  const name = form.name.trim();
+  const email = form.email.trim();
+  const phone = form.phone.trim();
+  const quantity = Number(form.quantity);
+
+  if (!name) {
+    errors.name = 'Name is required.';
+  }
+
+  if (!email) {
+    errors.email = 'Email is required.';
+  } else if (!emailPattern.test(email)) {
+    errors.email = 'Enter a valid email address.';
+  }
+
+  if (phone) {
+    const digitCount = phone.replace(/\D/g, '').length;
+
+    if (!phonePattern.test(phone) || digitCount < 7) {
+      errors.phone =
+        'Use +, spaces, digits, brackets or dashes, with at least 7 digits.';
+    }
+  }
+
+  if (!form.quantity.trim()) {
+    errors.quantity = 'Quantity is required.';
+  } else if (!Number.isInteger(quantity) || quantity < 1) {
+    errors.quantity = 'Quantity must be at least 1.';
+  }
+
+  return errors;
+}
 
 async function dataUrlToFile(
   dataUrl: string,
@@ -176,13 +224,15 @@ export default function Home() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [orderOpen, setOrderOpen] = useState(false);
-  const [orderForm, setOrderForm] = useState({
+  const [orderForm, setOrderForm] = useState<OrderFormState>({
     name: '',
     email: '',
     phone: '',
     quantity: '1',
     note: '',
   });
+  const [orderFieldErrors, setOrderFieldErrors] =
+    useState<OrderFormErrors>({});
   const [orderStatus, setOrderStatus] = useState('');
   const [orderError, setOrderError] = useState('');
 
@@ -420,14 +470,15 @@ export default function Home() {
       return;
     }
 
-    if (!orderForm.name.trim() || !orderForm.email.trim()) {
-      setOrderError('Name and email are required.');
+    const validationErrors = validateOrderForm(orderForm);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setOrderFieldErrors(validationErrors);
+      setOrderError('Please fix the highlighted fields.');
       return;
     }
 
     setIsRequestingOrder(true);
-
-    const internalQuote = estimate.internal_quote;
 
     try {
       const response = await fetch('/api/orders', {
@@ -439,9 +490,7 @@ export default function Home() {
           customer_name: orderForm.name.trim(),
           customer_email: orderForm.email.trim(),
           customer_phone: orderForm.phone.trim() || undefined,
-          quantity: orderForm.quantity
-            ? Number(orderForm.quantity)
-            : undefined,
+          quantity: Number(orderForm.quantity),
           note: orderForm.note.trim() || undefined,
           prompt:
             designPreparation?.simplified_description ||
@@ -454,30 +503,10 @@ export default function Home() {
           colors: publicQuote.colors,
           coverage: publicQuote.coverage,
           customer_price_eur: publicQuote.price_eur,
-          internal_cost_eur:
-            internalQuote?.internal_cost_eur ??
-            estimate.internal_cost_eur ??
-            null,
-          estimated_profit_eur:
-            internalQuote?.estimated_profit_eur ??
-            estimate.estimated_profit_eur ??
-            null,
-          profit_margin_percent:
-            internalQuote?.profit_margin_percent ??
-            estimate.profit_margin_percent ??
-            null,
           pricing_tier: publicQuote.pricing_tier,
           manual_quote: publicQuote.manual_quote,
           warnings: publicQuote.customer_warnings,
           recommendations: publicQuote.customer_recommendations,
-          production_notes:
-            internalQuote?.production_notes ??
-            internalQuote?.technical_warnings ??
-            [],
-          cost_breakdown:
-            internalQuote?.cost_breakdown ??
-            estimate.cost_breakdown ??
-            {},
         }),
       });
 
@@ -486,9 +515,24 @@ export default function Home() {
         .catch(() => ({}))) as {
         message?: string;
         details?: string;
+        errors?: {
+          customer_name?: string;
+          customer_email?: string;
+          customer_phone?: string;
+          quantity?: string;
+        };
       };
 
       if (!response.ok) {
+        if (payload.errors) {
+          setOrderFieldErrors({
+            name: payload.errors.customer_name,
+            email: payload.errors.customer_email,
+            phone: payload.errors.customer_phone,
+            quantity: payload.errors.quantity,
+          });
+        }
+
         setOrderError(
           payload.details ??
             payload.message ??
@@ -498,6 +542,7 @@ export default function Home() {
       }
 
       setOrderStatus('Request sent. We will review your design.');
+      setOrderFieldErrors({});
       setOrderOpen(false);
     } catch (error) {
       setOrderError('Could not send this order request.');
@@ -505,6 +550,21 @@ export default function Home() {
     } finally {
       setIsRequestingOrder(false);
     }
+  };
+
+  const updateOrderFormField = (
+    field: keyof OrderFormState,
+    value: string
+  ) => {
+    setOrderForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setOrderFieldErrors((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
   };
 
   return (
@@ -2351,66 +2411,127 @@ export default function Home() {
                           gap: 10,
                         }}
                       >
-                        <input
-                          value={orderForm.name}
-                          onChange={(event) =>
-                            setOrderForm((current) => ({
-                              ...current,
-                              name: event.target.value,
-                            }))
-                          }
-                          placeholder="Your name"
-                          aria-label="Your name"
-                          style={input}
-                        />
-                        <input
-                          value={orderForm.email}
-                          onChange={(event) =>
-                            setOrderForm((current) => ({
-                              ...current,
-                              email: event.target.value,
-                            }))
-                          }
-                          placeholder="Email"
-                          aria-label="Email"
-                          type="email"
-                          style={input}
-                        />
-                        <input
-                          value={orderForm.phone}
-                          onChange={(event) =>
-                            setOrderForm((current) => ({
-                              ...current,
-                              phone: event.target.value,
-                            }))
-                          }
-                          placeholder="Phone (optional)"
-                          aria-label="Phone"
-                          style={input}
-                        />
-                        <input
-                          value={orderForm.quantity}
-                          onChange={(event) =>
-                            setOrderForm((current) => ({
-                              ...current,
-                              quantity: event.target.value,
-                            }))
-                          }
-                          placeholder="Quantity"
-                          aria-label="Quantity"
-                          type="number"
-                          min="1"
-                          style={input}
-                        />
+                        <div style={fieldStack}>
+                          <input
+                            value={orderForm.name}
+                            onChange={(event) =>
+                              updateOrderFormField(
+                                'name',
+                                event.target.value
+                              )
+                            }
+                            placeholder="Your name"
+                            aria-label="Your name"
+                            aria-invalid={Boolean(
+                              orderFieldErrors.name
+                            )}
+                            style={{
+                              ...input,
+                              ...(orderFieldErrors.name
+                                ? invalidInput
+                                : {}),
+                            }}
+                          />
+                          {orderFieldErrors.name && (
+                            <span style={fieldError}>
+                              {orderFieldErrors.name}
+                            </span>
+                          )}
+                        </div>
+                        <div style={fieldStack}>
+                          <input
+                            value={orderForm.email}
+                            onChange={(event) =>
+                              updateOrderFormField(
+                                'email',
+                                event.target.value
+                              )
+                            }
+                            placeholder="Email"
+                            aria-label="Email"
+                            aria-invalid={Boolean(
+                              orderFieldErrors.email
+                            )}
+                            type="email"
+                            style={{
+                              ...input,
+                              ...(orderFieldErrors.email
+                                ? invalidInput
+                                : {}),
+                            }}
+                          />
+                          {orderFieldErrors.email && (
+                            <span style={fieldError}>
+                              {orderFieldErrors.email}
+                            </span>
+                          )}
+                        </div>
+                        <div style={fieldStack}>
+                          <input
+                            value={orderForm.phone}
+                            onChange={(event) =>
+                              updateOrderFormField(
+                                'phone',
+                                event.target.value
+                              )
+                            }
+                            placeholder="Phone (optional)"
+                            aria-label="Phone"
+                            aria-invalid={Boolean(
+                              orderFieldErrors.phone
+                            )}
+                            style={{
+                              ...input,
+                              ...(orderFieldErrors.phone
+                                ? invalidInput
+                                : {}),
+                            }}
+                          />
+                          {orderFieldErrors.phone && (
+                            <span style={fieldError}>
+                              {orderFieldErrors.phone}
+                            </span>
+                          )}
+                        </div>
+                        <div style={fieldStack}>
+                          <input
+                            value={orderForm.quantity}
+                            onChange={(event) =>
+                              updateOrderFormField(
+                                'quantity',
+                                event.target.value
+                              )
+                            }
+                            placeholder="Quantity"
+                            aria-label="Quantity"
+                            aria-invalid={Boolean(
+                              orderFieldErrors.quantity
+                            )}
+                            type="number"
+                            min="1"
+                            step="1"
+                            style={{
+                              ...input,
+                              ...(orderFieldErrors.quantity
+                                ? invalidInput
+                                : {}),
+                            }}
+                          />
+                          {orderFieldErrors.quantity && (
+                            <span style={fieldError}>
+                              {orderFieldErrors.quantity}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <textarea
                         value={orderForm.note}
                         onChange={(event) =>
-                          setOrderForm((current) => ({
-                            ...current,
-                            note: event.target.value,
-                          }))
+                          updateOrderFormField(
+                            'note',
+                            event.target.value
+                          )
                         }
                         placeholder="Note for the studio (optional)"
                         aria-label="Order note"
@@ -4671,6 +4792,22 @@ const input: CSSProperties = {
   padding: '0 16px',
   outline: 'none',
   width: '100%',
+};
+
+const invalidInput: CSSProperties = {
+  borderColor: 'rgba(255,120,120,0.82)',
+  boxShadow: '0 0 0 1px rgba(255,120,120,0.2)',
+};
+
+const fieldStack: CSSProperties = {
+  display: 'grid',
+  gap: 6,
+};
+
+const fieldError: CSSProperties = {
+  color: '#ffb4b4',
+  fontSize: 12,
+  lineHeight: 1.35,
 };
 
 const label: CSSProperties = {
