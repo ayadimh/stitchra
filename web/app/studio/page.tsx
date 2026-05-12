@@ -84,6 +84,7 @@ type OrderRecord = {
   colors: number;
   coverage: number;
   customer_price_eur: number | null;
+  revised_price_eur: number | null;
   internal_cost_eur: number | null;
   estimated_profit_eur: number | null;
   profit_margin_percent: number | null;
@@ -92,8 +93,17 @@ type OrderRecord = {
   warnings: string[];
   recommendations: string[];
   production_notes: string[];
+  team_message: string | null;
   cost_breakdown: CostBreakdown;
   status: OrderStatus;
+};
+
+type OrderEditForm = {
+  revised_price_eur: string;
+  customer_price_eur: string;
+  quantity: string;
+  production_notes: string;
+  team_message: string;
 };
 
 type LogoAnalysis = {
@@ -143,6 +153,87 @@ const statusLabels: Record<OrderStatus, string> = {
   declined: 'Declined',
   completed: 'Completed',
 };
+
+const emptyOrderEditForm: OrderEditForm = {
+  revised_price_eur: '',
+  customer_price_eur: '',
+  quantity: '1',
+  production_notes: '',
+  team_message: '',
+};
+
+function formatMoney(value: number | null) {
+  return value === null ? 'Pending' : `€${value.toFixed(2)}`;
+}
+
+function formatOrderValue(value: string) {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPlacement(value: string) {
+  if (value === 'left') {
+    return 'Left chest';
+  }
+
+  if (value === 'center') {
+    return 'Center front';
+  }
+
+  return formatOrderValue(value);
+}
+
+function getEffectiveCustomerPrice(order: OrderRecord) {
+  return order.revised_price_eur ?? order.customer_price_eur;
+}
+
+function formatOrderCustomerPrice(order: OrderRecord) {
+  const price = getEffectiveCustomerPrice(order);
+
+  return order.manual_quote && price === null
+    ? 'Manual quote'
+    : formatMoney(price);
+}
+
+function getOrderEditForm(order: OrderRecord | null): OrderEditForm {
+  if (!order) {
+    return emptyOrderEditForm;
+  }
+
+  return {
+    revised_price_eur:
+      order.revised_price_eur === null
+        ? ''
+        : String(order.revised_price_eur),
+    customer_price_eur:
+      order.customer_price_eur === null
+        ? ''
+        : String(order.customer_price_eur),
+    quantity: String(order.quantity ?? 1),
+    production_notes: order.production_notes.join('\n'),
+    team_message: order.team_message ?? '',
+  };
+}
+
+function parseEditableMoney(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function parseProductionNotes(value: string) {
+  return value
+    .split('\n')
+    .map((note) => note.trim())
+    .filter(Boolean);
+}
 
 async function dataUrlToFile(dataUrl: string, name: string) {
   const response = await fetch(dataUrl);
@@ -221,7 +312,11 @@ export default function StudioPage() {
     useState<OrderStatus | 'all'>('all');
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState('');
-  const [productionNote, setProductionNote] = useState('');
+  const [orderEditForm, setOrderEditForm] =
+    useState<OrderEditForm>(emptyOrderEditForm);
+  const [orderEditError, setOrderEditError] = useState('');
+  const [orderEditStatus, setOrderEditStatus] = useState('');
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -237,6 +332,13 @@ export default function StudioPage() {
 
     return Array.from(labels);
   }, [analysis, internalQuote]);
+
+  const selectOrder = (order: OrderRecord | null) => {
+    setSelectedOrder(order);
+    setOrderEditForm(getOrderEditForm(order));
+    setOrderEditError('');
+    setOrderEditStatus('');
+  };
 
   const loadOrders = async (
     filter: OrderStatus | 'all' = orderStatusFilter
@@ -270,18 +372,15 @@ export default function StudioPage() {
         return;
       }
 
-      setOrders(payload.orders ?? []);
-      setSelectedOrder((current) => {
-        if (!current) {
-          return payload.orders?.[0] ?? null;
-        }
+      const nextOrders = payload.orders ?? [];
+      const nextSelected = selectedOrder
+        ? (nextOrders.find(
+            (order) => order.id === selectedOrder.id
+          ) ?? nextOrders[0] ?? null)
+        : (nextOrders[0] ?? null);
 
-        return (
-          payload.orders?.find((order) => order.id === current.id) ??
-          payload.orders?.[0] ??
-          null
-        );
-      });
+      setOrders(nextOrders);
+      selectOrder(nextSelected);
     } catch (error) {
       setOrdersError('Could not load orders.');
       console.error(error);
@@ -297,14 +396,6 @@ export default function StudioPage() {
     setOrdersError('');
 
     try {
-      const notes =
-        productionNote.trim().length > 0
-          ? [
-              ...order.production_notes,
-              productionNote.trim(),
-            ]
-          : order.production_notes;
-
       const response = await fetch(`/api/orders/${order.id}`, {
         method: 'PATCH',
         headers: {
@@ -313,7 +404,6 @@ export default function StudioPage() {
         },
         body: JSON.stringify({
           status: nextStatus,
-          production_notes: notes,
         }),
       });
       const payload = (await response
@@ -335,8 +425,7 @@ export default function StudioPage() {
 
       const updatedOrder = payload.order;
 
-      setProductionNote('');
-      setSelectedOrder(updatedOrder);
+      selectOrder(updatedOrder);
       setOrders((current) =>
         current.map((item) =>
           item.id === updatedOrder.id ? updatedOrder : item
@@ -345,6 +434,123 @@ export default function StudioPage() {
     } catch (error) {
       setOrdersError('Could not update order.');
       console.error(error);
+    }
+  };
+
+  const updateOrderEditField = (
+    field: keyof OrderEditForm,
+    value: string
+  ) => {
+    setOrderEditForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setOrderEditError('');
+    setOrderEditStatus('');
+  };
+
+  const saveOrderDetails = async () => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setOrderEditError('');
+    setOrderEditStatus('');
+
+    const revisedPrice = parseEditableMoney(
+      orderEditForm.revised_price_eur
+    );
+    const customerPrice = parseEditableMoney(
+      orderEditForm.customer_price_eur
+    );
+    const quantity = Number(orderEditForm.quantity);
+
+    if (revisedPrice === undefined) {
+      setOrderEditError(
+        'Revised price must be a non-negative number.'
+      );
+      return;
+    }
+
+    if (revisedPrice === null && customerPrice === undefined) {
+      setOrderEditError(
+        'Customer price must be a non-negative number.'
+      );
+      return;
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setOrderEditError('Quantity must be at least 1.');
+      return;
+    }
+
+    setIsSavingOrder(true);
+
+    try {
+      const payload: {
+        revised_price_eur: number | null;
+        customer_price_eur?: number | null;
+        quantity: number;
+        production_notes: string[];
+        team_message: string | null;
+      } = {
+        revised_price_eur: revisedPrice,
+        quantity,
+        production_notes: parseProductionNotes(
+          orderEditForm.production_notes
+        ),
+        team_message: orderEditForm.team_message.trim() || null,
+      };
+
+      if (revisedPrice === null) {
+        payload.customer_price_eur = customerPrice;
+      }
+
+      const response = await fetch(
+        `/api/orders/${selectedOrder.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-studio-passcode': passcode,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as {
+        order?: OrderRecord;
+        message?: string;
+        details?: string;
+        errors?: Record<string, string>;
+      };
+
+      if (!response.ok || !result.order) {
+        setOrderEditError(
+          result.details ??
+            Object.values(result.errors ?? {})[0] ??
+            result.message ??
+            'Could not save order details.'
+        );
+        return;
+      }
+
+      const updatedOrder = result.order;
+
+      setOrderEditStatus('Order details saved.');
+      setSelectedOrder(updatedOrder);
+      setOrderEditForm(getOrderEditForm(updatedOrder));
+      setOrders((current) =>
+        current.map((item) =>
+          item.id === updatedOrder.id ? updatedOrder : item
+        )
+      );
+    } catch (error) {
+      setOrderEditError('Could not save order details.');
+      console.error(error);
+    } finally {
+      setIsSavingOrder(false);
     }
   };
 
@@ -531,13 +737,17 @@ export default function StudioPage() {
           statusFilter={orderStatusFilter}
           loading={ordersLoading}
           error={ordersError}
-          productionNote={productionNote}
-          onProductionNoteChange={setProductionNote}
+          orderEditForm={orderEditForm}
+          orderEditError={orderEditError}
+          orderEditStatus={orderEditStatus}
+          savingOrder={isSavingOrder}
+          onOrderEditChange={updateOrderEditField}
+          onSaveOrderDetails={saveOrderDetails}
           onFilterChange={(nextFilter) => {
             setOrderStatusFilter(nextFilter);
             void loadOrders(nextFilter);
           }}
-          onSelectOrder={setSelectedOrder}
+          onSelectOrder={selectOrder}
           onRefresh={() => void loadOrders()}
           onChangeStatus={changeOrderStatus}
         />
@@ -735,7 +945,7 @@ function Meta({
 }) {
   return (
     <div style={metaCard}>
-      <span>{label}</span>
+      <span>{label}: </span>
       <strong>{value}</strong>
     </div>
   );
@@ -747,8 +957,12 @@ function OrdersDashboard({
   statusFilter,
   loading,
   error,
-  productionNote,
-  onProductionNoteChange,
+  orderEditForm,
+  orderEditError,
+  orderEditStatus,
+  savingOrder,
+  onOrderEditChange,
+  onSaveOrderDetails,
   onFilterChange,
   onSelectOrder,
   onRefresh,
@@ -759,8 +973,15 @@ function OrdersDashboard({
   statusFilter: OrderStatus | 'all';
   loading: boolean;
   error: string;
-  productionNote: string;
-  onProductionNoteChange: (value: string) => void;
+  orderEditForm: OrderEditForm;
+  orderEditError: string;
+  orderEditStatus: string;
+  savingOrder: boolean;
+  onOrderEditChange: (
+    field: keyof OrderEditForm,
+    value: string
+  ) => void;
+  onSaveOrderDetails: () => void;
   onFilterChange: (value: OrderStatus | 'all') => void;
   onSelectOrder: (order: OrderRecord) => void;
   onRefresh: () => void;
@@ -849,11 +1070,11 @@ function OrdersDashboard({
                 <div style={orderMiniGrid}>
                   <Meta
                     label="Placement"
-                    value={order.placement}
+                    value={formatPlacement(order.placement)}
                   />
                   <Meta
                     label="Color"
-                    value={order.shirt_color}
+                    value={formatOrderValue(order.shirt_color)}
                   />
                   <Meta
                     label="Stitches"
@@ -862,19 +1083,11 @@ function OrdersDashboard({
                   <Meta label="Colors" value={String(order.colors)} />
                   <Meta
                     label="Customer price"
-                    value={
-                      order.manual_quote
-                        ? 'Manual quote'
-                        : `€${order.customer_price_eur}`
-                    }
+                    value={formatOrderCustomerPrice(order)}
                   />
                   <Meta
                     label="Profit"
-                    value={
-                      order.estimated_profit_eur === null
-                        ? 'Pending'
-                        : `€${order.estimated_profit_eur.toFixed(2)}`
-                    }
+                    value={formatMoney(order.estimated_profit_eur)}
                   />
                 </div>
               </button>
@@ -917,11 +1130,11 @@ function OrdersDashboard({
                 <div style={noteStack}>
                   <Meta
                     label="Placement"
-                    value={selectedOrder.placement}
+                    value={formatPlacement(selectedOrder.placement)}
                   />
                   <Meta
                     label="Shirt"
-                    value={selectedOrder.shirt_color}
+                    value={formatOrderValue(selectedOrder.shirt_color)}
                   />
                   <Meta
                     label="Quantity"
@@ -957,19 +1170,11 @@ function OrdersDashboard({
                 />
                 <Metric
                   label="Customer price"
-                  value={
-                    selectedOrder.manual_quote
-                      ? 'Manual quote'
-                      : `€${selectedOrder.customer_price_eur}`
-                  }
+                  value={formatOrderCustomerPrice(selectedOrder)}
                 />
                 <Metric
                   label="Internal cost"
-                  value={
-                    selectedOrder.internal_cost_eur === null
-                      ? 'Pending'
-                      : `€${selectedOrder.internal_cost_eur.toFixed(2)}`
-                  }
+                  value={formatMoney(selectedOrder.internal_cost_eur)}
                 />
                 <Metric
                   label="Margin"
@@ -980,6 +1185,122 @@ function OrdersDashboard({
                   }
                 />
               </section>
+
+              <div style={editPanel}>
+                <h3 style={panelTitle}>Offer details</h3>
+                <div style={controlGrid}>
+                  <label style={fieldLabel}>
+                    Revised price EUR
+                    <input
+                      value={orderEditForm.revised_price_eur}
+                      onChange={(event) =>
+                        onOrderEditChange(
+                          'revised_price_eur',
+                          event.target.value
+                        )
+                      }
+                      placeholder="Leave empty to use customer price"
+                      inputMode="decimal"
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={fieldLabel}>
+                    Customer price EUR
+                    <input
+                      value={orderEditForm.customer_price_eur}
+                      onChange={(event) =>
+                        onOrderEditChange(
+                          'customer_price_eur',
+                          event.target.value
+                        )
+                      }
+                      disabled={
+                        orderEditForm.revised_price_eur.trim()
+                          .length > 0
+                      }
+                      placeholder="Customer-facing price"
+                      inputMode="decimal"
+                      style={{
+                        ...inputStyle,
+                        opacity:
+                          orderEditForm.revised_price_eur.trim()
+                            .length > 0
+                            ? 0.55
+                            : 1,
+                      }}
+                    />
+                  </label>
+                  <label style={fieldLabel}>
+                    Quantity
+                    <input
+                      value={orderEditForm.quantity}
+                      onChange={(event) =>
+                        onOrderEditChange(
+                          'quantity',
+                          event.target.value
+                        )
+                      }
+                      type="number"
+                      min="1"
+                      step="1"
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+                <label style={fieldLabel}>
+                  Production notes
+                  <textarea
+                    value={orderEditForm.production_notes}
+                    onChange={(event) =>
+                      onOrderEditChange(
+                        'production_notes',
+                        event.target.value
+                      )
+                    }
+                    placeholder="Internal production notes"
+                    rows={4}
+                    style={{
+                      ...inputStyle,
+                      resize: 'vertical',
+                    }}
+                  />
+                </label>
+                <label style={fieldLabel}>
+                  Team message
+                  <textarea
+                    value={orderEditForm.team_message}
+                    onChange={(event) =>
+                      onOrderEditChange(
+                        'team_message',
+                        event.target.value
+                      )
+                    }
+                    placeholder="Message for the team"
+                    rows={3}
+                    style={{
+                      ...inputStyle,
+                      resize: 'vertical',
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={onSaveOrderDetails}
+                  disabled={savingOrder}
+                  style={{
+                    ...primaryButton,
+                    opacity: savingOrder ? 0.68 : 1,
+                  }}
+                >
+                  {savingOrder ? 'Saving...' : 'Save details'}
+                </button>
+                {orderEditError && (
+                  <p style={errorText}>{orderEditError}</p>
+                )}
+                {orderEditStatus && (
+                  <p style={successText}>{orderEditStatus}</p>
+                )}
+              </div>
 
               <div style={workspaceGrid}>
                 <div style={panel}>
@@ -1026,32 +1347,6 @@ function OrdersDashboard({
                   ))}
                 </div>
               </div>
-
-              <label style={fieldLabel}>
-                Production notes
-                <textarea
-                  value={productionNote}
-                  onChange={(event) =>
-                    onProductionNoteChange(event.target.value)
-                  }
-                  placeholder="Add an internal note before changing status"
-                  rows={3}
-                  style={{
-                    ...inputStyle,
-                    resize: 'vertical',
-                  }}
-                />
-              </label>
-
-              {selectedOrder.production_notes.length > 0 && (
-                <div style={noteStack}>
-                  {selectedOrder.production_notes.map((note, index) => (
-                    <p key={`${note}-${index}`} style={recommendationCard}>
-                      {note}
-                    </p>
-                  ))}
-                </div>
-              )}
 
               <div style={orderActions}>
                 <button
@@ -1108,7 +1403,7 @@ function Metric({
 }) {
   return (
     <div style={metricCard}>
-      <span>{label}</span>
+      <span>{label}: </span>
       <strong>{value}</strong>
     </div>
   );
@@ -1255,6 +1550,14 @@ const panel: CSSProperties = {
   background:
     'linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025))',
   boxShadow: '0 30px 90px rgba(0,0,0,0.34)',
+};
+
+const editPanel: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.11)',
+  borderRadius: 22,
+  padding: 20,
+  background: 'rgba(0,0,0,0.22)',
+  marginBottom: 20,
 };
 
 const panelTitle: CSSProperties = {

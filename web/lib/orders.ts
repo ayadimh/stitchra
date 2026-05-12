@@ -26,6 +26,7 @@ export type OrderRecord = {
   colors: number;
   coverage: number;
   customer_price_eur: number | null;
+  revised_price_eur: number | null;
   internal_cost_eur: number | null;
   estimated_profit_eur: number | null;
   profit_margin_percent: number | null;
@@ -34,6 +35,7 @@ export type OrderRecord = {
   warnings: string[];
   recommendations: string[];
   production_notes: string[];
+  team_message: string | null;
   cost_breakdown: Record<string, number>;
   status: OrderStatus;
 };
@@ -42,7 +44,7 @@ export type CreateOrderInput = {
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
-  quantity?: number;
+  quantity: number;
   note?: string;
   prompt?: string;
   placement: string;
@@ -52,16 +54,93 @@ export type CreateOrderInput = {
   colors: number;
   coverage: number;
   customer_price_eur: number | null;
-  internal_cost_eur?: number | null;
-  estimated_profit_eur?: number | null;
-  profit_margin_percent?: number | null;
   pricing_tier: string;
   manual_quote: boolean;
   warnings?: string[];
   recommendations?: string[];
-  production_notes?: string[];
-  cost_breakdown?: Record<string, number>;
 };
+
+export type PublicOrderValidationErrors = Partial<
+  Record<
+    | 'customer_name'
+    | 'customer_email'
+    | 'customer_phone'
+    | 'quantity',
+    string
+  >
+>;
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[+\d\s()-]+$/;
+
+function hasOwn(
+  value: object,
+  key: string
+): value is Record<string, unknown> {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+export function validatePublicOrderFields(value: {
+  customer_name?: unknown;
+  customer_email?: unknown;
+  customer_phone?: unknown;
+  quantity?: unknown;
+}) {
+  const errors: PublicOrderValidationErrors = {};
+  const name =
+    typeof value.customer_name === 'string'
+      ? value.customer_name.trim()
+      : '';
+  const email =
+    typeof value.customer_email === 'string'
+      ? value.customer_email.trim()
+      : '';
+  const phone =
+    typeof value.customer_phone === 'string'
+      ? value.customer_phone.trim()
+      : '';
+  const quantityValue = value.quantity;
+  const quantity =
+    typeof quantityValue === 'number'
+      ? quantityValue
+      : typeof quantityValue === 'string' &&
+          quantityValue.trim().length > 0
+        ? Number(quantityValue)
+        : null;
+
+  if (!name) {
+    errors.customer_name = 'Customer name is required.';
+  }
+
+  if (!email) {
+    errors.customer_email = 'Customer email is required.';
+  } else if (!emailPattern.test(email)) {
+    errors.customer_email = 'Enter a valid email address.';
+  }
+
+  if (
+    value.customer_phone !== undefined &&
+    value.customer_phone !== null &&
+    typeof value.customer_phone !== 'string'
+  ) {
+    errors.customer_phone = 'Enter a valid phone number.';
+  } else if (phone) {
+    const digitCount = phone.replace(/\D/g, '').length;
+
+    if (!phonePattern.test(phone) || digitCount < 7) {
+      errors.customer_phone =
+        'Enter a valid phone number with at least 7 digits.';
+    }
+  }
+
+  if (quantity === null) {
+    errors.quantity = 'Quantity is required.';
+  } else if (!Number.isInteger(quantity) || quantity < 1) {
+    errors.quantity = 'Quantity must be at least 1.';
+  }
+
+  return errors;
+}
 
 type SupabaseOrderRow = Record<string, unknown>;
 
@@ -169,6 +248,7 @@ function parseOrder(row: SupabaseOrderRow): OrderRecord {
     colors: Number(row.colors),
     coverage: Number(row.coverage),
     customer_price_eur: parseNumber(row.customer_price_eur),
+    revised_price_eur: parseNumber(row.revised_price_eur),
     internal_cost_eur: parseNumber(row.internal_cost_eur),
     estimated_profit_eur: parseNumber(row.estimated_profit_eur),
     profit_margin_percent: parseNumber(row.profit_margin_percent),
@@ -184,6 +264,9 @@ function parseOrder(row: SupabaseOrderRow): OrderRecord {
             .map((note) => note.trim())
             .filter(Boolean)
         : parseJsonArray(productionNotes),
+    team_message: row.team_message
+      ? String(row.team_message)
+      : null,
     cost_breakdown:
       row.cost_breakdown &&
       typeof row.cost_breakdown === 'object' &&
@@ -272,7 +355,7 @@ export async function createOrder(input: CreateOrderInput) {
         customer_name: input.customer_name,
         customer_email: input.customer_email,
         customer_phone: input.customer_phone || null,
-        quantity: input.quantity || 1,
+        quantity: input.quantity,
         customer_note: input.note || null,
         prompt: input.prompt || null,
         placement: input.placement,
@@ -282,15 +365,12 @@ export async function createOrder(input: CreateOrderInput) {
         colors: input.colors,
         coverage: input.coverage,
         customer_price_eur: input.customer_price_eur,
-        internal_cost_eur: input.internal_cost_eur ?? null,
-        estimated_profit_eur: input.estimated_profit_eur ?? null,
-        profit_margin_percent: input.profit_margin_percent ?? null,
         pricing_tier: input.pricing_tier,
         manual_quote: input.manual_quote,
         warnings: input.warnings ?? [],
         recommendations: input.recommendations ?? [],
-        production_notes: (input.production_notes ?? []).join('\n'),
-        cost_breakdown: input.cost_breakdown ?? {},
+        production_notes: '',
+        cost_breakdown: {},
         status,
       }),
     }
@@ -326,6 +406,10 @@ export async function updateOrder(
   input: {
     status?: OrderStatus;
     production_notes?: string[];
+    team_message?: string | null;
+    revised_price_eur?: number | null;
+    customer_price_eur?: number | null;
+    quantity?: number;
   }
 ) {
   if (!isDatabaseConfigured()) {
@@ -340,8 +424,24 @@ export async function updateOrder(
     updates.status = input.status;
   }
 
-  if (input.production_notes) {
+  if (hasOwn(input, 'production_notes') && Array.isArray(input.production_notes)) {
     updates.production_notes = input.production_notes.join('\n');
+  }
+
+  if (hasOwn(input, 'team_message')) {
+    updates.team_message = input.team_message || null;
+  }
+
+  if (hasOwn(input, 'revised_price_eur')) {
+    updates.revised_price_eur = input.revised_price_eur;
+  }
+
+  if (hasOwn(input, 'customer_price_eur')) {
+    updates.customer_price_eur = input.customer_price_eur;
+  }
+
+  if (hasOwn(input, 'quantity')) {
+    updates.quantity = input.quantity;
   }
 
   const params = new URLSearchParams({
