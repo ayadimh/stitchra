@@ -669,8 +669,28 @@ function formatPlacement(value: string) {
   return formatOrderValue(value);
 }
 
-function getEffectiveOrderPrice(order: OrderRecord) {
-  return order.revised_price_eur ?? order.customer_price_eur;
+function getSuggestedOrderPrice(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
+  return calculatePricing({
+    stitches: order.stitches,
+    colors: order.colors,
+    placement: order.placement,
+    settings,
+    costBreakdown: order.cost_breakdown,
+  }).customer_price_eur;
+}
+
+function getEffectiveOrderPrice(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
+  return (
+    order.revised_price_eur ??
+    order.customer_price_eur ??
+    getSuggestedOrderPrice(order, settings)
+  );
 }
 
 function getResendErrorMessage(payload: unknown) {
@@ -848,8 +868,11 @@ export async function sendOfferEmail(order: OrderRecord) {
     throw new Error('Order is missing a customer link.');
   }
 
+  const pricingSettings = await getPricingSettings();
   const customerLink = `${publicSiteUrl}/order/${order.public_token}`;
-  const price = formatEmailPrice(getEffectiveOrderPrice(order));
+  const price = formatEmailPrice(
+    getEffectiveOrderPrice(order, pricingSettings)
+  );
   const teamMessage = order.team_message?.trim() || '';
   const emailTeamMessage = teamMessage || 'No message added.';
 
@@ -872,7 +895,10 @@ export async function sendOfferEmail(order: OrderRecord) {
   });
 }
 
-function buildTeamDecisionText(order: OrderRecord) {
+function buildTeamDecisionText(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
   const decision = order.customer_decision;
   const customerLink = order.public_token
     ? `${publicSiteUrl}/order/${order.public_token}`
@@ -884,7 +910,7 @@ function buildTeamDecisionText(order: OrderRecord) {
     `Customer name: ${order.customer_name}`,
     `Customer email: ${order.customer_email}`,
     `Customer phone: ${formatEmailValue(order.customer_phone)}`,
-    `Price: ${formatEmailPrice(getEffectiveOrderPrice(order))}`,
+    `Price: ${formatEmailPrice(getEffectiveOrderPrice(order, settings))}`,
     `Placement: ${formatPlacement(order.placement)}`,
     `Shirt color: ${formatOrderValue(order.shirt_color)}`,
     `Quantity: ${order.quantity ?? 1}`,
@@ -896,7 +922,10 @@ function buildTeamDecisionText(order: OrderRecord) {
   ].join('\n');
 }
 
-function buildTeamDecisionHtml(order: OrderRecord) {
+function buildTeamDecisionHtml(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
   const decision = order.customer_decision;
   const customerLink = order.public_token
     ? `${publicSiteUrl}/order/${order.public_token}`
@@ -906,7 +935,7 @@ function buildTeamDecisionHtml(order: OrderRecord) {
     ['Customer email', order.customer_email],
     ['Customer phone', formatEmailValue(order.customer_phone)],
     ['Decision', decision],
-    ['Price', formatEmailPrice(getEffectiveOrderPrice(order))],
+    ['Price', formatEmailPrice(getEffectiveOrderPrice(order, settings))],
     ['Placement', formatPlacement(order.placement)],
     ['Shirt color', formatOrderValue(order.shirt_color)],
     ['Quantity', String(order.quantity ?? 1)],
@@ -997,11 +1026,12 @@ async function notifyTeamOfCustomerDecision(order: OrderRecord) {
   }
 
   try {
+    const pricingSettings = await getPricingSettings();
     await sendResendEmail({
       to: getTeamEmail(),
       subject: `Stitchra order ${order.customer_decision}: ${order.customer_name}`,
-      text: buildTeamDecisionText(order),
-      html: buildTeamDecisionHtml(order),
+      text: buildTeamDecisionText(order, pricingSettings),
+      html: buildTeamDecisionHtml(order, pricingSettings),
     });
     await recordTeamNotificationStatus({
       id: order.id,
@@ -1168,7 +1198,6 @@ export async function updateOrder(
 
     updates.cost_breakdown = costBreakdown;
     updates.internal_cost_eur = pricing.internal_cost_eur;
-    updates.customer_price_eur = pricing.customer_price_eur;
     updates.estimated_profit_eur = pricing.estimated_profit_eur;
     updates.profit_margin_percent = pricing.profit_margin_percent;
     updates.pricing_tier = pricing.pricing_tier;

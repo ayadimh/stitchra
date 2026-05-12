@@ -258,8 +258,11 @@ function formatPlacement(value: string) {
   return formatOrderValue(value);
 }
 
-function getEffectiveCustomerPrice(order: OrderRecord) {
-  return order.revised_price_eur ?? order.customer_price_eur;
+function getEffectiveCustomerPrice(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
+  return getEditableFinalPrice(order, settings);
 }
 
 function getCustomerOrderLink(publicToken: string) {
@@ -284,6 +287,32 @@ function getPricingSettingsForm(
     form[settingKey] = String(settings[settingKey]);
     return form;
   }, {} as PricingSettingsForm);
+}
+
+function getOrderPricing(
+  order: OrderRecord,
+  settings: PricingSettings,
+  revisedPrice: number | null = order.revised_price_eur
+) {
+  return calculatePricing({
+    stitches: order.stitches,
+    colors: order.colors,
+    placement: order.placement,
+    settings,
+    costBreakdown: order.cost_breakdown,
+    revisedPrice,
+  });
+}
+
+function getEditableFinalPrice(
+  order: OrderRecord,
+  settings: PricingSettings
+) {
+  return (
+    order.revised_price_eur ??
+    order.customer_price_eur ??
+    getOrderPricing(order, settings).customer_price_eur
+  );
 }
 
 function getPricingPreview(form: PricingSettingsForm) {
@@ -360,11 +389,11 @@ function getOrderEditForm(
     };
   }
 
+  const finalPrice = getEditableFinalPrice(order, settings);
+
   return {
     revised_price_eur:
-      order.revised_price_eur === null
-        ? ''
-        : String(order.revised_price_eur),
+      finalPrice === null ? '' : String(finalPrice),
     quantity: String(order.quantity ?? 1),
     production_notes: order.production_notes.join('\n'),
     team_message: order.team_message ?? '',
@@ -930,9 +959,12 @@ export default function StudioPage() {
       orderEditForm.cost_breakdown
     );
 
-    if (revisedPrice === undefined) {
-      const message =
-        'Revised price must be a non-negative number.';
+    if (
+      revisedPrice === undefined ||
+      revisedPrice === null ||
+      revisedPrice <= 0
+    ) {
+      const message = 'Enter a valid customer price.';
       setOrderEditError(message);
       showToast(message, 'error', false);
       return;
@@ -957,7 +989,7 @@ export default function StudioPage() {
 
     try {
       const payload: {
-        revised_price_eur: number | null;
+        revised_price_eur: number;
         quantity: number;
         production_notes: string[];
         team_message: string | null;
@@ -1011,7 +1043,7 @@ export default function StudioPage() {
         getOrderEditForm(updatedOrder, pricingSettings)
       );
       updateStoredOrder(updatedOrder);
-      showToast('Saved');
+      showToast('Final price saved');
     } catch (error) {
       const message = 'Could not save order details.';
       setOrderEditError(message);
@@ -1814,6 +1846,18 @@ function OrdersDashboard({
   const parsedRevisedPrice = parseEditableMoney(
     orderEditForm.revised_price_eur
   );
+  const suggestedPricing = selectedOrder
+    ? parsedCostBreakdown
+      ? calculatePricing({
+          stitches: selectedOrder.stitches,
+          colors: selectedOrder.colors,
+          placement: selectedOrder.placement,
+          settings: pricingSettings,
+          costBreakdown: parsedCostBreakdown,
+          revisedPrice: null,
+        })
+      : getOrderPricing(selectedOrder, pricingSettings, null)
+    : null;
   const previewPricing =
     selectedOrder &&
     parsedCostBreakdown &&
@@ -1831,7 +1875,7 @@ function OrdersDashboard({
     previewPricing && parsedRevisedPrice !== undefined
       ? parsedRevisedPrice ?? previewPricing.customer_price_eur
       : selectedOrder
-        ? getEffectiveCustomerPrice(selectedOrder)
+        ? getEffectiveCustomerPrice(selectedOrder, pricingSettings)
         : null;
   const previewManualQuote =
     previewPricing?.manual_quote ?? selectedOrder?.manual_quote ?? false;
@@ -1894,16 +1938,13 @@ function OrdersDashboard({
         <div style={ordersGrid}>
           <div style={ordersList}>
             {orders.map((order) => {
-              const orderPricing = calculatePricing({
-                stitches: order.stitches,
-                colors: order.colors,
-                placement: order.placement,
-                settings: pricingSettings,
-                costBreakdown: order.cost_breakdown,
-                revisedPrice: order.revised_price_eur,
-              });
+              const orderPricing = getOrderPricing(
+                order,
+                pricingSettings
+              );
               const orderCustomerPrice =
                 order.revised_price_eur ??
+                order.customer_price_eur ??
                 orderPricing.customer_price_eur;
 
               return (
@@ -2088,9 +2129,14 @@ function OrdersDashboard({
                 <Metric
                   label="Suggested price"
                   value={getSuggestedCustomerPriceLabel(
-                    previewPricing
-                      ? previewPricing.customer_price_eur
-                      : selectedOrder.customer_price_eur
+                    suggestedPricing?.customer_price_eur ??
+                      selectedOrder.customer_price_eur
+                  )}
+                />
+                <Metric
+                  label="Original price"
+                  value={formatCustomerMoney(
+                    selectedOrder.customer_price_eur
                   )}
                 />
                 <Metric
@@ -2197,7 +2243,7 @@ function OrdersDashboard({
                 )}
                 <div style={controlGrid}>
                   <label style={fieldLabel}>
-                    Final price override EUR
+                    Final customer price EUR
                     <input
                       value={orderEditForm.revised_price_eur}
                       onChange={(event) =>
@@ -2206,20 +2252,32 @@ function OrdersDashboard({
                           event.target.value
                         )
                       }
-                      placeholder="Leave empty to use suggested price"
+                      placeholder="Enter final customer price"
                       inputMode="decimal"
-                      style={inputStyle}
+                      style={finalPriceInput}
                     />
+                    <span style={helperText}>
+                      Edit this to override the customer offer price.
+                    </span>
                   </label>
+                  <div style={metaCard}>
+                    <span style={mutedText}>
+                      Original price:
+                    </span>
+                    <strong>
+                      {formatCustomerMoney(
+                        selectedOrder.customer_price_eur
+                      )}
+                    </strong>
+                  </div>
                   <div style={metaCard}>
                     <span style={mutedText}>
                       Suggested price:
                     </span>
                     <strong>
                       {getSuggestedCustomerPriceLabel(
-                        previewPricing
-                          ? previewPricing.customer_price_eur
-                          : selectedOrder.customer_price_eur
+                        suggestedPricing?.customer_price_eur ??
+                          selectedOrder.customer_price_eur
                       )}
                     </strong>
                   </div>
@@ -2564,6 +2622,17 @@ const inputStyle: CSSProperties = {
   outline: 'none',
 };
 
+const finalPriceInput: CSSProperties = {
+  ...inputStyle,
+  border: '1px solid rgba(0,255,136,0.32)',
+  background:
+    'linear-gradient(135deg, rgba(0,255,136,0.11), rgba(0,200,255,0.075))',
+  color: '#f5f7f8',
+  padding: '18px 18px',
+  fontSize: 26,
+  fontWeight: 950,
+};
+
 const fileInputStyle: CSSProperties = {
   ...inputStyle,
   padding: 12,
@@ -2736,6 +2805,13 @@ const fieldLabel: CSSProperties = {
   color: 'rgba(245,247,248,0.68)',
   fontWeight: 750,
   marginBottom: 16,
+};
+
+const helperText: CSSProperties = {
+  color: 'rgba(157,255,196,0.72)',
+  fontSize: 12,
+  fontWeight: 700,
+  lineHeight: 1.45,
 };
 
 const inputWithSuffix: CSSProperties = {

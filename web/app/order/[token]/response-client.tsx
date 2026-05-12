@@ -155,7 +155,7 @@ export function OrderResponseClient({
             />
             {order.revised_price_eur !== null && (
               <Detail
-                label="Revised price"
+                label="Final offer price"
                 value={formatMoney(order.revised_price_eur)}
               />
             )}
