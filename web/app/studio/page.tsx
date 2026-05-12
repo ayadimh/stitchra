@@ -7,6 +7,7 @@ import {
   calculatePricing,
   costBreakdownLabels,
   defaultPricingSettings,
+  getDefaultCostBreakdown,
   normalizePricingSettings,
   type CostBreakdown,
   type CostBreakdownKey,
@@ -135,6 +136,7 @@ type ArchiveFilter =
 
 type OrderEditForm = {
   revised_price_eur: string;
+  target_margin_percent: string;
   quantity: string;
   production_notes: string;
   team_message: string;
@@ -169,6 +171,21 @@ const placementSize = {
 
 const costBreakdownKeys: CostBreakdownKey[] =
   costBreakdownLabels.map(([key]) => key);
+
+const calculatorCostNotes: Record<CostBreakdownKey, string> = {
+  stitch_cost_eur: 'Stitch estimate for this artwork',
+  blank_shirt_eur: 'Garment base cost',
+  backing_eur: 'Stabilizer material',
+  thread_and_bobbin_base_eur: 'Thread and bobbin use',
+  needle_wear_eur: 'Needle wear allowance',
+  electricity_eur: 'Machine electricity',
+  packaging_eur: 'Customer-ready packaging',
+  waste_buffer_eur: 'Waste and test allowance',
+  studio_payback_eur: 'Machine and studio payback',
+  labor_base_eur: 'Handling and setup labor',
+  color_complexity_eur: 'Color complexity handling',
+  manual_quote_review_fee_eur: 'Internal review for complex designs',
+};
 
 const pricingSettingLabels: Record<PricingSettingKey, string> = {
   stitch_cost_per_1000_eur: 'Stitch cost per 1,000',
@@ -575,106 +592,6 @@ function formatMargin(value: number | null | undefined) {
   return value === null || value === undefined ? 'Pending' : `${value}%`;
 }
 
-function getInternalCalculatorRows(input: {
-  order: OrderRecord;
-  costBreakdown: CostBreakdown;
-  pricing: ReturnType<typeof calculatePricing>;
-}) {
-  const rows: Array<{
-    label: string;
-    value: string;
-    emphasis?: boolean;
-  }> = [
-    {
-      label: 'Stitches',
-      value: input.order.stitches.toLocaleString(),
-    },
-    {
-      label: 'Stitch cost',
-      value: formatMoney(input.pricing.stitch_cost_eur),
-    },
-    {
-      label: 'Blank shirt',
-      value: formatMoney(input.costBreakdown.blank_shirt_eur),
-    },
-    {
-      label: 'Backing',
-      value: formatMoney(input.costBreakdown.backing_eur),
-    },
-    {
-      label: 'Thread and bobbin',
-      value: formatMoney(
-        input.costBreakdown.thread_and_bobbin_base_eur
-      ),
-    },
-    {
-      label: 'Needle wear',
-      value: formatMoney(input.costBreakdown.needle_wear_eur),
-    },
-    {
-      label: 'Electricity',
-      value: formatMoney(input.costBreakdown.electricity_eur),
-    },
-    {
-      label: 'Packaging',
-      value: formatMoney(input.costBreakdown.packaging_eur),
-    },
-    {
-      label: 'Waste buffer',
-      value: formatMoney(input.costBreakdown.waste_buffer_eur),
-    },
-    {
-      label: 'Studio payback',
-      value: formatMoney(input.costBreakdown.studio_payback_eur),
-    },
-    {
-      label: 'Labor',
-      value: formatMoney(input.costBreakdown.labor_base_eur),
-    },
-    {
-      label: 'Color complexity',
-      value: formatMoney(input.costBreakdown.color_complexity_eur),
-    },
-  ];
-
-  if (
-    input.order.manual_quote ||
-    input.pricing.manual_quote_review_fee_eur > 0
-  ) {
-    rows.push({
-      label: 'Manual quote review fee',
-      value: formatMoney(input.pricing.manual_quote_review_fee_eur),
-    });
-  }
-
-  rows.push(
-    {
-      label: 'Total internal cost',
-      value: formatMoney(input.pricing.internal_cost_eur),
-      emphasis: true,
-    },
-    {
-      label: 'Suggested customer price',
-      value: formatCustomerMoney(
-        input.pricing.suggested_customer_price_eur
-      ),
-      emphasis: true,
-    },
-    {
-      label: 'Expected profit',
-      value: formatMoney(input.pricing.estimated_profit_eur),
-      emphasis: true,
-    },
-    {
-      label: 'Expected margin',
-      value: formatMargin(input.pricing.profit_margin_percent),
-      emphasis: true,
-    }
-  );
-
-  return rows;
-}
-
 function getPricingSettingSuffix(key: PricingSettingKey) {
   return key === 'target_margin_percent' ? '%' : '€';
 }
@@ -689,6 +606,9 @@ function getPricingSettingInputMode(key: PricingSettingKey) {
 
 const emptyOrderEditForm: OrderEditForm = {
   revised_price_eur: '',
+  target_margin_percent: String(
+    defaultPricingSettings.target_margin_percent
+  ),
   quantity: '1',
   production_notes: '',
   team_message: '',
@@ -709,6 +629,7 @@ function getOrderEditForm(
   if (!order) {
     return {
       ...emptyOrderEditForm,
+      target_margin_percent: String(settings.target_margin_percent),
       cost_breakdown: getCostBreakdownForm(
         calculatePricing({
           stitches: 1,
@@ -725,6 +646,10 @@ function getOrderEditForm(
   return {
     revised_price_eur:
       finalPrice === null ? '' : String(finalPrice),
+    target_margin_percent: String(
+      order.cost_breakdown.target_margin_percent ??
+        settings.target_margin_percent
+    ),
     quantity: String(order.quantity ?? 1),
     production_notes: order.production_notes.join('\n'),
     team_message: order.team_message ?? '',
@@ -751,7 +676,18 @@ function parseProductionNotes(value: string) {
     .filter(Boolean);
 }
 
-function parseCostBreakdownForm(form: CostBreakdownForm) {
+function parseTargetMargin(value: string) {
+  const parsed = Number(value.trim());
+
+  return Number.isFinite(parsed) && parsed > 0 && parsed < 90
+    ? Number(parsed.toFixed(2))
+    : null;
+}
+
+function parseCostBreakdownForm(
+  form: CostBreakdownForm,
+  targetMarginPercent: number
+) {
   const parsed = {} as CostBreakdown;
 
   for (const key of costBreakdownKeys) {
@@ -764,6 +700,8 @@ function parseCostBreakdownForm(form: CostBreakdownForm) {
 
     parsed[key] = Number(value.toFixed(2));
   }
+
+  parsed.target_margin_percent = targetMarginPercent;
 
   return parsed;
 }
@@ -788,7 +726,7 @@ function parsePricingSettingsForm(form: PricingSettingsForm) {
   if (
     targetMargin === undefined ||
     targetMargin <= 0 ||
-    targetMargin >= 100
+    targetMargin >= 90
   ) {
     return null;
   }
@@ -1235,6 +1173,26 @@ export default function StudioPage() {
     setOrderEditStatus('');
   };
 
+  const resetOrderCalculator = () => {
+    if (!selectedOrder) {
+      return;
+    }
+
+    const defaults = getDefaultCostBreakdown(pricingSettings, {
+      stitches: selectedOrder.stitches,
+      manualQuote: selectedOrder.manual_quote,
+    });
+
+    setOrderEditForm((current) => ({
+      ...current,
+      target_margin_percent: String(pricingSettings.target_margin_percent),
+      cost_breakdown: getCostBreakdownForm(defaults),
+    }));
+    setOrderEditError('');
+    setOrderEditStatus('Default costs loaded. Save to apply them.');
+    showToast('Default costs loaded');
+  };
+
   const updatePricingFormField = (
     field: PricingSettingKey,
     value: string
@@ -1255,7 +1213,7 @@ export default function StudioPage() {
 
     if (!parsedSettings) {
       const message =
-        'Pricing settings must be non-negative numbers and margin must be between 0 and 100.';
+        'Pricing settings must be non-negative numbers and margin must be greater than 0 and below 90.';
       setPricingError(message);
       showToast(message, 'error', false);
       return;
@@ -1324,9 +1282,15 @@ export default function StudioPage() {
       orderEditForm.revised_price_eur
     );
     const quantity = Number(orderEditForm.quantity);
-    const costBreakdown = parseCostBreakdownForm(
-      orderEditForm.cost_breakdown
+    const targetMargin = parseTargetMargin(
+      orderEditForm.target_margin_percent
     );
+    const costBreakdown = targetMargin
+      ? parseCostBreakdownForm(
+          orderEditForm.cost_breakdown,
+          targetMargin
+        )
+      : null;
 
     if (
       revisedPrice === undefined ||
@@ -1334,6 +1298,14 @@ export default function StudioPage() {
       revisedPrice <= 0
     ) {
       const message = 'Enter a valid customer price.';
+      setOrderEditError(message);
+      showToast(message, 'error', false);
+      return;
+    }
+
+    if (targetMargin === null) {
+      const message =
+        'Target margin must be greater than 0 and below 90.';
       setOrderEditError(message);
       showToast(message, 'error', false);
       return;
@@ -1406,13 +1378,13 @@ export default function StudioPage() {
 
       const updatedOrder = result.order;
 
-      setOrderEditStatus('Order details saved.');
+      setOrderEditStatus('Calculator and final price saved.');
       setSelectedOrder(updatedOrder);
       setOrderEditForm(
         getOrderEditForm(updatedOrder, pricingSettings)
       );
       updateStoredOrder(updatedOrder);
-      showToast('Final price saved');
+      showToast('Calculator saved');
     } catch (error) {
       const message = 'Could not save order details.';
       setOrderEditError(message);
@@ -1467,9 +1439,12 @@ export default function StudioPage() {
       return;
     }
 
-    if (order.manual_quote && order.revised_price_eur === null) {
+    if (
+      order.manual_quote &&
+      (order.revised_price_eur === null || order.revised_price_eur <= 0)
+    ) {
       const message =
-        'Enter a final customer price before sending a manual quote.';
+        'Enter a final customer price before sending this manual quote.';
       setOfferEmailError(message);
       showToast(message, 'error', false);
       return;
@@ -1746,6 +1721,7 @@ export default function StudioPage() {
           onOrderEditChange={updateOrderEditField}
           onOrderCostBreakdownChange={updateOrderCostBreakdownField}
           onSaveOrderDetails={saveOrderDetails}
+          onResetOrderCalculator={resetOrderCalculator}
           onCopyCustomerLink={copyCustomerLink}
           onCopyPaymentLink={copyPaymentLink}
           onSendOfferToCustomer={sendOfferToCustomer}
@@ -2194,6 +2170,7 @@ function OrdersDashboard({
   onOrderEditChange,
   onOrderCostBreakdownChange,
   onSaveOrderDetails,
+  onResetOrderCalculator,
   onCopyCustomerLink,
   onCopyPaymentLink,
   onSendOfferToCustomer,
@@ -2230,6 +2207,7 @@ function OrdersDashboard({
     value: string
   ) => void;
   onSaveOrderDetails: () => void;
+  onResetOrderCalculator: () => void;
   onCopyCustomerLink: (order: OrderRecord) => void;
   onCopyPaymentLink: (order: OrderRecord) => void;
   onSendOfferToCustomer: (order: OrderRecord) => void;
@@ -2242,9 +2220,15 @@ function OrdersDashboard({
     status: OrderStatus
   ) => void;
 }) {
-  const parsedCostBreakdown = parseCostBreakdownForm(
-    orderEditForm.cost_breakdown
+  const targetMargin = parseTargetMargin(
+    orderEditForm.target_margin_percent
   );
+  const parsedCostBreakdown = targetMargin
+    ? parseCostBreakdownForm(
+        orderEditForm.cost_breakdown,
+        targetMargin
+      )
+    : null;
   const parsedRevisedPrice = parseEditableMoney(
     orderEditForm.revised_price_eur
   );
@@ -2274,25 +2258,31 @@ function OrdersDashboard({
         })
       : null;
   const previewCustomerPrice =
-    previewPricing && parsedRevisedPrice !== undefined
-      ? parsedRevisedPrice ?? previewPricing.customer_price_eur
+    parsedRevisedPrice !== undefined
+      ? parsedRevisedPrice
       : selectedOrder
         ? getEffectiveCustomerPrice(selectedOrder, pricingSettings)
         : null;
-  const previewManualQuote =
-    previewPricing?.manual_quote ?? selectedOrder?.manual_quote ?? false;
   const suggestedCustomerPrice =
     suggestedPricing?.suggested_customer_price_eur ?? null;
-  const calculatorCostBreakdown =
-    parsedCostBreakdown ?? selectedOrder?.cost_breakdown ?? null;
-  const internalCalculatorRows =
-    selectedOrder && suggestedPricing && calculatorCostBreakdown
-      ? getInternalCalculatorRows({
-          order: selectedOrder,
-          costBreakdown: calculatorCostBreakdown,
-          pricing: suggestedPricing,
-        })
-      : [];
+  const currentInternalCost =
+    suggestedPricing?.internal_cost_eur ??
+    selectedOrder?.internal_cost_eur ??
+    null;
+  const finalOfferProfit =
+    previewCustomerPrice !== null && currentInternalCost !== null
+      ? Number((previewCustomerPrice - currentInternalCost).toFixed(2))
+      : null;
+  const finalOfferMargin =
+    previewCustomerPrice && finalOfferProfit !== null
+      ? Number(
+          ((finalOfferProfit / previewCustomerPrice) * 100).toFixed(2)
+        )
+      : null;
+  const isBelowCost =
+    previewCustomerPrice !== null &&
+    currentInternalCost !== null &&
+    previewCustomerPrice < currentInternalCost;
   const visibleOrders = getPipelineOrders(
     orders,
     pipelineStage,
@@ -2694,8 +2684,8 @@ function OrdersDashboard({
                 <Metric
                   label="Final customer price"
                   value={
-                    previewManualQuote && previewCustomerPrice === null
-                      ? 'Manual quote'
+                    previewCustomerPrice === null
+                      ? 'Pending'
                       : formatCustomerMoney(previewCustomerPrice)
                   }
                 />
@@ -2709,25 +2699,11 @@ function OrdersDashboard({
                 />
                 <Metric
                   label="Profit"
-                  value={formatMoney(
-                    previewPricing
-                      ? previewPricing.estimated_profit_eur
-                      : selectedOrder.estimated_profit_eur
-                  )}
+                  value={formatMoney(finalOfferProfit)}
                 />
                 <Metric
                   label="Margin"
-                  value={
-                    (previewPricing
-                      ? previewPricing.profit_margin_percent
-                      : selectedOrder.profit_margin_percent) === null
-                      ? 'Pending'
-                      : `${
-                          previewPricing
-                            ? previewPricing.profit_margin_percent
-                            : selectedOrder.profit_margin_percent
-                        }%`
-                  }
+                  value={formatMargin(finalOfferMargin)}
                 />
               </section>
 
@@ -2737,6 +2713,10 @@ function OrdersDashboard({
                     <h3 style={panelTitle}>
                       Internal pricing calculator
                     </h3>
+                    <p style={compactMutedText}>
+                      Edit this order&apos;s saved cost snapshot. Global
+                      pricing settings are only used when you reset.
+                    </p>
                     {selectedOrder.manual_quote && (
                       <p style={compactMutedText}>
                         Customer sees manual quote. This calculator
@@ -2745,43 +2725,186 @@ function OrdersDashboard({
                     )}
                   </div>
                   <div style={suggestedPriceCard}>
-                    <span style={mutedText}>Suggested price</span>
+                    <span style={mutedText}>Total internal cost</span>
                     <strong>
-                      {getSuggestedCustomerPriceLabel(
-                        suggestedCustomerPrice
-                      )}
+                      {formatMoney(currentInternalCost)}
                     </strong>
                   </div>
                 </div>
-                <div style={calculatorGrid}>
-                  {internalCalculatorRows.map((row) => (
-                    <div
-                      key={row.label}
-                      style={
-                        row.emphasis
-                          ? calculatorRowEmphasis
-                          : calculatorRow
+
+                <div style={calculatorFacts}>
+                  <Meta
+                    label="Stitches"
+                    value={selectedOrder.stitches.toLocaleString()}
+                  />
+                  <Meta
+                    label="Pricing tier"
+                    value={selectedOrder.pricing_tier}
+                  />
+                  <label style={fieldLabel}>
+                    Target margin percent
+                    <input
+                      value={orderEditForm.target_margin_percent}
+                      onChange={(event) =>
+                        onOrderEditChange(
+                          'target_margin_percent',
+                          event.target.value
+                        )
                       }
-                    >
-                      <span>{row.label}</span>
-                      <strong>{row.value}</strong>
-                    </div>
-                  ))}
+                      inputMode="decimal"
+                      style={inputStyle}
+                    />
+                  </label>
                 </div>
-                {suggestedCustomerPrice !== null && (
+
+                <div style={calculatorTableWrap}>
+                  <table style={calculatorTable}>
+                    <thead>
+                      <tr>
+                        <th style={calculatorTableHead}>Cost item</th>
+                        <th style={calculatorTableHead}>Value EUR</th>
+                        <th style={calculatorTableHead}>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {costBreakdownLabels.map(([key, label]) => (
+                        <tr key={key}>
+                          <td style={calculatorTableCell}>
+                            <strong>{label}</strong>
+                          </td>
+                          <td style={calculatorTableCell}>
+                            <input
+                              value={
+                                orderEditForm.cost_breakdown[key]
+                              }
+                              onChange={(event) =>
+                                onOrderCostBreakdownChange(
+                                  key,
+                                  event.target.value
+                                )
+                              }
+                              inputMode="decimal"
+                              style={calculatorInput}
+                            />
+                          </td>
+                          <td style={calculatorTableNote}>
+                            {calculatorCostNotes[key]}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={calculatorSummaryGrid}>
+                  <div style={calculatorSummaryCard}>
+                    <span style={eyebrow}>Suggested calculation</span>
+                    <div style={calculatorSummaryRows}>
+                      <Meta
+                        label="Suggested customer price"
+                        value={getSuggestedCustomerPriceLabel(
+                          suggestedCustomerPrice
+                        )}
+                      />
+                      <Meta
+                        label="Expected profit"
+                        value={formatMoney(
+                          suggestedPricing?.estimated_profit_eur ??
+                            null
+                        )}
+                      />
+                      <Meta
+                        label="Expected margin"
+                        value={formatMargin(
+                          suggestedPricing?.profit_margin_percent
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={calculatorSummaryCardHighlight}>
+                    <span style={eyebrow}>Final offer calculation</span>
+                    <label style={finalPriceField}>
+                      Final customer price EUR
+                      <input
+                        value={orderEditForm.revised_price_eur}
+                        onChange={(event) =>
+                          onOrderEditChange(
+                            'revised_price_eur',
+                            event.target.value
+                          )
+                        }
+                        placeholder="Enter final customer price"
+                        inputMode="decimal"
+                        style={finalPriceInput}
+                      />
+                      <span style={helperText}>
+                        Edit this to override the customer offer
+                        price.
+                      </span>
+                    </label>
+                    <div style={calculatorSummaryRows}>
+                      <Meta
+                        label="Final customer price"
+                        value={
+                          previewCustomerPrice === null
+                            ? 'Pending'
+                            : formatCustomerMoney(previewCustomerPrice)
+                        }
+                      />
+                      <Meta
+                        label="Actual profit"
+                        value={formatMoney(finalOfferProfit)}
+                      />
+                      <Meta
+                        label="Actual margin"
+                        value={formatMargin(finalOfferMargin)}
+                      />
+                    </div>
+                    {isBelowCost && (
+                      <p style={warningCard}>
+                        This offer is below cost.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={calculatorActions}>
+                  {suggestedCustomerPrice !== null && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOrderEditChange(
+                          'revised_price_eur',
+                          String(suggestedCustomerPrice)
+                        )
+                      }
+                      style={secondaryButton}
+                    >
+                      Use suggested price
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() =>
-                      onOrderEditChange(
-                        'revised_price_eur',
-                        String(suggestedCustomerPrice)
-                      )
-                    }
+                    onClick={onResetOrderCalculator}
                     style={secondaryButton}
                   >
-                    Use suggested price
+                    Reset to default costs
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={onSaveOrderDetails}
+                    disabled={savingOrder}
+                    style={{
+                      ...primaryButton,
+                      opacity: savingOrder ? 0.68 : 1,
+                    }}
+                  >
+                    {savingOrder
+                      ? 'Saving...'
+                      : 'Save calculator and final price'}
+                  </button>
+                </div>
               </div>
 
               <div style={editPanel}>
@@ -2889,24 +3012,6 @@ function OrdersDashboard({
                   </div>
                 )}
                 <div style={controlGrid}>
-                  <label style={fieldLabel}>
-                    Final customer price EUR
-                    <input
-                      value={orderEditForm.revised_price_eur}
-                      onChange={(event) =>
-                        onOrderEditChange(
-                          'revised_price_eur',
-                          event.target.value
-                        )
-                      }
-                      placeholder="Enter final customer price"
-                      inputMode="decimal"
-                      style={finalPriceInput}
-                    />
-                    <span style={helperText}>
-                      Edit this to override the customer offer price.
-                    </span>
-                  </label>
                   <div style={metaCard}>
                     <span style={mutedText}>
                       Original price:
@@ -2935,9 +3040,8 @@ function OrdersDashboard({
                       Final customer price:
                     </span>
                     <strong>
-                      {previewManualQuote &&
-                      previewCustomerPrice === null
-                        ? 'Manual quote'
+                      {previewCustomerPrice === null
+                        ? 'Pending'
                         : formatCustomerMoney(previewCustomerPrice)}
                     </strong>
                   </div>
@@ -2957,29 +3061,6 @@ function OrdersDashboard({
                       style={inputStyle}
                     />
                   </label>
-                </div>
-                <div style={editSubsection}>
-                  <h4 style={sectionMiniTitle}>
-                    Internal cost breakdown
-                  </h4>
-                  <div style={controlGrid}>
-                    {costBreakdownLabels.map(([key, label]) => (
-                      <label key={key} style={fieldLabel}>
-                        {label}
-                        <input
-                          value={orderEditForm.cost_breakdown[key]}
-                          onChange={(event) =>
-                            onOrderCostBreakdownChange(
-                              key,
-                              event.target.value
-                            )
-                          }
-                          inputMode="decimal"
-                          style={inputStyle}
-                        />
-                      </label>
-                    ))}
-                  </div>
                 </div>
                 <label style={fieldLabel}>
                   Production notes
@@ -3026,7 +3107,9 @@ function OrdersDashboard({
                     opacity: savingOrder ? 0.68 : 1,
                   }}
                 >
-                  {savingOrder ? 'Saving...' : 'Save details'}
+                  {savingOrder
+                    ? 'Saving...'
+                    : 'Save calculator and final price'}
                 </button>
                 {orderEditError && (
                   <p style={errorText}>{orderEditError}</p>
@@ -3065,24 +3148,6 @@ function OrdersDashboard({
                       <p style={mutedText}>No recommendations.</p>
                     )}
                   </div>
-                </div>
-              </div>
-
-              <div style={panel}>
-                <h3 style={panelTitle}>Cost breakdown</h3>
-                <div style={breakdownTable}>
-                  {costBreakdownLabels.map(([key, label]) => (
-                    <div key={key} style={breakdownRow}>
-                      <span>{label}</span>
-                      <strong>
-                        €
-                        {(
-                          parsedCostBreakdown?.[key] ??
-                          selectedOrder.cost_breakdown[key]
-                        ).toFixed(2)}
-                      </strong>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -3471,12 +3536,6 @@ const editPanel: CSSProperties = {
   marginBottom: 20,
 };
 
-const editSubsection: CSSProperties = {
-  borderTop: '1px solid rgba(255,255,255,0.08)',
-  marginTop: 4,
-  paddingTop: 18,
-};
-
 const customerLinkBox: CSSProperties = {
   border: '1px solid rgba(255,255,255,0.09)',
   borderRadius: 16,
@@ -3710,28 +3769,92 @@ const suggestedPriceCard: CSSProperties = {
   gap: 6,
 };
 
-const calculatorGrid: CSSProperties = {
+const calculatorFacts: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-  gap: 10,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gap: 14,
+  marginBottom: 16,
+};
+
+const calculatorTableWrap: CSSProperties = {
+  overflowX: 'auto',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 18,
+  background: 'rgba(0,0,0,0.20)',
+  marginBottom: 16,
+};
+
+const calculatorTable: CSSProperties = {
+  width: '100%',
+  minWidth: 680,
+  borderCollapse: 'collapse',
+};
+
+const calculatorTableHead: CSSProperties = {
+  padding: '12px 14px',
+  textAlign: 'left',
+  color: 'rgba(245,247,248,0.58)',
+  fontSize: 12,
+  textTransform: 'uppercase',
+  letterSpacing: 0,
+  borderBottom: '1px solid rgba(255,255,255,0.10)',
+};
+
+const calculatorTableCell: CSSProperties = {
+  padding: '11px 14px',
+  borderBottom: '1px solid rgba(255,255,255,0.075)',
+  color: '#f5f7f8',
+};
+
+const calculatorTableNote: CSSProperties = {
+  ...calculatorTableCell,
+  color: 'rgba(245,247,248,0.54)',
+  fontSize: 13,
+};
+
+const calculatorInput: CSSProperties = {
+  ...inputStyle,
+  minWidth: 120,
+  padding: '10px 12px',
+  borderRadius: 12,
+};
+
+const calculatorSummaryGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+  gap: 14,
   marginBottom: 14,
 };
 
-const calculatorRow: CSSProperties = {
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 14,
-  padding: 12,
-  background: 'rgba(0,0,0,0.22)',
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 12,
+const calculatorSummaryCard: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 18,
+  padding: 16,
+  background: 'rgba(255,255,255,0.045)',
 };
 
-const calculatorRowEmphasis: CSSProperties = {
-  ...calculatorRow,
-  borderColor: 'rgba(157,255,196,0.24)',
-  background: 'rgba(157,255,196,0.075)',
-  color: '#e8fff0',
+const calculatorSummaryCardHighlight: CSSProperties = {
+  ...calculatorSummaryCard,
+  borderColor: 'rgba(0,255,136,0.24)',
+  background:
+    'linear-gradient(135deg, rgba(0,255,136,0.10), rgba(0,200,255,0.06))',
+};
+
+const calculatorSummaryRows: CSSProperties = {
+  display: 'grid',
+  gap: 10,
+  marginTop: 14,
+};
+
+const finalPriceField: CSSProperties = {
+  ...fieldLabel,
+  marginTop: 14,
+};
+
+const calculatorActions: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
 };
 
 const successText: CSSProperties = {

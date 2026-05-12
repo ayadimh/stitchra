@@ -59,12 +59,13 @@ export async function POST(
 
     if (
       existingOrder.manual_quote &&
-      existingOrder.revised_price_eur === null
+      (existingOrder.revised_price_eur === null ||
+        existingOrder.revised_price_eur <= 0)
     ) {
       return NextResponse.json(
         {
           message:
-            'Enter a final customer price before sending a manual quote.',
+            'Enter a final customer price before sending this manual quote.',
         },
         { status: 400 }
       );

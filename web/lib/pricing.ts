@@ -21,7 +21,7 @@ export type PricingSettings = {
 
 type NumericPricingSettingKey = Exclude<keyof PricingSettings, 'round_mode'>;
 
-export type CostBreakdown = Pick<
+type BaseCostBreakdown = Pick<
   PricingSettings,
   | 'blank_shirt_eur'
   | 'backing_eur'
@@ -35,7 +35,16 @@ export type CostBreakdown = Pick<
   | 'color_complexity_eur'
 >;
 
-export type CostBreakdownKey = keyof CostBreakdown;
+export type CostBreakdown = BaseCostBreakdown & {
+  stitch_cost_eur: number;
+  manual_quote_review_fee_eur: number;
+  target_margin_percent?: number;
+};
+
+export type CostBreakdownKey = Exclude<
+  keyof CostBreakdown,
+  'target_margin_percent'
+>;
 
 export const defaultPricingSettings: PricingSettings = {
   stitch_cost_per_1000_eur: 0.05,
@@ -57,6 +66,7 @@ export const defaultPricingSettings: PricingSettings = {
 };
 
 export const costBreakdownLabels: Array<[CostBreakdownKey, string]> = [
+  ['stitch_cost_eur', 'Stitch cost'],
   ['blank_shirt_eur', 'Blank shirt'],
   ['backing_eur', 'Backing'],
   ['thread_and_bobbin_base_eur', 'Thread and bobbin'],
@@ -67,6 +77,7 @@ export const costBreakdownLabels: Array<[CostBreakdownKey, string]> = [
   ['studio_payback_eur', 'Studio payback'],
   ['labor_base_eur', 'Labor'],
   ['color_complexity_eur', 'Color complexity'],
+  ['manual_quote_review_fee_eur', 'Manual quote review fee'],
 ];
 
 const costKeys = costBreakdownLabels.map(([key]) => key);
@@ -82,6 +93,24 @@ function parseFiniteNumber(value: unknown) {
 
 function roundCurrency(value: number) {
   return Number(value.toFixed(2));
+}
+
+function getStitchCost(stitches: number, settings: PricingSettings) {
+  return roundCurrency(
+    (Math.max(0, stitches) / 1000) *
+      settings.stitch_cost_per_1000_eur
+  );
+}
+
+function normalizeTargetMarginPercent(
+  value: unknown,
+  fallback: number = defaultPricingSettings.target_margin_percent
+) {
+  const parsed = parseFiniteNumber(value);
+
+  return parsed !== null && parsed > 0 && parsed < 90
+    ? roundCurrency(parsed)
+    : fallback;
 }
 
 function getLegacyCostValue(
@@ -101,9 +130,11 @@ function getLegacyCostValue(
 }
 
 export function getDefaultCostBreakdown(
-  settings: PricingSettings = defaultPricingSettings
+  settings: PricingSettings = defaultPricingSettings,
+  input: { stitches?: number; manualQuote?: boolean } = {}
 ): CostBreakdown {
   return {
+    stitch_cost_eur: getStitchCost(input.stitches ?? 0, settings),
     blank_shirt_eur: settings.blank_shirt_eur,
     backing_eur: settings.backing_eur,
     thread_and_bobbin_base_eur: settings.thread_and_bobbin_base_eur,
@@ -114,14 +145,19 @@ export function getDefaultCostBreakdown(
     studio_payback_eur: settings.studio_payback_eur,
     labor_base_eur: settings.labor_base_eur,
     color_complexity_eur: settings.color_complexity_eur,
+    manual_quote_review_fee_eur: input.manualQuote
+      ? settings.manual_quote_review_fee_eur
+      : 0,
+    target_margin_percent: settings.target_margin_percent,
   };
 }
 
 export function normalizeCostBreakdown(
   value: unknown,
-  settings: PricingSettings = defaultPricingSettings
+  settings: PricingSettings = defaultPricingSettings,
+  input: { stitches?: number; manualQuote?: boolean } = {}
 ): CostBreakdown {
-  const fallback = getDefaultCostBreakdown(settings);
+  const fallback = getDefaultCostBreakdown(settings, input);
 
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return fallback;
@@ -152,15 +188,22 @@ export function normalizeCostBreakdown(
     return fallback;
   }
 
-  return costKeys.reduce((next, key) => {
+  const normalized = costKeys.reduce((next, key) => {
     const direct = parseFiniteNumber(source[key]);
     const legacy = getLegacyCostValue(source, key);
 
     return {
       ...next,
-      [key]: roundCurrency(direct ?? legacy ?? fallback[key]),
+      [key]: roundCurrency(Math.max(0, direct ?? legacy ?? fallback[key])),
     };
   }, {} as CostBreakdown);
+
+  normalized.target_margin_percent = normalizeTargetMarginPercent(
+    source.target_margin_percent,
+    fallback.target_margin_percent
+  );
+
+  return normalized;
 }
 
 export function normalizePricingSettings(value: unknown): PricingSettings {
@@ -176,7 +219,9 @@ export function normalizePricingSettings(value: unknown): PricingSettings {
     return roundCurrency(Math.max(0, parsed ?? fallback));
   };
 
-  const targetMargin = parseFiniteNumber(source.target_margin_percent);
+  const targetMargin = normalizeTargetMarginPercent(
+    source.target_margin_percent
+  );
 
   return {
     blank_shirt_eur: parseSetting('blank_shirt_eur'),
@@ -194,10 +239,7 @@ export function normalizePricingSettings(value: unknown): PricingSettings {
     studio_payback_eur: parseSetting('studio_payback_eur'),
     labor_base_eur: parseSetting('labor_base_eur'),
     color_complexity_eur: parseSetting('color_complexity_eur'),
-    target_margin_percent:
-      targetMargin !== null && targetMargin > 0 && targetMargin < 100
-        ? roundCurrency(targetMargin)
-        : defaultPricingSettings.target_margin_percent,
+    target_margin_percent: targetMargin,
     min_price_left_chest_eur: parseSetting('min_price_left_chest_eur'),
     min_price_center_front_eur: parseSetting(
       'min_price_center_front_eur'
@@ -219,16 +261,8 @@ export function getCostBreakdownTotal(costBreakdown: CostBreakdown) {
   );
 }
 
-export function getInternalCost(input: {
-  costBreakdown: CostBreakdown;
-  stitchCost: number;
-  manualQuoteReviewFee?: number;
-}) {
-  return roundCurrency(
-    getCostBreakdownTotal(input.costBreakdown) +
-      input.stitchCost +
-      (input.manualQuoteReviewFee ?? 0)
-  );
+export function getInternalCost(costBreakdown: CostBreakdown) {
+  return getCostBreakdownTotal(costBreakdown);
 }
 
 export function roundCustomerPrice(value: number, mode: RoundMode) {
@@ -263,22 +297,18 @@ export function calculatePricing(input: {
   revisedPrice?: number | null;
 }) {
   const placement = normalizePlacement(input.placement);
-  const costBreakdown =
-    input.costBreakdown ?? getDefaultCostBreakdown(input.settings);
   const manualQuote = isManualQuoteRequired(input);
-  const stitchCost = roundCurrency(
-    (input.stitches / 1000) *
-      input.settings.stitch_cost_per_1000_eur
-  );
-  const manualQuoteReviewFee = manualQuote
-    ? input.settings.manual_quote_review_fee_eur
-    : 0;
-  const internalCost = getInternalCost({
-    costBreakdown,
-    stitchCost,
-    manualQuoteReviewFee,
-  });
-  const marginRate = input.settings.target_margin_percent / 100;
+  const costBreakdown =
+    input.costBreakdown ??
+    getDefaultCostBreakdown(input.settings, {
+      stitches: input.stitches,
+      manualQuote,
+    });
+  const internalCost = getInternalCost(costBreakdown);
+  const targetMarginPercent =
+    costBreakdown.target_margin_percent ??
+    input.settings.target_margin_percent;
+  const marginRate = targetMarginPercent / 100;
   const rawCustomerPrice =
     marginRate >= 1 ? internalCost : internalCost / (1 - marginRate);
   const suggestedPrice = roundCustomerPrice(
@@ -297,8 +327,9 @@ export function calculatePricing(input: {
 
   return {
     cost_breakdown: costBreakdown,
-    stitch_cost_eur: stitchCost,
-    manual_quote_review_fee_eur: manualQuoteReviewFee,
+    stitch_cost_eur: costBreakdown.stitch_cost_eur,
+    manual_quote_review_fee_eur:
+      costBreakdown.manual_quote_review_fee_eur,
     internal_cost_eur: internalCost,
     raw_customer_price_eur: roundCurrency(rawCustomerPrice),
     suggested_customer_price_eur: roundCurrency(suggestedPrice),

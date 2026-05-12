@@ -7,7 +7,10 @@ import {
   updateOrder,
   type OrderStatus,
 } from '@/lib/orders';
-import type { CostBreakdown } from '@/lib/pricing';
+import {
+  costBreakdownLabels,
+  type CostBreakdown,
+} from '@/lib/pricing';
 
 export const runtime = 'nodejs';
 
@@ -109,9 +112,12 @@ export async function PATCH(
     if (hasOwn(body, 'revised_price_eur')) {
       const revisedPrice = parseNullableMoney(body.revised_price_eur);
 
-      if (revisedPrice === undefined) {
+      if (
+        revisedPrice === undefined ||
+        (revisedPrice !== null && revisedPrice <= 0)
+      ) {
         errors.revised_price_eur =
-          'Revised price must be a non-negative number.';
+          'Revised price must be a positive number.';
       } else {
         updates.revised_price_eur = revisedPrice;
       }
@@ -146,6 +152,29 @@ export async function PATCH(
       ) {
         errors.cost_breakdown = 'Cost breakdown must be an object.';
       } else {
+        const costBreakdown = body.cost_breakdown as Record<
+          string,
+          unknown
+        >;
+        const hasInvalidCost = costBreakdownLabels.some(([key]) => {
+          const value = Number(costBreakdown[key]);
+
+          return !Number.isFinite(value) || value < 0;
+        });
+        const targetMargin = Number(costBreakdown.target_margin_percent);
+
+        if (hasInvalidCost) {
+          errors.cost_breakdown =
+            'Cost breakdown values must be non-negative numbers.';
+        } else if (
+          !Number.isFinite(targetMargin) ||
+          targetMargin <= 0 ||
+          targetMargin >= 90
+        ) {
+          errors.cost_breakdown =
+            'Target margin must be greater than 0 and below 90.';
+        }
+
         updates.cost_breakdown = body.cost_breakdown as CostBreakdown;
       }
     }

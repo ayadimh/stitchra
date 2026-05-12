@@ -437,7 +437,11 @@ function parseOrder(
       : null,
     cost_breakdown: normalizeCostBreakdown(
       row.cost_breakdown,
-      pricingSettings
+      pricingSettings,
+      {
+        stitches: Number(row.stitches),
+        manualQuote: Boolean(row.manual_quote),
+      }
     ),
     status: parseStatus(row),
     customer_decision: parseCustomerDecision(row.customer_decision),
@@ -929,9 +933,12 @@ export async function sendOfferEmail(order: OrderRecord) {
     throw new Error('Order is missing a customer link.');
   }
 
-  if (order.manual_quote && order.revised_price_eur === null) {
+  if (
+    order.manual_quote &&
+    (order.revised_price_eur === null || order.revised_price_eur <= 0)
+  ) {
     throw new Error(
-      'Enter a final customer price before sending a manual quote.'
+      'Enter a final customer price before sending this manual quote.'
     );
   }
 
@@ -1290,7 +1297,10 @@ export async function updateOrder(
 
   if (hasOwn(input, 'cost_breakdown') || hasOwn(input, 'revised_price_eur')) {
     const costBreakdown = hasOwn(input, 'cost_breakdown')
-      ? normalizeCostBreakdown(input.cost_breakdown, pricingSettings)
+      ? normalizeCostBreakdown(input.cost_breakdown, pricingSettings, {
+          stitches: existingOrder.stitches,
+          manualQuote: existingOrder.manual_quote,
+        })
       : existingOrder.cost_breakdown;
     const revisedPrice = hasOwn(input, 'revised_price_eur')
       ? input.revised_price_eur
