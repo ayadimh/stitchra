@@ -1,13 +1,20 @@
-'use client';
-
-import { useState } from 'react';
+import { notFound } from 'next/navigation';
 import type { CSSProperties } from 'react';
-import type {
-  CustomerDecision,
-  PublicOrderRecord,
+import {
+  getPublicOrderByToken,
+  isDatabaseConfigured,
+  type CustomerDecision,
+  type OrderStatus,
+  type PaymentStatus,
 } from '@/lib/orders';
 
-const statusLabels: Record<PublicOrderRecord['status'], string> = {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// TODO(Stripe): add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+// TODO(Stripe): implement POST /api/payments/create-checkout-session and POST /api/payments/webhook.
+
+const statusLabels: Record<OrderStatus, string> = {
   new: 'New',
   needs_review: 'Needs review',
   approved: 'Approved',
@@ -22,7 +29,7 @@ const decisionLabels: Record<CustomerDecision, string> = {
   declined: 'Declined',
 };
 
-const paymentLabels: Record<PublicOrderRecord['payment_status'], string> = {
+const paymentLabels: Record<PaymentStatus, string> = {
   unpaid: 'Unpaid',
   pending: 'Pending',
   paid: 'Paid',
@@ -52,75 +59,64 @@ function formatPlacement(value: string) {
   return formatValue(value);
 }
 
-export function OrderResponseClient({
-  initialOrder,
+export default async function PaymentPage({
+  params,
 }: {
-  initialOrder: PublicOrderRecord;
+  params: Promise<{ token: string }>;
 }) {
-  const [order, setOrder] = useState(initialOrder);
-  const [submittingDecision, setSubmittingDecision] =
-    useState<CustomerDecision | null>(null);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const paymentHref = `/pay/${order.public_token}`;
+  if (!isDatabaseConfigured()) {
+    return (
+      <main style={pageShell}>
+        <section style={messagePanel}>
+          <p style={eyebrow}>Payment</p>
+          <h1 style={title}>Payment page unavailable</h1>
+          <p style={mutedText}>
+            The order database is not configured for this deployment.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
-  const submitDecision = async (
-    decision: Exclude<CustomerDecision, 'pending'>
-  ) => {
-    setMessage('');
-    setError('');
-    setSubmittingDecision(decision);
+  const { token } = await params;
+  const order = await getPublicOrderByToken(token);
 
-    try {
-      const response = await fetch(
-        `/api/orders/public/${order.public_token}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ decision }),
-        }
-      );
-      const payload = (await response
-        .json()
-        .catch(() => ({}))) as {
-        order?: PublicOrderRecord;
-        message?: string;
-        details?: string;
-      };
+  if (!order) {
+    notFound();
+  }
 
-      if (!response.ok || !payload.order) {
-        setError(
-          payload.details ??
-            payload.message ??
-            'Could not save your response.'
-        );
-        return;
-      }
-
-      setOrder(payload.order);
-      setMessage(
-        decision === 'accepted'
-          ? 'Offer accepted. The studio will follow up with next steps.'
-          : 'Offer declined. The studio has received your response.'
-      );
-    } catch {
-      setError('Could not save your response.');
-    } finally {
-      setSubmittingDecision(null);
-    }
-  };
+  const finalAmount =
+    order.revised_price_eur ?? order.customer_price_eur;
 
   return (
     <main style={pageShell}>
       <section style={layout}>
         <div style={summaryPanel}>
-          <p style={eyebrow}>Order status</p>
-          <h1 style={title}>Your Stitchra offer</h1>
+          <p style={eyebrow}>Secure payment</p>
+          <h1 style={title}>Secure payment</h1>
+          <p style={mutedText}>
+            Payment checkout will be available soon.
+          </p>
+
+          <div style={amountPanel}>
+            <span style={detailLabel}>Final amount</span>
+            <strong style={amountText}>
+              {formatMoney(finalAmount)}
+            </strong>
+          </div>
+
+          <button type="button" disabled style={disabledButton}>
+            Stripe checkout coming soon
+          </button>
+          <a href={`/order/${order.public_token}`} style={secondaryLink}>
+            Back to offer
+          </a>
+        </div>
+
+        <div style={detailPanel}>
           <div style={statusRow}>
             <span style={statusBadge}>
-              {statusLabels[order.status]}
+              Order: {statusLabels[order.status]}
             </span>
             <span style={decisionBadge(order.customer_decision)}>
               Response: {decisionLabels[order.customer_decision]}
@@ -145,9 +141,7 @@ export function OrderResponseClient({
               <span style={mutedText}>No logo preview available</span>
             </div>
           )}
-        </div>
 
-        <div style={detailPanel}>
           <div style={detailGrid}>
             <Detail
               label="Placement"
@@ -161,16 +155,7 @@ export function OrderResponseClient({
               label="Quantity"
               value={String(order.quantity ?? 1)}
             />
-            <Detail
-              label="Original price"
-              value={formatMoney(order.customer_price_eur)}
-            />
-            {order.revised_price_eur !== null && (
-              <Detail
-                label="Final offer price"
-                value={formatMoney(order.revised_price_eur)}
-              />
-            )}
+            <Detail label="Price" value={formatMoney(finalAmount)} />
           </div>
 
           {order.team_message && (
@@ -179,61 +164,6 @@ export function OrderResponseClient({
               <p style={messageText}>{order.team_message}</p>
             </div>
           )}
-
-          {order.payment_status === 'paid' && (
-            <p style={successText}>
-              Payment received. Thank you.
-            </p>
-          )}
-
-          {order.payment_status !== 'paid' &&
-            order.customer_decision === 'pending' && (
-              <div style={actionRow}>
-                <button
-                  type="button"
-                  onClick={() => void submitDecision('accepted')}
-                  disabled={submittingDecision !== null}
-                  style={{
-                    ...primaryButton,
-                    opacity: submittingDecision ? 0.68 : 1,
-                  }}
-                >
-                  {submittingDecision === 'accepted'
-                    ? 'Accepting...'
-                    : 'Accept offer'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void submitDecision('declined')}
-                  disabled={submittingDecision !== null}
-                  style={{
-                    ...secondaryButton,
-                    opacity: submittingDecision ? 0.68 : 1,
-                  }}
-                >
-                  {submittingDecision === 'declined'
-                    ? 'Declining...'
-                    : 'Decline offer'}
-                </button>
-              </div>
-            )}
-
-          {order.payment_status !== 'paid' &&
-            order.customer_decision === 'accepted' && (
-              <a href={paymentHref} style={payButton}>
-                Pay now
-              </a>
-            )}
-
-          {order.payment_status !== 'paid' &&
-            order.customer_decision === 'declined' && (
-              <p style={errorText}>
-                Offer declined. The studio has received your response.
-              </p>
-            )}
-
-          {message && <p style={successText}>{message}</p>}
-          {error && <p style={errorText}>{error}</p>}
         </div>
       </section>
     </main>
@@ -289,6 +219,15 @@ const detailPanel: CSSProperties = {
   gap: 18,
 };
 
+const messagePanel: CSSProperties = {
+  width: 'min(680px, 100%)',
+  margin: '14vh auto',
+  padding: 'clamp(24px, 4vw, 42px)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 24,
+  background: 'rgba(255,255,255,0.055)',
+};
+
 const eyebrow: CSSProperties = {
   color: '#00ff88',
   fontSize: 12,
@@ -304,11 +243,56 @@ const title: CSSProperties = {
   lineHeight: 0.94,
 };
 
+const mutedText: CSSProperties = {
+  color: 'rgba(245,247,248,0.62)',
+  lineHeight: 1.55,
+};
+
+const amountPanel: CSSProperties = {
+  margin: '28px 0 18px',
+  border: '1px solid rgba(157,255,196,0.22)',
+  borderRadius: 22,
+  padding: 22,
+  background:
+    'linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,200,255,0.08))',
+};
+
+const amountText: CSSProperties = {
+  display: 'block',
+  marginTop: 8,
+  fontSize: 'clamp(42px, 8vw, 72px)',
+  lineHeight: 0.95,
+};
+
+const disabledButton: CSSProperties = {
+  width: '100%',
+  border: 0,
+  borderRadius: 16,
+  padding: '16px 18px',
+  background: 'rgba(255,255,255,0.14)',
+  color: 'rgba(245,247,248,0.52)',
+  fontSize: 15,
+  fontWeight: 850,
+  cursor: 'not-allowed',
+};
+
+const secondaryLink: CSSProperties = {
+  display: 'block',
+  marginTop: 12,
+  border: '1px solid rgba(255,255,255,0.14)',
+  borderRadius: 16,
+  padding: '14px 18px',
+  color: '#f5f7f8',
+  background: 'rgba(255,255,255,0.045)',
+  fontWeight: 800,
+  textAlign: 'center',
+  textDecoration: 'none',
+};
+
 const statusRow: CSSProperties = {
   display: 'flex',
   gap: 10,
   flexWrap: 'wrap',
-  margin: '24px 0 20px',
 };
 
 const statusBadge: CSSProperties = {
@@ -338,7 +322,7 @@ function decisionBadge(decision: CustomerDecision): CSSProperties {
 }
 
 const previewFrame: CSSProperties = {
-  minHeight: 340,
+  minHeight: 300,
   borderRadius: 22,
   border: '1px solid rgba(255,255,255,0.10)',
   display: 'grid',
@@ -389,55 +373,4 @@ const messageText: CSSProperties = {
   margin: '8px 0 0',
   lineHeight: 1.55,
   color: '#dfffea',
-};
-
-const actionRow: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 10,
-};
-
-const primaryButton: CSSProperties = {
-  border: 0,
-  borderRadius: 16,
-  padding: '14px 18px',
-  background: 'linear-gradient(135deg, #00ff88, #00c8ff)',
-  color: '#03100d',
-  fontSize: 15,
-  fontWeight: 850,
-  cursor: 'pointer',
-};
-
-const payButton: CSSProperties = {
-  ...primaryButton,
-  display: 'block',
-  textAlign: 'center',
-  textDecoration: 'none',
-  fontSize: 17,
-  padding: '17px 22px',
-};
-
-const secondaryButton: CSSProperties = {
-  border: '1px solid rgba(255,255,255,0.14)',
-  borderRadius: 16,
-  padding: '13px 18px',
-  color: '#f5f7f8',
-  background: 'rgba(255,255,255,0.045)',
-  fontWeight: 800,
-  cursor: 'pointer',
-};
-
-const mutedText: CSSProperties = {
-  color: 'rgba(245,247,248,0.62)',
-  lineHeight: 1.55,
-};
-
-const successText: CSSProperties = {
-  color: '#9dffc4',
-  margin: 0,
-};
-
-const errorText: CSSProperties = {
-  color: '#ffb4b4',
-  margin: 0,
 };

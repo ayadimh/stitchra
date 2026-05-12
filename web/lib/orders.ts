@@ -26,6 +26,16 @@ export const CUSTOMER_DECISIONS = [
 
 export type CustomerDecision = (typeof CUSTOMER_DECISIONS)[number];
 
+export const PAYMENT_STATUSES = [
+  'unpaid',
+  'pending',
+  'paid',
+  'failed',
+  'refunded',
+] as const;
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
 export type OrderRecord = {
   id: string;
   created_at: string;
@@ -62,6 +72,11 @@ export type OrderRecord = {
   offer_sent_at: string | null;
   team_notified_at: string | null;
   team_notification_error: string | null;
+  payment_status: PaymentStatus;
+  payment_requested_at: string | null;
+  payment_completed_at: string | null;
+  payment_provider: string | null;
+  payment_session_id: string | null;
 };
 
 export type CreateOrderInput = {
@@ -105,6 +120,7 @@ export type PublicOrderRecord = {
   revised_price_eur: number | null;
   team_message: string | null;
   customer_decision: CustomerDecision;
+  payment_status: PaymentStatus;
 };
 
 const publicOrderSelect = [
@@ -118,6 +134,7 @@ const publicOrderSelect = [
   'revised_price_eur',
   'team_message',
   'customer_decision',
+  'payment_status',
 ].join(',');
 
 const pricingSettingsSelect = [
@@ -326,6 +343,12 @@ function parseCustomerDecision(value: unknown): CustomerDecision {
     : 'pending';
 }
 
+function parsePaymentStatus(value: unknown): PaymentStatus {
+  return PAYMENT_STATUSES.includes(value as PaymentStatus)
+    ? (value as PaymentStatus)
+    : 'unpaid';
+}
+
 function createPublicToken() {
   return globalThis.crypto.randomUUID().replace(/-/g, '');
 }
@@ -404,6 +427,15 @@ function parseOrder(
     team_notification_error: row.team_notification_error
       ? String(row.team_notification_error)
       : null,
+    payment_status: parsePaymentStatus(row.payment_status),
+    payment_requested_at: parseDate(row.payment_requested_at),
+    payment_completed_at: parseDate(row.payment_completed_at),
+    payment_provider: row.payment_provider
+      ? String(row.payment_provider)
+      : null,
+    payment_session_id: row.payment_session_id
+      ? String(row.payment_session_id)
+      : null,
   };
 }
 
@@ -426,6 +458,7 @@ function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
       ? String(row.team_message)
       : null,
     customer_decision: parseCustomerDecision(row.customer_decision),
+    payment_status: parsePaymentStatus(row.payment_status),
   };
 }
 
@@ -581,6 +614,7 @@ export async function createOrder(input: CreateOrderInput) {
         production_notes: '',
         cost_breakdown: pricing.cost_breakdown,
         customer_decision: 'pending',
+        payment_status: 'unpaid',
         status,
       }),
     }

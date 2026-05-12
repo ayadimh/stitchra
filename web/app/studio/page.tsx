@@ -64,6 +64,13 @@ type OrderStatus =
   | 'declined'
   | 'completed';
 
+type PaymentStatus =
+  | 'unpaid'
+  | 'pending'
+  | 'paid'
+  | 'failed'
+  | 'refunded';
+
 type OrderRecord = {
   id: string;
   created_at: string;
@@ -99,6 +106,11 @@ type OrderRecord = {
   offer_sent_at: string | null;
   team_notified_at: string | null;
   team_notification_error: string | null;
+  payment_status: PaymentStatus;
+  payment_requested_at: string | null;
+  payment_completed_at: string | null;
+  payment_provider: string | null;
+  payment_session_id: string | null;
 };
 
 type OrderEditForm = {
@@ -225,6 +237,14 @@ const customerDecisionLabels: Record<
   declined: 'Declined',
 };
 
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  unpaid: 'Unpaid',
+  pending: 'Pending',
+  paid: 'Paid',
+  failed: 'Failed',
+  refunded: 'Refunded',
+};
+
 const statusToastLabels: Record<OrderStatus, string> = {
   new: 'Order updated',
   needs_review: 'Order updated',
@@ -267,6 +287,10 @@ function getEffectiveCustomerPrice(
 
 function getCustomerOrderLink(publicToken: string) {
   return `${publicSiteUrl}/order/${publicToken}`;
+}
+
+function getPaymentLink(publicToken: string) {
+  return `${publicSiteUrl}/pay/${publicToken}`;
 }
 
 function getCostBreakdownForm(
@@ -597,6 +621,7 @@ export default function StudioPage() {
   const [statusActionLoading, setStatusActionLoading] =
     useState<OrderStatus | null>(null);
   const [customerLinkStatus, setCustomerLinkStatus] = useState('');
+  const [paymentLinkStatus, setPaymentLinkStatus] = useState('');
   const [emailConfigured, setEmailConfigured] = useState<
     boolean | null
   >(null);
@@ -664,6 +689,7 @@ export default function StudioPage() {
     setOrderEditError('');
     setOrderEditStatus('');
     setCustomerLinkStatus('');
+    setPaymentLinkStatus('');
     setOfferEmailStatus('');
     setOfferEmailError('');
   };
@@ -1070,6 +1096,22 @@ export default function StudioPage() {
     }
   };
 
+  const copyPaymentLink = async (order: OrderRecord) => {
+    if (!order.public_token) {
+      setPaymentLinkStatus('No payment link is available yet.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        getPaymentLink(order.public_token)
+      );
+      setPaymentLinkStatus('Payment link copied.');
+    } catch {
+      setPaymentLinkStatus('Could not copy the payment link.');
+    }
+  };
+
   const sendOfferToCustomer = async (order: OrderRecord) => {
     setOfferEmailStatus('');
     setOfferEmailError('');
@@ -1343,6 +1385,7 @@ export default function StudioPage() {
           savingOrder={isSavingOrder}
           statusActionLoading={statusActionLoading}
           customerLinkStatus={customerLinkStatus}
+          paymentLinkStatus={paymentLinkStatus}
           emailConfigured={emailConfigured}
           sendingOfferId={sendingOfferId}
           offerEmailStatus={offerEmailStatus}
@@ -1352,6 +1395,7 @@ export default function StudioPage() {
           onOrderCostBreakdownChange={updateOrderCostBreakdownField}
           onSaveOrderDetails={saveOrderDetails}
           onCopyCustomerLink={copyCustomerLink}
+          onCopyPaymentLink={copyPaymentLink}
           onSendOfferToCustomer={sendOfferToCustomer}
           onFilterChange={(nextFilter) => {
             setOrderStatusFilter(nextFilter);
@@ -1790,6 +1834,7 @@ function OrdersDashboard({
   savingOrder,
   statusActionLoading,
   customerLinkStatus,
+  paymentLinkStatus,
   emailConfigured,
   sendingOfferId,
   offerEmailStatus,
@@ -1799,6 +1844,7 @@ function OrdersDashboard({
   onOrderCostBreakdownChange,
   onSaveOrderDetails,
   onCopyCustomerLink,
+  onCopyPaymentLink,
   onSendOfferToCustomer,
   onFilterChange,
   onSelectOrder,
@@ -1816,6 +1862,7 @@ function OrdersDashboard({
   savingOrder: boolean;
   statusActionLoading: OrderStatus | null;
   customerLinkStatus: string;
+  paymentLinkStatus: string;
   emailConfigured: boolean | null;
   sendingOfferId: string | null;
   offerEmailStatus: string;
@@ -1831,6 +1878,7 @@ function OrdersDashboard({
   ) => void;
   onSaveOrderDetails: () => void;
   onCopyCustomerLink: (order: OrderRecord) => void;
+  onCopyPaymentLink: (order: OrderRecord) => void;
   onSendOfferToCustomer: (order: OrderRecord) => void;
   onFilterChange: (value: OrderStatus | 'all') => void;
   onSelectOrder: (order: OrderRecord) => void;
@@ -2095,6 +2143,14 @@ function OrdersDashboard({
                         : 'Not sent'
                     }
                   />
+                  <Meta
+                    label="Payment status"
+                    value={
+                      paymentStatusLabels[
+                        selectedOrder.payment_status
+                      ]
+                    }
+                  />
                 </div>
               </div>
 
@@ -2240,6 +2296,37 @@ function OrdersDashboard({
                 )}
                 {offerEmailError && (
                   <p style={errorText}>{offerEmailError}</p>
+                )}
+                {selectedOrder.public_token && (
+                  <div style={customerLinkBox}>
+                    <span style={mutedText}>
+                      {getPaymentLink(selectedOrder.public_token)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onCopyPaymentLink(selectedOrder)
+                      }
+                      style={secondaryButton}
+                    >
+                      Copy payment link
+                    </button>
+                    {paymentLinkStatus && (
+                      <span style={tinyText}>
+                        {paymentLinkStatus}
+                      </span>
+                    )}
+                    {selectedOrder.customer_decision === 'accepted' && (
+                      <span style={decisionLabel}>
+                        Ready for payment
+                      </span>
+                    )}
+                    {selectedOrder.customer_decision === 'declined' && (
+                      <span style={statusBadge('declined')}>
+                        No payment needed
+                      </span>
+                    )}
+                  </div>
                 )}
                 <div style={controlGrid}>
                   <label style={fieldLabel}>
