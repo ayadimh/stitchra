@@ -118,7 +118,12 @@ type LogoAnalysis = {
 };
 
 type CostBreakdownForm = Record<CostBreakdownKey, string>;
-type PricingSettingKey = Exclude<keyof PricingSettings, 'round_mode'>;
+type PricingSettingKey = Exclude<
+  keyof PricingSettings,
+  | 'round_mode'
+  | 'min_price_left_chest_eur'
+  | 'min_price_center_front_eur'
+>;
 type PricingSettingsForm = Record<PricingSettingKey, string>;
 type OrderEditTextField = Exclude<
   keyof OrderEditForm,
@@ -138,20 +143,55 @@ const placementSize = {
 const costBreakdownKeys: CostBreakdownKey[] =
   costBreakdownLabels.map(([key]) => key);
 
-const pricingSettingLabels: Array<[PricingSettingKey, string]> = [
-  ['blank_shirt_eur', 'Blank shirt cost'],
-  ['backing_eur', 'Backing'],
-  ['thread_and_bobbin_base_eur', 'Thread and bobbin'],
-  ['needle_wear_eur', 'Needle wear'],
-  ['electricity_eur', 'Electricity'],
-  ['packaging_eur', 'Packaging'],
-  ['waste_buffer_eur', 'Waste buffer'],
-  ['studio_payback_eur', 'Studio payback'],
-  ['labor_base_eur', 'Labor'],
-  ['color_complexity_eur', 'Color complexity'],
-  ['target_margin_percent', 'Target margin percent'],
-  ['min_price_left_chest_eur', 'Minimum left chest price'],
-  ['min_price_center_front_eur', 'Minimum center front price'],
+const pricingSettingLabels: Record<PricingSettingKey, string> = {
+  blank_shirt_eur: 'Blank shirt cost',
+  backing_eur: 'Backing',
+  thread_and_bobbin_base_eur: 'Thread and bobbin',
+  needle_wear_eur: 'Needle wear',
+  electricity_eur: 'Electricity',
+  packaging_eur: 'Packaging',
+  waste_buffer_eur: 'Waste buffer',
+  studio_payback_eur: 'Studio payback',
+  labor_base_eur: 'Labor',
+  color_complexity_eur: 'Color complexity',
+  target_margin_percent: 'Target margin percent',
+};
+
+const pricingSettingGroups: Array<{
+  title: string;
+  text: string;
+  fields: PricingSettingKey[];
+}> = [
+  {
+    title: 'Garment',
+    text: 'Base shirt and customer-ready packout costs.',
+    fields: ['blank_shirt_eur', 'packaging_eur'],
+  },
+  {
+    title: 'Embroidery materials',
+    text: 'Consumables used directly by the embroidery process.',
+    fields: [
+      'backing_eur',
+      'thread_and_bobbin_base_eur',
+      'needle_wear_eur',
+      'electricity_eur',
+    ],
+  },
+  {
+    title: 'Handling & labor',
+    text: 'Studio time, operating payback, complexity and buffer.',
+    fields: [
+      'labor_base_eur',
+      'color_complexity_eur',
+      'waste_buffer_eur',
+      'studio_payback_eur',
+    ],
+  },
+  {
+    title: 'Business margin',
+    text: 'Margin target used to calculate the suggested customer price.',
+    fields: ['target_margin_percent'],
+  },
 ];
 
 const orderStatuses: Array<{
@@ -222,14 +262,6 @@ function getEffectiveCustomerPrice(order: OrderRecord) {
   return order.revised_price_eur ?? order.customer_price_eur;
 }
 
-function formatOrderCustomerPrice(order: OrderRecord) {
-  const price = getEffectiveCustomerPrice(order);
-
-  return order.manual_quote && price === null
-    ? 'Manual quote'
-    : formatMoney(price);
-}
-
 function getCustomerOrderLink(publicToken: string) {
   return `${publicSiteUrl}/order/${publicToken}`;
 }
@@ -246,10 +278,53 @@ function getCostBreakdownForm(
 function getPricingSettingsForm(
   settings: PricingSettings
 ): PricingSettingsForm {
-  return pricingSettingLabels.reduce((form, [key]) => {
-    form[key] = String(settings[key]);
+  return Object.keys(pricingSettingLabels).reduce((form, key) => {
+    const settingKey = key as PricingSettingKey;
+
+    form[settingKey] = String(settings[settingKey]);
     return form;
   }, {} as PricingSettingsForm);
+}
+
+function getPricingPreview(form: PricingSettingsForm) {
+  const settings = parsePricingSettingsForm(form);
+
+  if (!settings) {
+    return null;
+  }
+
+  return calculatePricing({
+    stitches: 1,
+    colors: 1,
+    placement: 'left',
+    settings,
+  });
+}
+
+function getSuggestedCustomerPriceLabel(value: number | null) {
+  return value === null ? 'Manual quote' : formatCustomerMoney(value);
+}
+
+function formatCustomerMoney(value: number | null) {
+  if (value === null) {
+    return 'Pending';
+  }
+
+  return Number.isInteger(value)
+    ? `€${value}`
+    : `€${value.toFixed(2)}`;
+}
+
+function getPricingSettingSuffix(key: PricingSettingKey) {
+  return key === 'target_margin_percent' ? '%' : '€';
+}
+
+function getPricingSettingStep(key: PricingSettingKey) {
+  return key === 'target_margin_percent' ? '1' : '0.01';
+}
+
+function getPricingSettingInputMode(key: PricingSettingKey) {
+  return key === 'target_margin_percent' ? 'numeric' : 'decimal';
 }
 
 const emptyOrderEditForm: OrderEditForm = {
@@ -336,15 +411,16 @@ function parseCostBreakdownForm(form: CostBreakdownForm) {
 function parsePricingSettingsForm(form: PricingSettingsForm) {
   const parsed: Partial<Record<PricingSettingKey, number>> = {};
 
-  for (const [key] of pricingSettingLabels) {
-    const raw = form[key]?.trim() ?? '';
+  for (const key of Object.keys(pricingSettingLabels)) {
+    const settingKey = key as PricingSettingKey;
+    const raw = form[settingKey]?.trim() ?? '';
     const value = Number(raw);
 
     if (!raw || !Number.isFinite(value) || value < 0) {
       return null;
     }
 
-    parsed[key] = value;
+    parsed[settingKey] = value;
   }
 
   const targetMargin = parsed.target_margin_percent;
@@ -358,6 +434,10 @@ function parsePricingSettingsForm(form: PricingSettingsForm) {
   }
 
   return normalizePricingSettings({
+    min_price_left_chest_eur:
+      defaultPricingSettings.min_price_left_chest_eur,
+    min_price_center_front_eur:
+      defaultPricingSettings.min_price_center_front_eur,
     ...parsed,
     round_mode: 'ceil_to_whole_euro',
   });
@@ -827,6 +907,13 @@ export default function StudioPage() {
     }
   };
 
+  const resetPricingSettings = () => {
+    setPricingForm(getPricingSettingsForm(defaultPricingSettings));
+    setPricingError('');
+    setPricingStatus('Defaults loaded. Save to apply them.');
+    showToast('Defaults loaded');
+  };
+
   const saveOrderDetails = async () => {
     if (!selectedOrder) {
       return;
@@ -1253,6 +1340,7 @@ export default function StudioPage() {
           error={pricingError}
           onChange={updatePricingFormField}
           onSave={savePricingSettings}
+          onReset={resetPricingSettings}
           onRefresh={() => void loadPricingSettings()}
         />
       )}
@@ -1361,7 +1449,7 @@ export default function StudioPage() {
               value={
                 publicQuote.manual_quote
                   ? 'Manual quote'
-                  : `€${publicQuote.price_eur}`
+                  : formatCustomerMoney(publicQuote.price_eur)
               }
             />
             <Metric
@@ -1496,6 +1584,7 @@ function PricingSettingsPanel({
   error,
   onChange,
   onSave,
+  onReset,
   onRefresh,
 }: {
   form: PricingSettingsForm;
@@ -1505,8 +1594,11 @@ function PricingSettingsPanel({
   error: string;
   onChange: (field: PricingSettingKey, value: string) => void;
   onSave: () => void;
+  onReset: () => void;
   onRefresh: () => void;
 }) {
+  const previewPricing = getPricingPreview(form);
+
   return (
     <section style={ordersShell}>
       <div style={ordersToolbar}>
@@ -1523,43 +1615,132 @@ function PricingSettingsPanel({
         </button>
       </div>
 
-      <div style={panel}>
-        <p style={mutedText}>
-          These values are used for new public orders and studio
-          quote calculations. Saved orders keep their own pricing
-          snapshot until the team edits their cost breakdown.
-        </p>
-        {loading && <p style={successText}>Loading settings...</p>}
-        <div style={controlGrid}>
-          {pricingSettingLabels.map(([key, label]) => (
-            <label key={key} style={fieldLabel}>
-              {label}
-              <input
-                value={form[key]}
-                onChange={(event) =>
-                  onChange(key, event.target.value)
-                }
-                inputMode="decimal"
-                style={inputStyle}
-              />
-            </label>
+      <div style={pricingWorkspace}>
+        <div style={pricingSettingsStack}>
+          <div style={panel}>
+            <p style={mutedText}>
+              These values are used for new public orders and studio
+              quote calculations. Saved orders keep their own pricing
+              snapshot until the team edits their cost breakdown.
+            </p>
+            {loading && <p style={successText}>Loading settings...</p>}
+          </div>
+
+          {pricingSettingGroups.map((group) => (
+            <div key={group.title} style={settingsSection}>
+              <div>
+                <h3 style={sectionMiniTitle}>{group.title}</h3>
+                <p style={compactMutedText}>{group.text}</p>
+              </div>
+              <div style={settingsFieldGrid}>
+                {group.fields.map((key) => (
+                  <label key={key} style={fieldLabel}>
+                    {pricingSettingLabels[key]}
+                    <div style={inputWithSuffix}>
+                      <span
+                        style={
+                          key === 'target_margin_percent'
+                            ? inputSuffix
+                            : inputPrefix
+                        }
+                      >
+                        {getPricingSettingSuffix(key)}
+                      </span>
+                      <input
+                        value={form[key]}
+                        onChange={(event) =>
+                          onChange(key, event.target.value)
+                        }
+                        type="number"
+                        min="0"
+                        step={getPricingSettingStep(key)}
+                        inputMode={getPricingSettingInputMode(key)}
+                        style={{
+                          ...inputStyle,
+                          paddingLeft:
+                            key === 'target_margin_percent' ? 16 : 42,
+                          paddingRight:
+                            key === 'target_margin_percent' ? 42 : 16,
+                        }}
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
+
+          <div style={settingsActionBar}>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              style={{
+                ...primaryButton,
+                opacity: saving ? 0.68 : 1,
+              }}
+            >
+              {saving ? 'Saving...' : 'Save pricing settings'}
+            </button>
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={saving}
+              style={{
+                ...secondaryButton,
+                opacity: saving ? 0.68 : 1,
+              }}
+            >
+              Reset to defaults
+            </button>
+          </div>
+          {error && <p style={errorText}>{error}</p>}
+          {status && <p style={successText}>{status}</p>}
         </div>
-        <div style={orderActions}>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            style={{
-              ...primaryButton,
-              opacity: saving ? 0.68 : 1,
-            }}
-          >
-            {saving ? 'Saving...' : 'Save pricing settings'}
-          </button>
+
+        <div style={pricingPreviewPanel}>
+          <p style={eyebrow}>Live preview</p>
+          <h3 style={panelTitle}>Margin model</h3>
+          <p style={compactMutedText}>
+            Preview uses one standard left-chest item and the current
+            settings above.
+          </p>
+          <div style={pricingPreviewGrid}>
+            <Metric
+              label="Internal cost"
+              value={formatMoney(
+                previewPricing?.internal_cost_eur ?? null
+              )}
+            />
+            <Metric
+              label="Suggested price"
+              value={getSuggestedCustomerPriceLabel(
+                previewPricing?.customer_price_eur ?? null
+              )}
+            />
+            <Metric
+              label="Profit"
+              value={formatMoney(
+                previewPricing?.estimated_profit_eur ?? null
+              )}
+            />
+            <Metric
+              label="Margin"
+              value={
+                previewPricing?.profit_margin_percent === null ||
+                previewPricing?.profit_margin_percent === undefined
+                  ? 'Pending'
+                  : `${previewPricing.profit_margin_percent}%`
+              }
+            />
+          </div>
+          <div style={formulaBox}>
+            <span>Formula</span>
+            <strong>
+              ceil(internal cost / (1 - target margin))
+            </strong>
+          </div>
         </div>
-        {error && <p style={errorText}>{error}</p>}
-        {status && <p style={successText}>{status}</p>}
       </div>
     </section>
   );
@@ -1712,56 +1893,77 @@ function OrdersDashboard({
       {orders.length > 0 && (
         <div style={ordersGrid}>
           <div style={ordersList}>
-            {orders.map((order) => (
-              <button
-                key={order.id}
-                type="button"
-                onClick={() => onSelectOrder(order)}
-                style={{
-                  ...orderCard,
-                  borderColor:
-                    selectedOrder?.id === order.id
-                      ? 'rgba(0,255,136,0.42)'
-                      : 'rgba(255,255,255,0.10)',
-                }}
-              >
-                <div style={orderCardHeader}>
-                  <span style={statusBadge(order.status)}>
-                    {statusLabels[order.status]}
-                  </span>
-                  <span style={tinyText}>
-                    {new Date(order.created_at).toLocaleString()}
-                  </span>
-                </div>
-                <strong style={{ color: '#f5f7f8' }}>
-                  {order.customer_name}
-                </strong>
-                <span style={mutedText}>{order.customer_email}</span>
-                <div style={orderMiniGrid}>
-                  <Meta
-                    label="Placement"
-                    value={formatPlacement(order.placement)}
-                  />
-                  <Meta
-                    label="Color"
-                    value={formatOrderValue(order.shirt_color)}
-                  />
-                  <Meta
-                    label="Stitches"
-                    value={order.stitches.toLocaleString()}
-                  />
-                  <Meta label="Colors" value={String(order.colors)} />
-                  <Meta
-                    label="Customer price"
-                    value={formatOrderCustomerPrice(order)}
-                  />
-                  <Meta
-                    label="Profit"
-                    value={formatMoney(order.estimated_profit_eur)}
-                  />
-                </div>
-              </button>
-            ))}
+            {orders.map((order) => {
+              const orderPricing = calculatePricing({
+                stitches: order.stitches,
+                colors: order.colors,
+                placement: order.placement,
+                settings: pricingSettings,
+                costBreakdown: order.cost_breakdown,
+                revisedPrice: order.revised_price_eur,
+              });
+              const orderCustomerPrice =
+                order.revised_price_eur ??
+                orderPricing.customer_price_eur;
+
+              return (
+                <button
+                  key={order.id}
+                  type="button"
+                  onClick={() => onSelectOrder(order)}
+                  style={{
+                    ...orderCard,
+                    borderColor:
+                      selectedOrder?.id === order.id
+                        ? 'rgba(0,255,136,0.42)'
+                        : 'rgba(255,255,255,0.10)',
+                  }}
+                >
+                  <div style={orderCardHeader}>
+                    <span style={statusBadge(order.status)}>
+                      {statusLabels[order.status]}
+                    </span>
+                    <span style={tinyText}>
+                      {new Date(order.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <strong style={{ color: '#f5f7f8' }}>
+                    {order.customer_name}
+                  </strong>
+                  <span style={mutedText}>{order.customer_email}</span>
+                  <div style={orderMiniGrid}>
+                    <Meta
+                      label="Placement"
+                      value={formatPlacement(order.placement)}
+                    />
+                    <Meta
+                      label="Color"
+                      value={formatOrderValue(order.shirt_color)}
+                    />
+                    <Meta
+                      label="Stitches"
+                      value={order.stitches.toLocaleString()}
+                    />
+                    <Meta label="Colors" value={String(order.colors)} />
+                    <Meta
+                      label="Customer price"
+                      value={
+                        orderPricing.manual_quote &&
+                        orderCustomerPrice === null
+                          ? 'Manual quote'
+                          : formatCustomerMoney(orderCustomerPrice)
+                      }
+                    />
+                    <Meta
+                      label="Profit"
+                      value={formatMoney(
+                        orderPricing.estimated_profit_eur
+                      )}
+                    />
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {selectedOrder && (
@@ -1884,11 +2086,19 @@ function OrdersDashboard({
                   value={`${(selectedOrder.coverage * 100).toFixed(1)}%`}
                 />
                 <Metric
-                  label="Customer price"
+                  label="Suggested price"
+                  value={getSuggestedCustomerPriceLabel(
+                    previewPricing
+                      ? previewPricing.customer_price_eur
+                      : selectedOrder.customer_price_eur
+                  )}
+                />
+                <Metric
+                  label="Final customer price"
                   value={
                     previewManualQuote && previewCustomerPrice === null
                       ? 'Manual quote'
-                      : formatMoney(previewCustomerPrice)
+                      : formatCustomerMoney(previewCustomerPrice)
                   }
                 />
                 <Metric
@@ -1987,7 +2197,7 @@ function OrdersDashboard({
                 )}
                 <div style={controlGrid}>
                   <label style={fieldLabel}>
-                    Revised price EUR
+                    Final price override EUR
                     <input
                       value={orderEditForm.revised_price_eur}
                       onChange={(event) =>
@@ -1996,23 +2206,32 @@ function OrdersDashboard({
                           event.target.value
                         )
                       }
-                      placeholder="Leave empty to use customer price"
+                      placeholder="Leave empty to use suggested price"
                       inputMode="decimal"
                       style={inputStyle}
                     />
                   </label>
                   <div style={metaCard}>
                     <span style={mutedText}>
-                      Suggested customer price:
+                      Suggested price:
+                    </span>
+                    <strong>
+                      {getSuggestedCustomerPriceLabel(
+                        previewPricing
+                          ? previewPricing.customer_price_eur
+                          : selectedOrder.customer_price_eur
+                      )}
+                    </strong>
+                  </div>
+                  <div style={metaCard}>
+                    <span style={mutedText}>
+                      Final customer price:
                     </span>
                     <strong>
                       {previewManualQuote &&
-                      previewPricing?.customer_price_eur === null
+                      previewCustomerPrice === null
                         ? 'Manual quote'
-                        : formatMoney(
-                            previewPricing?.customer_price_eur ??
-                              selectedOrder.customer_price_eur
-                          )}
+                        : formatCustomerMoney(previewCustomerPrice)}
                     </strong>
                   </div>
                   <label style={fieldLabel}>
@@ -2400,6 +2619,19 @@ const workspaceGrid: CSSProperties = {
   gap: 20,
 };
 
+const pricingWorkspace: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
+  gap: 20,
+  alignItems: 'start',
+};
+
+const pricingSettingsStack: CSSProperties = {
+  display: 'grid',
+  gap: 16,
+};
+
 const panel: CSSProperties = {
   border: '1px solid rgba(255,255,255,0.11)',
   borderRadius: 28,
@@ -2407,6 +2639,46 @@ const panel: CSSProperties = {
   background:
     'linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025))',
   boxShadow: '0 30px 90px rgba(0,0,0,0.34)',
+};
+
+const settingsSection: CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 22,
+  padding: 20,
+  background: 'rgba(255,255,255,0.045)',
+  display: 'grid',
+  gridTemplateColumns: 'minmax(170px, 0.34fr) minmax(0, 0.66fr)',
+  gap: 18,
+  alignItems: 'start',
+};
+
+const settingsFieldGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gap: 14,
+};
+
+const pricingPreviewPanel: CSSProperties = {
+  ...panel,
+  position: 'sticky',
+  top: 22,
+};
+
+const pricingPreviewGrid: CSSProperties = {
+  display: 'grid',
+  gap: 12,
+  marginTop: 18,
+};
+
+const formulaBox: CSSProperties = {
+  border: '1px solid rgba(157,255,196,0.18)',
+  borderRadius: 16,
+  padding: 14,
+  background: 'rgba(157,255,196,0.055)',
+  display: 'grid',
+  gap: 6,
+  color: '#9dffc4',
+  marginTop: 16,
 };
 
 const editPanel: CSSProperties = {
@@ -2446,6 +2718,12 @@ const sectionMiniTitle: CSSProperties = {
   fontSize: 16,
 };
 
+const compactMutedText: CSSProperties = {
+  ...mutedText,
+  margin: 0,
+  fontSize: 13,
+};
+
 const controlGrid: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -2458,6 +2736,33 @@ const fieldLabel: CSSProperties = {
   color: 'rgba(245,247,248,0.68)',
   fontWeight: 750,
   marginBottom: 16,
+};
+
+const inputWithSuffix: CSSProperties = {
+  position: 'relative',
+};
+
+const inputPrefix: CSSProperties = {
+  position: 'absolute',
+  left: 15,
+  top: '50%',
+  transform: 'translateY(-50%)',
+  color: 'rgba(245,247,248,0.42)',
+  fontWeight: 850,
+  pointerEvents: 'none',
+};
+
+const inputSuffix: CSSProperties = {
+  ...inputPrefix,
+  left: 'auto',
+  right: 15,
+};
+
+const settingsActionBar: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
 };
 
 const previewBox: CSSProperties = {

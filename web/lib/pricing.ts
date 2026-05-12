@@ -134,6 +134,20 @@ export function normalizeCostBreakdown(
     return fallback;
   }
 
+  const knownValues = costKeys
+    .map(
+      (key) =>
+        parseFiniteNumber(source[key]) ?? getLegacyCostValue(source, key)
+    )
+    .filter((amount): amount is number => amount !== null);
+
+  if (
+    knownValues.length > 0 &&
+    knownValues.every((amount) => amount === 0)
+  ) {
+    return fallback;
+  }
+
   return costKeys.reduce((next, key) => {
     const direct = parseFiniteNumber(source[key]);
     const legacy = getLegacyCostValue(source, key);
@@ -234,19 +248,14 @@ export function calculatePricing(input: {
   const marginRate = input.settings.target_margin_percent / 100;
   const rawCustomerPrice =
     marginRate >= 1 ? internalCost : internalCost / (1 - marginRate);
-  const minPrice =
-    placement === 'center'
-      ? input.settings.min_price_center_front_eur
-      : input.settings.min_price_left_chest_eur;
   const suggestedPrice = manualQuote
     ? null
-    : Math.max(
-        minPrice,
-        roundCustomerPrice(rawCustomerPrice, input.settings.round_mode)
-      );
+    : roundCustomerPrice(rawCustomerPrice, input.settings.round_mode);
   const effectivePrice = input.revisedPrice ?? suggestedPrice;
   const estimatedProfit =
-    effectivePrice === null ? null : roundCurrency(effectivePrice - internalCost);
+    effectivePrice === null
+      ? null
+      : roundCurrency(effectivePrice - internalCost);
   const profitMarginPercent =
     effectivePrice && estimatedProfit !== null
       ? roundCurrency((estimatedProfit / effectivePrice) * 100)
