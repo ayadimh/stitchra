@@ -64,7 +64,8 @@ type OrderStatus =
   | 'customer_accepted'
   | 'pre_production'
   | 'sent_to_production'
-  | 'declined'
+  | 'customer_declined'
+  | 'team_declined'
   | 'completed';
 
 type PaymentStatus =
@@ -126,7 +127,11 @@ type PipelineStage =
   | 'production'
   | 'archive';
 
-type ArchiveFilter = 'all' | 'completed' | 'declined';
+type ArchiveFilter =
+  | 'all'
+  | 'completed'
+  | 'customer_declined'
+  | 'team_declined';
 
 type OrderEditForm = {
   revised_price_eur: string;
@@ -238,7 +243,8 @@ const archiveFilters: Array<{
 }> = [
   { value: 'all', label: 'All archived' },
   { value: 'completed', label: 'Completed' },
-  { value: 'declined', label: 'Declined' },
+  { value: 'customer_declined', label: 'Customer declined' },
+  { value: 'team_declined', label: 'Team declined' },
 ];
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -249,7 +255,8 @@ const statusLabels: Record<OrderStatus, string> = {
   customer_accepted: 'Customer accepted',
   pre_production: 'Pre-production',
   sent_to_production: 'In production',
-  declined: 'Declined',
+  customer_declined: 'Customer declined',
+  team_declined: 'Team declined',
   completed: 'Completed',
 };
 
@@ -278,7 +285,8 @@ const statusToastLabels: Record<OrderStatus, string> = {
   customer_accepted: 'Customer accepted',
   pre_production: 'Moved to pre-production',
   sent_to_production: 'Sent to production',
-  declined: 'Order declined',
+  customer_declined: 'Customer declined',
+  team_declined: 'Order declined',
   completed: 'Marked completed',
 };
 
@@ -321,11 +329,26 @@ function getPaymentLink(publicToken: string) {
   return `${publicSiteUrl}/pay/${publicToken}`;
 }
 
+function getDeclinedStatus(order: OrderRecord) {
+  if (order.status === 'customer_declined') {
+    return 'customer_declined';
+  }
+
+  if (order.status === 'team_declined') {
+    return 'team_declined';
+  }
+
+  if (order.customer_decision === 'declined') {
+    return 'customer_declined';
+  }
+
+  return null;
+}
+
 function getOrderPipelineStage(order: OrderRecord): PipelineStage {
   if (
     order.status === 'completed' ||
-    order.status === 'declined' ||
-    order.customer_decision === 'declined'
+    getDeclinedStatus(order) !== null
   ) {
     return 'archive';
   }
@@ -368,20 +391,27 @@ function getPipelineStageLabel(order: OrderRecord) {
   }
 
   if (stage === 'archive') {
-    return order.status === 'completed'
-      ? 'Archive / Completed'
-      : 'Archive / Declined';
+    const declinedStatus = getDeclinedStatus(order);
+
+    if (order.status === 'completed') {
+      return 'Archive / Completed';
+    }
+
+    if (declinedStatus === 'customer_declined') {
+      return 'Archive / Customer declined';
+    }
+
+    return 'Archive / Team declined';
   }
 
   return 'New';
 }
 
 function getOrderBadgeLabel(order: OrderRecord) {
-  if (
-    order.status === 'declined' ||
-    order.customer_decision === 'declined'
-  ) {
-    return 'Declined';
+  const declinedStatus = getDeclinedStatus(order);
+
+  if (declinedStatus) {
+    return statusLabels[declinedStatus];
   }
 
   if (order.status === 'completed') {
@@ -436,10 +466,7 @@ function getPipelineOrders(
       return order.status === 'completed';
     }
 
-    return (
-      order.status === 'declined' ||
-      order.customer_decision === 'declined'
-    );
+    return getDeclinedStatus(order) === archiveFilter;
   });
 }
 
@@ -1017,7 +1044,7 @@ export default function StudioPage() {
     setOrdersError('');
 
     if (
-      nextStatus === 'declined' &&
+      nextStatus === 'team_declined' &&
       !window.confirm('Decline this order?')
     ) {
       return;
@@ -2284,7 +2311,11 @@ function OrdersDashboard({
                   }}
                 >
                   <div style={orderCardHeader}>
-                    <span style={statusBadge(order.status)}>
+                    <span
+                      style={statusBadge(
+                        getDeclinedStatus(order) ?? order.status
+                      )}
+                    >
                       {getOrderBadgeLabel(order)}
                     </span>
                     <span style={tinyText}>
@@ -2345,7 +2376,12 @@ function OrdersDashboard({
                       : ''}
                   </p>
                 </div>
-                <span style={statusBadge(selectedOrder.status)}>
+                <span
+                  style={statusBadge(
+                    getDeclinedStatus(selectedOrder) ??
+                      selectedOrder.status
+                  )}
+                >
                   {getOrderBadgeLabel(selectedOrder)}
                 </span>
               </div>
@@ -2382,7 +2418,7 @@ function OrdersDashboard({
                   />
                   <Meta
                     label="Status"
-                    value={statusLabels[selectedOrder.status]}
+                    value={getOrderBadgeLabel(selectedOrder)}
                   />
                   <Meta
                     label="Workflow stage"
@@ -2640,7 +2676,12 @@ function OrdersDashboard({
                       </span>
                     )}
                     {selectedOrder.customer_decision === 'declined' && (
-                      <span style={statusBadge('declined')}>
+                      <span
+                        style={statusBadge(
+                          getDeclinedStatus(selectedOrder) ??
+                            'customer_declined'
+                        )}
+                      >
                         No payment needed
                       </span>
                     )}
@@ -2909,7 +2950,7 @@ function OrdersDashboard({
                   <button
                     type="button"
                     onClick={() =>
-                      onChangeStatus(selectedOrder, 'declined')
+                      onChangeStatus(selectedOrder, 'team_declined')
                     }
                     disabled={statusActionLoading !== null}
                     style={{
@@ -2917,7 +2958,7 @@ function OrdersDashboard({
                       opacity: statusActionLoading ? 0.68 : 1,
                     }}
                   >
-                    {statusActionLoading === 'declined'
+                    {statusActionLoading === 'team_declined'
                       ? 'Declining...'
                       : 'Decline'}
                   </button>
@@ -3555,17 +3596,19 @@ const orderActions: CSSProperties = {
 
 function statusBadge(status: OrderStatus): CSSProperties {
   const color =
-    status === 'declined'
-      ? '#ff9d9d'
-      : status === 'completed'
-        ? '#00c8ff'
-        : status === 'sent_to_production'
-          ? '#7ed7ff'
-          : status === 'offer_sent' ||
-              status === 'needs_review' ||
-              status === 'approved'
-            ? '#ffe083'
-            : '#9dffc4';
+    status === 'customer_declined'
+      ? '#ff8fb3'
+      : status === 'team_declined'
+        ? '#ff9f6e'
+        : status === 'completed'
+          ? '#00c8ff'
+          : status === 'sent_to_production'
+            ? '#7ed7ff'
+            : status === 'offer_sent' ||
+                status === 'needs_review' ||
+                status === 'approved'
+              ? '#ffe083'
+              : '#9dffc4';
 
   return {
     display: 'inline-flex',

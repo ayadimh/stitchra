@@ -15,7 +15,8 @@ export const ORDER_STATUSES = [
   'customer_accepted',
   'pre_production',
   'sent_to_production',
-  'declined',
+  'customer_declined',
+  'team_declined',
   'completed',
 ] as const;
 
@@ -337,16 +338,26 @@ function parseDate(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function parseStatus(value: unknown): OrderStatus {
-  return ORDER_STATUSES.includes(value as OrderStatus)
-    ? (value as OrderStatus)
-    : 'new';
-}
-
 function parseCustomerDecision(value: unknown): CustomerDecision {
   return CUSTOMER_DECISIONS.includes(value as CustomerDecision)
     ? (value as CustomerDecision)
     : 'pending';
+}
+
+function parseStatus(row: SupabaseOrderRow): OrderStatus {
+  const status = row.status;
+
+  if (ORDER_STATUSES.includes(status as OrderStatus)) {
+    return status as OrderStatus;
+  }
+
+  if (status === 'declined') {
+    return parseCustomerDecision(row.customer_decision) === 'declined'
+      ? 'customer_declined'
+      : 'team_declined';
+  }
+
+  return 'new';
 }
 
 function parsePaymentStatus(value: unknown): PaymentStatus {
@@ -424,7 +435,7 @@ function parseOrder(
       row.cost_breakdown,
       pricingSettings
     ),
-    status: parseStatus(row.status),
+    status: parseStatus(row),
     customer_decision: parseCustomerDecision(row.customer_decision),
     customer_decision_at: parseDate(row.customer_decision_at),
     customer_viewed_at: parseDate(row.customer_viewed_at),
@@ -453,7 +464,7 @@ function parseOrder(
 function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
   return {
     public_token: String(row.public_token),
-    status: parseStatus(row.status),
+    status: parseStatus(row),
     logo_preview_url: row.logo_preview_url
       ? String(row.logo_preview_url)
       : null,
@@ -1138,7 +1149,7 @@ export async function updatePublicOrderDecision(
 
   const decidedAt = new Date().toISOString();
   const nextStatus: OrderStatus =
-    decision === 'accepted' ? 'customer_accepted' : 'declined';
+    decision === 'accepted' ? 'customer_accepted' : 'customer_declined';
   const decisionUpdates: Record<string, unknown> = {
     customer_decision: decision,
     customer_decision_at: decidedAt,
@@ -1218,9 +1229,14 @@ export async function updateOrder(
       updates.archive_reason = 'completed';
     }
 
-    if (input.status === 'declined') {
+    if (input.status === 'customer_declined') {
       updates.archived_at = new Date().toISOString();
-      updates.archive_reason = 'studio_declined';
+      updates.archive_reason = 'customer_declined';
+    }
+
+    if (input.status === 'team_declined') {
+      updates.archived_at = new Date().toISOString();
+      updates.archive_reason = 'team_declined';
     }
 
     if (input.status === 'needs_review') {
@@ -1228,7 +1244,7 @@ export async function updateOrder(
       updates.archive_reason = null;
 
       if (
-        existingOrder.status === 'declined' ||
+        existingOrder.status === 'customer_declined' ||
         existingOrder.customer_decision === 'declined'
       ) {
         updates.customer_decision = 'pending';

@@ -15,7 +15,8 @@ const statusLabels: Record<PublicOrderRecord['status'], string> = {
   customer_accepted: 'Customer accepted',
   pre_production: 'Pre-production',
   sent_to_production: 'In production',
-  declined: 'Declined',
+  customer_declined: 'Customer declined',
+  team_declined: 'Team declined',
   completed: 'Completed',
 };
 
