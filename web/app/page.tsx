@@ -15,15 +15,17 @@ const API =
 const PRACTICAL_THREAD_COLOR_LIMIT = 15;
 
 const stitchraImages = {
-  // Images are temporary launch assets from free commercial-use stock sources and should be replaced with original Stitchra production photography later.
+  // Temporary launch assets from free commercial-use stock sources. Replace with original Stitchra production photos later.
   heroMain: '/stitchra-craft-premium-v3.jpg',
   heroDetail: '/stitchra-thread-detail-v3.jpg',
   heroMaterial: '/stitchra-streetwear-mark-v3.jpg',
   craftMain: '/stitchra-craft-premium-v3.jpg',
   threadDetail: '/stitchra-thread-detail-v3.jpg',
   fabricTexture: '/stitchra-fabric-texture-v3.jpg',
-  streetwearMark: '/stitchra-streetwear-mark-v3.jpg',
-  patchBadge: '/stitchra-patch-badge-v3.jpg',
+  quietMonogram: '/stitchra-quiet-monogram-v4.jpg',
+  streetwearMark: '/stitchra-streetwear-mark-v4.jpg',
+  patchBadge: '/stitchra-patch-badge-v4.jpg',
+  minimalGraphic: '/stitchra-minimal-graphic-v4.jpg',
 } as const;
 
 type Estimate = {
@@ -2776,9 +2778,9 @@ export default function Home() {
 
       <section id="gallery" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Gallery"
-          title="Made for modern streetwear"
-          text="Clean visual directions for brand badges, small chest logos, team drops and minimal creator merch."
+          eyebrow="VISUAL DIRECTIONS"
+          title="Streetwear-ready embroidery"
+          text="Clean directions for chest logos, team drops, patches and minimal creator merch."
         />
 
         <div style={galleryGrid}>
@@ -3519,6 +3521,10 @@ function GlobalVisualStyles() {
           scroll-margin-top: 112px;
         }
 
+        #gallery {
+          scroll-margin-top: 24px;
+        }
+
         ::selection {
           background: rgba(0,255,136,0.26);
           color: #ffffff;
@@ -3840,12 +3846,13 @@ function GlobalVisualStyles() {
         }
 
         .gallery-card {
-          min-height: 260px;
-          padding: 30px;
+          min-height: 382px;
+          padding: 22px;
           border-radius: 28px;
-          display: grid;
-          align-content: space-between;
-          gap: 24px;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+          gap: 18px;
           overflow: hidden !important;
           min-width: 0;
         }
@@ -3855,19 +3862,19 @@ function GlobalVisualStyles() {
         }
 
         .gallery-card-with-image {
-          padding-top: 150px;
+          padding-top: 22px;
         }
 
         .gallery-image {
-          position: absolute;
-          top: 16px;
-          left: 16px;
-          right: 16px;
-          height: 116px;
+          position: relative;
+          width: 100%;
+          height: 178px;
+          flex: 0 0 178px;
           overflow: hidden;
-          border-radius: 20px;
+          border-radius: 22px;
           border: 1px solid rgba(255,255,255,0.08);
-          opacity: 0.86;
+          opacity: 0.92;
+          background: rgba(255,255,255,0.04);
         }
 
         .gallery-image::after {
@@ -3881,17 +3888,28 @@ function GlobalVisualStyles() {
         }
 
         .gallery-mark {
-          width: 78px;
-          height: 78px;
+          width: 54px;
+          height: 54px;
           display: grid;
           place-items: center;
-          border-radius: 26px;
+          border-radius: 18px;
           border: 1px solid rgba(255,255,255,0.12);
+          margin-top: -46px;
+          margin-left: 14px;
+          position: relative;
+          z-index: 2;
         }
 
         .gallery-mark span {
-          font-size: 30px;
+          font-size: 20px;
           line-height: 1;
+          font-weight: 950;
+        }
+
+        .gallery-copy {
+          display: grid;
+          gap: 0;
+          min-width: 0;
         }
 
         .site-nav {
@@ -4024,6 +4042,11 @@ function GlobalVisualStyles() {
             padding: 88px 18px 76px !important;
           }
 
+          #gallery {
+            scroll-margin-top: 20px;
+            padding-top: 96px !important;
+          }
+
           #features {
             padding-top: 88px !important;
           }
@@ -4123,39 +4146,38 @@ function GlobalVisualStyles() {
 
           .gallery-card {
             width: 100%;
-            min-height: 320px;
-            padding: 24px;
+            min-height: auto;
+            padding: 22px;
             border-radius: 28px;
-            gap: 20px;
-            align-content: end;
+            gap: 18px;
           }
 
           .gallery-card-with-image {
-            padding-top: 184px;
+            padding-top: 22px;
           }
 
           .gallery-image {
-            top: 14px;
-            left: 14px;
-            right: 14px;
-            height: 150px;
+            height: 190px;
+            flex-basis: 190px;
             border-radius: 22px;
           }
 
           .gallery-mark {
-            width: 64px;
-            height: 64px;
-            border-radius: 22px;
+            width: 50px;
+            height: 50px;
+            border-radius: 17px;
+            margin-top: -42px;
+            margin-left: 12px;
           }
 
           .gallery-mark span {
-            font-size: 24px;
+            font-size: 19px;
           }
 
           .gallery-card h3 {
             font-size: 19px !important;
             line-height: 1.2 !important;
-            margin: 16px 0 8px !important;
+            margin: 0 0 8px !important;
           }
 
           .gallery-card p {
@@ -4422,46 +4444,42 @@ function GalleryCard({
   title: string;
   text: string;
   accent: Accent;
-  image?: string;
+  image: string;
 }) {
   const colors = accentStyles[accent];
 
   return (
     <div
-      className={`glow-card gallery-card${image ? ' gallery-card-with-image' : ''}`}
+      className="glow-card gallery-card gallery-card-with-image"
       style={{
         '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
         background: colors.surface,
       } as CSSProperties}
     >
-      {image ? (
-        <div className="gallery-image">
-          {/* Gallery image from the local launch asset set. */}
-          <Image
-            src={image}
-            alt={`${title} embroidery texture`}
-            fill
-            sizes="(max-width: 900px) 100vw, 320px"
-            style={{
-              objectFit: 'cover',
-              objectPosition: 'center',
-            }}
-          />
-        </div>
-      ) : null}
-
-      <div
-        className="gallery-mark"
-        style={{
-          background: colors.icon,
-          boxShadow: `0 0 42px ${colors.glow}`,
-        }}
-      >
-        <span style={{ color: colors.main }}>✦</span>
+      <div className="gallery-image">
+        <Image
+          src={image}
+          alt={`${title} embroidery texture`}
+          fill
+          sizes="(max-width: 640px) calc(100vw - 80px), (max-width: 1180px) 44vw, 260px"
+          style={{
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
       </div>
 
-      <div>
+      <div className="gallery-copy">
+        <div
+          className="gallery-mark"
+          style={{
+            background: colors.icon,
+            boxShadow: `0 0 42px ${colors.glow}`,
+          }}
+        >
+          <span style={{ color: colors.main }}>S</span>
+        </div>
         <h3 style={cardTitle}>{title}</h3>
         <p style={cardText}>{text}</p>
       </div>
@@ -4638,12 +4656,13 @@ const galleryItems: Array<{
   title: string;
   text: string;
   accent: Accent;
-  image?: string;
+  image: string;
 }> = [
   {
     title: 'Quiet monograms',
     text: 'Clean initials for small chest branding, student clubs and makers.',
     accent: 'green',
+    image: stitchraImages.quietMonogram,
   },
   {
     title: 'Streetwear marks',
@@ -4661,6 +4680,7 @@ const galleryItems: Array<{
     title: 'Minimal graphics',
     text: 'Low-detail artwork with a premium, quiet fashion look.',
     accent: 'pink',
+    image: stitchraImages.minimalGraphic,
   },
 ];
 
@@ -4758,11 +4778,12 @@ const fourGrid: CSSProperties = {
 
 const galleryGrid: CSSProperties = {
   maxWidth: 1180,
-  margin: '40px auto 0',
+  margin: '42px auto 0',
   display: 'grid',
   gridTemplateColumns:
-    'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: 18,
+    'repeat(auto-fit, minmax(250px, 1fr))',
+  gap: 20,
+  alignItems: 'stretch',
 };
 
 const featureCard: CSSProperties = {
@@ -4811,8 +4832,9 @@ const iconBox: CSSProperties = {
 };
 
 const cardTitle: CSSProperties = {
-  margin: '18px 0 10px',
+  margin: '0 0 10px',
   fontSize: 20,
+  lineHeight: 1.2,
 };
 
 const cardText: CSSProperties = {

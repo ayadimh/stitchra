@@ -27,6 +27,10 @@ stitchra-thread-detail-v3.jpg = stitch and thread detail image
 stitchra-fabric-texture-v3.jpg = fabric texture image
 stitchra-streetwear-mark-v3.jpg = streetwear textile detail image
 stitchra-patch-badge-v3.jpg = patch and badge detail image
+stitchra-quiet-monogram-v4.jpg = visual directions card for quiet monograms
+stitchra-streetwear-mark-v4.jpg = visual directions card for streetwear marks
+stitchra-patch-badge-v4.jpg = visual directions card for patch badges
+stitchra-minimal-graphic-v4.jpg = visual directions card for minimal graphics
 
 Art direction:
 Use cinematic macro embroidery, thread, fabric and stitch details.
