@@ -164,6 +164,47 @@ const publicOrderSelect = [
   'payment_status',
 ].join(',');
 
+const publicOrderSelectFallbacks = [
+  publicOrderSelect,
+  [
+    'public_token',
+    'status',
+    'logo_preview_url',
+    'placement',
+    'shirt_color',
+    'quantity',
+    'customer_price_eur',
+    'revised_price_eur',
+    'manual_quote',
+    'team_message',
+    'customer_decision',
+    'payment_status',
+  ].join(','),
+  [
+    'public_token',
+    'status',
+    'logo_preview_url',
+    'placement',
+    'shirt_color',
+    'quantity',
+    'customer_price_eur',
+    'revised_price_eur',
+    'manual_quote',
+    'team_message',
+    'customer_decision',
+  ].join(','),
+  [
+    'public_token',
+    'status',
+    'logo_preview_url',
+    'placement',
+    'shirt_color',
+    'quantity',
+    'customer_price_eur',
+    'customer_decision',
+  ].join(','),
+];
+
 const pricingSettingsSelect = [
   'stitch_cost_per_1000_eur',
   'blank_shirt_eur',
@@ -400,6 +441,37 @@ function parsePaymentStatus(value: unknown): PaymentStatus {
     : 'unpaid';
 }
 
+function getTokenPrefix(token: string) {
+  return token.slice(0, 8);
+}
+
+function getMissingOrderColumn(error: unknown) {
+  const message = getOrderErrorMessage(error);
+  const quotedColumn = message.match(/'([A-Za-z0-9_]+)' column/);
+
+  if (quotedColumn?.[1]) {
+    return quotedColumn[1];
+  }
+
+  const qualifiedColumn = message.match(
+    /orders\.([A-Za-z0-9_]+)\s+(?:does not exist|not found)/i
+  );
+
+  if (qualifiedColumn?.[1]) {
+    return qualifiedColumn[1];
+  }
+
+  const plainColumn = message.match(
+    /column\s+["']?([A-Za-z0-9_]+)["']?\s+(?:does not exist|not found)/i
+  );
+
+  return plainColumn?.[1] ?? null;
+}
+
+function isMissingOrderColumnError(error: unknown) {
+  return Boolean(getMissingOrderColumn(error));
+}
+
 function createPublicToken() {
   return globalThis.crypto.randomUUID().replace(/-/g, '');
 }
@@ -513,13 +585,13 @@ function parseOrder(
 
 function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
   return {
-    public_token: String(row.public_token),
+    public_token: row.public_token ? String(row.public_token) : '',
     status: parseStatus(row),
     logo_preview_url: row.logo_preview_url
       ? String(row.logo_preview_url)
       : null,
-    placement: String(row.placement),
-    shirt_color: String(row.shirt_color),
+    placement: row.placement ? String(row.placement) : 'left_chest',
+    shirt_color: row.shirt_color ? String(row.shirt_color) : 'black',
     quantity:
       row.quantity === null || row.quantity === undefined
         ? null
@@ -1300,25 +1372,70 @@ export async function getPublicOrderByToken(token: string) {
     return null;
   }
 
-  const params = new URLSearchParams({
+  let rows: SupabaseOrderRow[] | null = null;
+  let lastError: unknown = null;
+
+  for (const select of publicOrderSelectFallbacks) {
+    const params = new URLSearchParams({
+      public_token: `eq.${token}`,
+      select,
+    });
+
+    try {
+      rows = await supabaseRequest<SupabaseOrderRow[]>(
+        `orders?${params.toString()}`
+      );
+      break;
+    } catch (error) {
+      lastError = error;
+
+      if (!isMissingOrderColumnError(error)) {
+        throw error;
+      }
+
+      console.error('[orders.getPublicOrderByToken] public select failed', {
+        token_prefix: getTokenPrefix(token),
+        error_message: getOrderErrorMessage(error),
+      });
+    }
+  }
+
+  if (!rows) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Public order lookup failed.');
+  }
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  const viewParams = new URLSearchParams({
     public_token: `eq.${token}`,
-    select: publicOrderSelect,
+    select: 'public_token',
   });
 
-  const rows = await supabaseRequest<SupabaseOrderRow[]>(
-    `orders?${params.toString()}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify({
-        customer_viewed_at: new Date().toISOString(),
-      }),
-    }
-  );
+  try {
+    await supabaseRequest<SupabaseOrderRow[]>(
+      `orders?${viewParams.toString()}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          customer_viewed_at: new Date().toISOString(),
+        }),
+      }
+    );
+  } catch (error) {
+    console.error('[orders.getPublicOrderByToken] mark viewed failed', {
+      token_prefix: getTokenPrefix(token),
+      error_message: getOrderErrorMessage(error),
+    });
+  }
 
-  return rows[0] ? parsePublicOrder(rows[0]) : null;
+  return parsePublicOrder(rows[0]);
 }
 
 export async function updatePublicOrderDecision(
@@ -1387,16 +1504,59 @@ export async function updatePublicOrderDecision(
     decisionUpdates.archive_reason = null;
   }
 
-  const rows = await supabaseRequest<SupabaseOrderRow[]>(
-    `orders?${params.toString()}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify(decisionUpdates),
+  const optionalDecisionColumns = new Set([
+    'proposed_price_eur',
+    'requested_quantity',
+    'customer_change_note',
+    'wants_logo_change',
+    'change_requested_at',
+    'cancelled_at',
+    'archived_at',
+    'archive_reason',
+  ]);
+  const safeDecisionUpdates = { ...decisionUpdates };
+  let rows: SupabaseOrderRow[] | null = null;
+
+  for (let attempt = 0; attempt < 9; attempt += 1) {
+    try {
+      rows = await supabaseRequest<SupabaseOrderRow[]>(
+        `orders?${params.toString()}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(safeDecisionUpdates),
+        }
+      );
+      break;
+    } catch (error) {
+      const missingColumn = getMissingOrderColumn(error);
+
+      if (
+        missingColumn &&
+        optionalDecisionColumns.has(missingColumn) &&
+        hasOwn(safeDecisionUpdates, missingColumn)
+      ) {
+        delete safeDecisionUpdates[missingColumn];
+        console.error(
+          '[orders.updatePublicOrderDecision] optional column unavailable',
+          {
+            token_prefix: getTokenPrefix(token),
+            column: missingColumn,
+            error_message: getOrderErrorMessage(error),
+          }
+        );
+        continue;
+      }
+
+      throw error;
     }
-  );
+  }
+
+  if (!rows) {
+    throw new Error('Public order decision update failed.');
+  }
 
   if (!rows[0]) {
     return null;

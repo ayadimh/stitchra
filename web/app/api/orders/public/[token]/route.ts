@@ -9,8 +9,12 @@ import {
 
 export const runtime = 'nodejs';
 
-const databaseMessage = 'Database not configured.';
+const databaseMessage = 'Order service unavailable.';
 const publicTokenPattern = /^[A-Za-z0-9_-]{16,128}$/;
+
+function getTokenPrefix(token: string) {
+  return token ? token.slice(0, 8) : 'missing';
+}
 
 function isCustomerDecision(
   value: unknown
@@ -31,23 +35,31 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
-  try {
-    if (!isDatabaseConfigured()) {
-      return NextResponse.json(
-        {
-          databaseConfigured: false,
-          message: databaseMessage,
-        },
-        { status: 503 }
-      );
-    }
+  let token = '';
 
-    const { token } = await params;
+  try {
+    const resolvedParams = await params;
+    token =
+      typeof resolvedParams.token === 'string'
+        ? resolvedParams.token.trim()
+        : '';
 
     if (!isPublicToken(token)) {
       return NextResponse.json(
         { message: 'Order not found.' },
         { status: 404 }
+      );
+    }
+
+    if (!isDatabaseConfigured()) {
+      console.error('[api.orders.public.GET] database not configured', {
+        token_prefix: getTokenPrefix(token),
+      });
+      return NextResponse.json(
+        {
+          message: databaseMessage,
+        },
+        { status: 500 }
       );
     }
 
@@ -62,10 +74,14 @@ export async function GET(
 
     return NextResponse.json({ order });
   } catch (error) {
+    console.error('[api.orders.public.GET] public order lookup failed', {
+      token_prefix: getTokenPrefix(token),
+      error_message: getOrderErrorMessage(error),
+    });
+
     return NextResponse.json(
       {
         message: 'Order lookup error.',
-        details: getOrderErrorMessage(error),
       },
       { status: 500 }
     );
@@ -76,23 +92,31 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
-  try {
-    if (!isDatabaseConfigured()) {
-      return NextResponse.json(
-        {
-          databaseConfigured: false,
-          message: databaseMessage,
-        },
-        { status: 503 }
-      );
-    }
+  let token = '';
 
-    const { token } = await params;
+  try {
+    const resolvedParams = await params;
+    token =
+      typeof resolvedParams.token === 'string'
+        ? resolvedParams.token.trim()
+        : '';
 
     if (!isPublicToken(token)) {
       return NextResponse.json(
         { message: 'Order not found.' },
         { status: 404 }
+      );
+    }
+
+    if (!isDatabaseConfigured()) {
+      console.error('[api.orders.public.PATCH] database not configured', {
+        token_prefix: getTokenPrefix(token),
+      });
+      return NextResponse.json(
+        {
+          message: databaseMessage,
+        },
+        { status: 500 }
       );
     }
 
@@ -180,10 +204,14 @@ export async function PATCH(
 
     return NextResponse.json({ order });
   } catch (error) {
+    console.error('[api.orders.public.PATCH] public order update failed', {
+      token_prefix: getTokenPrefix(token),
+      error_message: getOrderErrorMessage(error),
+    });
+
     return NextResponse.json(
       {
         message: 'Order update error.',
-        details: getOrderErrorMessage(error),
       },
       { status: 500 }
     );
