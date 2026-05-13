@@ -189,19 +189,19 @@ const phonePattern = /^[+\d\s()-]+$/;
 const publicSiteUrl = 'https://stitchra.com';
 
 function getResendApiKey() {
-  return process.env.RESEND_API_KEY ?? '';
+  return process.env.RESEND_API_KEY?.trim() ?? '';
 }
 
 function getFromEmail() {
-  return process.env.FROM_EMAIL ?? '';
+  return process.env.FROM_EMAIL?.trim() ?? '';
 }
 
 function getReplyToEmail() {
-  return process.env.REPLY_TO_EMAIL ?? '';
+  return process.env.REPLY_TO_EMAIL?.trim() ?? '';
 }
 
 function getTeamEmail() {
-  return process.env.TEAM_EMAIL ?? '';
+  return process.env.TEAM_EMAIL?.trim() ?? '';
 }
 
 export function isOfferEmailConfigured() {
@@ -760,10 +760,22 @@ function formatEmailPrice(value: number | null) {
   return value === null ? 'Manual quote' : `€${value.toFixed(2)}`;
 }
 
-function formatEmailValue(value: string | null | undefined) {
-  const text = value?.trim();
+function getCustomerFirstName(name: string) {
+  return name.trim().split(/\s+/)[0] || 'there';
+}
 
-  return text ? text : 'Not provided';
+function getCleanEmailAddress(value: string) {
+  return value.trim();
+}
+
+function assertValidEmailRecipient(value: string) {
+  const email = getCleanEmailAddress(value);
+
+  if (!emailPattern.test(email)) {
+    throw new Error('Enter a valid customer email before sending.');
+  }
+
+  return email;
 }
 
 function formatOrderValue(value: string) {
@@ -871,6 +883,8 @@ async function sendResendEmail(input: {
 }) {
   const resendApiKey = getResendApiKey();
   const fromEmail = getFromEmail();
+  const to = getCleanEmailAddress(input.to);
+  const replyTo = input.replyTo?.trim();
 
   if (!resendApiKey || !fromEmail) {
     throw new Error('Email not configured.');
@@ -878,14 +892,14 @@ async function sendResendEmail(input: {
 
   const body: Record<string, unknown> = {
     from: fromEmail,
-    to: input.to,
+    to,
     subject: input.subject,
     text: input.text,
     html: input.html,
   };
 
-  if (input.replyTo) {
-    body.reply_to = input.replyTo;
+  if (replyTo) {
+    body.reply_to = replyTo;
   }
 
   const response = await fetch('https://api.resend.com/emails', {
@@ -904,7 +918,7 @@ async function sendResendEmail(input: {
     const errorMessage = getResendErrorMessage(payload);
 
     console.warn('[orders] Resend email failed', {
-      to: input.to,
+      to,
       subject: input.subject,
       resend_error_message: errorMessage,
       sent_at: sentAt,
@@ -915,17 +929,28 @@ async function sendResendEmail(input: {
 
   console.info('[orders] Resend email sent', {
     email_id: getResendEmailId(payload),
-    to: input.to,
+    to,
     subject: input.subject,
     sent_at: sentAt,
   });
 }
 
-function buildEmailDetailRow(label: string, value: string) {
+function buildCustomerEmailDetailRow(label: string, value: string) {
   return `
     <tr>
-      <td style="padding: 10px 0; color: #8c9a96; font-size: 13px;">${label}</td>
-      <td style="padding: 10px 0; color: #f5f7f8; font-size: 14px; font-weight: 700; text-align: right;">${escapeHtml(value)}</td>
+      <td style="padding: 11px 0; color: #9caeaa; font-size: 13px; line-height: 18px;">${label}</td>
+      <td align="right" style="padding: 11px 0; color: #f4fffb; font-size: 14px; line-height: 18px; font-weight: 700;">${escapeHtml(value)}</td>
+    </tr>
+  `;
+}
+
+function buildTrustRow(text: string) {
+  return `
+    <tr>
+      <td width="26" valign="top" style="padding: 7px 0;">
+        <span style="display: inline-block; width: 18px; height: 18px; border-radius: 9px; background-color: #143a2a; color: #8ff5bd; font-size: 12px; line-height: 18px; text-align: center;">&#10003;</span>
+      </td>
+      <td style="padding: 7px 0; color: #d7e7e2; font-size: 13px; line-height: 19px;">${escapeHtml(text)}</td>
     </tr>
   `;
 }
@@ -936,12 +961,13 @@ function buildCustomerOfferText(input: {
   customerLink: string;
   teamMessage: string;
 }) {
+  const firstName = getCustomerFirstName(input.order.customer_name);
   const lines = [
-    `Hi ${input.order.customer_name},`,
+    `Hi ${firstName},`,
     '',
-    'Your Stitchra embroidery quote is ready to review.',
+    'Your custom embroidery quote is ready to review.',
     '',
-    `Price: ${input.price}`,
+    `Final offer price: ${input.price}`,
     `Placement: ${formatPlacement(input.order.placement)}`,
     `Shirt color: ${formatOrderValue(input.order.shirt_color)}`,
     `Quantity: ${input.order.quantity ?? 1}`,
@@ -956,7 +982,8 @@ function buildCustomerOfferText(input: {
     `Review your secure offer: ${input.customerLink}`,
     '',
     'Stitchra Studio',
-    'You received this because you requested an embroidery quote on stitchra.com.'
+    'You received this because you requested an embroidery quote on stitchra.com.',
+    'Questions? Reply to this email.'
   );
 
   return lines.join('\n');
@@ -968,7 +995,7 @@ function buildCustomerOfferHtml(input: {
   customerLink: string;
   teamMessage: string;
 }) {
-  const safeName = escapeHtml(input.order.customer_name);
+  const safeName = escapeHtml(getCustomerFirstName(input.order.customer_name));
   const safePrice = escapeHtml(input.price);
   const safeTeamMessage = escapeHtml(input.teamMessage).replace(
     /\n/g,
@@ -980,16 +1007,23 @@ function buildCustomerOfferHtml(input: {
     ['Shirt color', formatOrderValue(input.order.shirt_color)],
     ['Quantity', String(input.order.quantity ?? 1)],
   ]
-    .map(([label, value]) => buildEmailDetailRow(label, value))
+    .map(([label, value]) => buildCustomerEmailDetailRow(label, value))
+    .join('');
+  const trustRows = [
+    'No production before your approval',
+    'Secure private review link',
+    'Final price shown before stitching',
+  ]
+    .map((text) => buildTrustRow(text))
     .join('');
   const messageBlock = input.teamMessage
     ? `
                     <tr>
-                      <td style="padding: 0 28px 24px 28px;">
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background-color: #111a18; border: 1px solid #22332f; border-radius: 16px;">
+                      <td style="padding: 0 30px 24px 30px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: separate; border-spacing: 0; background-color: #111b18; border: 1px solid #263b35; border-radius: 16px;">
                           <tr>
                             <td style="padding: 18px 18px 16px 18px;">
-                              <p style="margin: 0 0 8px 0; color: #9fb0aa; font-size: 13px; line-height: 18px; font-weight: 700;">Message from the studio</p>
+                              <p style="margin: 0 0 8px 0; color: #8ff5bd; font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">Message from the studio</p>
                               <p style="margin: 0; color: #edf7f3; font-size: 15px; line-height: 24px;">${safeTeamMessage}</p>
                             </td>
                           </tr>
@@ -1009,35 +1043,46 @@ function buildCustomerOfferHtml(input: {
         <meta name="supported-color-schemes" content="dark light" />
         <title>Your Stitchra embroidery quote is ready</title>
       </head>
-      <body style="margin: 0; padding: 0; background-color: #050807; font-family: Arial, Helvetica, sans-serif; color: #eef7f4;">
-        <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">
-          Review your Stitchra embroidery quote and order details.
+      <body style="margin: 0; padding: 0; background-color: #050807; font-family: Arial, Helvetica, sans-serif; color: #eef7f4; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;">
+        <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent; mso-hide: all;">
+          Review your secure Stitchra offer before production starts.
         </div>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background-color: #050807; margin: 0; padding: 0;">
           <tr>
             <td align="center" style="padding: 32px 16px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; border-collapse: separate; border-spacing: 0; background-color: #0b1110; border: 1px solid #1f302c; border-radius: 22px; overflow: hidden;">
+              <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; border-collapse: separate; border-spacing: 0; background-color: #0b1110; border: 1px solid #1f302c; border-radius: 22px; overflow: hidden;">
                 <tr>
-                  <td style="padding: 28px 28px 24px 28px; background-color: #07120f; border-bottom: 1px solid #1f302c;">
-                    <p style="margin: 0 0 18px 0; color: #8ff5bd; font-size: 13px; line-height: 18px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">Stitchra Studio</p>
-                    <h1 style="margin: 0 0 12px 0; color: #f5fffb; font-size: 28px; line-height: 34px; font-weight: 800;">Your Stitchra embroidery quote is ready</h1>
-                    <p style="margin: 0; color: #b9c8c3; font-size: 16px; line-height: 24px;">Hi ${safeName}, your custom embroidery quote is ready to review.</p>
+                  <td style="padding: 26px 30px 24px 30px; background-color: #07120f; border-bottom: 1px solid #1f302c;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+                      <tr>
+                        <td width="42" valign="top" style="padding: 0 12px 0 0;">
+                          <span style="display: inline-block; width: 38px; height: 38px; border-radius: 13px; background-color: #0e1d19; border: 1px solid #245448; color: #8ff5bd; font-size: 20px; line-height: 38px; text-align: center; font-weight: 800;">S</span>
+                        </td>
+                        <td valign="top">
+                          <p style="margin: 0; color: #f5fffb; font-size: 16px; line-height: 21px; font-weight: 800;">Stitchra Studio</p>
+                          <p style="margin: 2px 0 0 0; color: #91a39e; font-size: 12px; line-height: 18px;">Custom embroidery quote</p>
+                        </td>
+                      </tr>
+                    </table>
+                    <h1 style="margin: 24px 0 10px 0; color: #f5fffb; font-size: 27px; line-height: 33px; font-weight: 800;">Your Stitchra embroidery quote is ready</h1>
+                    <p style="margin: 0; color: #b9c8c3; font-size: 15px; line-height: 23px;">Hi ${safeName}, your custom embroidery quote is ready to review before production starts.</p>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 28px 28px 22px 28px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background-color: #101916; border: 1px solid #263b35; border-radius: 16px;">
+                  <td style="padding: 28px 30px 22px 30px;">
+                    <p style="margin: 0 0 18px 0; color: #d9e8e3; font-size: 15px; line-height: 24px;">Your quote details are below. Review the secure offer page when you are ready.</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: separate; border-spacing: 0; background-color: #101916; border: 1px solid #2b423b; border-radius: 16px;">
                       <tr>
                         <td style="padding: 22px 20px;">
-                          <p style="margin: 0 0 8px 0; color: #9fb0aa; font-size: 13px; line-height: 18px; font-weight: 700;">Final quote</p>
-                          <p style="margin: 0; color: #f7fffb; font-size: 36px; line-height: 42px; font-weight: 800;">${safePrice}</p>
+                          <p style="margin: 0 0 8px 0; color: #9fb0aa; font-size: 13px; line-height: 18px; font-weight: 700;">Final offer price</p>
+                          <p style="margin: 0; color: #f7fffb; font-size: 34px; line-height: 40px; font-weight: 800;">${safePrice}</p>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 0 28px 24px 28px;">
+                  <td style="padding: 0 30px 24px 30px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border-top: 1px solid #22332f; border-bottom: 1px solid #22332f;">
 ${details}
                     </table>
@@ -1045,7 +1090,21 @@ ${details}
                 </tr>
 ${messageBlock}
                 <tr>
-                  <td style="padding: 0 28px 28px 28px;">
+                  <td style="padding: 0 30px 24px 30px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background-color: #0d1513; border: 1px solid #21332e; border-radius: 15px;">
+                      <tr>
+                        <td style="padding: 16px 18px;">
+                          <p style="margin: 0 0 6px 0; color: #8ff5bd; font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">Quote review</p>
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+${trustRows}
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
                     <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%;">
                       <tr>
                         <td align="center" style="border-radius: 14px; background-color: #29e58c;">
@@ -1053,14 +1112,15 @@ ${messageBlock}
                         </td>
                       </tr>
                     </table>
-                    <p style="margin: 18px 0 0 0; color: #9fb0aa; font-size: 13px; line-height: 20px;">If the button does not open, use this secure link:</p>
+                    <p style="margin: 18px 0 0 0; color: #9fb0aa; font-size: 13px; line-height: 20px;">If the button does not open, copy this secure link:</p>
                     <p style="margin: 4px 0 0 0; color: #9fb0aa; font-size: 13px; line-height: 20px; word-break: break-all;"><a href="${safeLink}" style="color: #8ff5bd; text-decoration: underline;">${safeLink}</a></p>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 22px 28px 26px 28px; background-color: #070c0b; border-top: 1px solid #1f302c;">
+                  <td style="padding: 22px 30px 26px 30px; background-color: #070c0b; border-top: 1px solid #1f302c;">
                     <p style="margin: 0 0 6px 0; color: #d9e7e2; font-size: 13px; line-height: 20px; font-weight: 700;">Stitchra Studio</p>
-                    <p style="margin: 0; color: #899a94; font-size: 12px; line-height: 18px;">You received this because you requested an embroidery quote on stitchra.com.</p>
+                    <p style="margin: 0 0 4px 0; color: #899a94; font-size: 12px; line-height: 18px;">You received this email because you requested an embroidery quote on stitchra.com.</p>
+                    <p style="margin: 0; color: #899a94; font-size: 12px; line-height: 18px;">Questions? Reply to this email.</p>
                   </td>
                 </tr>
               </table>
@@ -1092,9 +1152,10 @@ export async function sendOfferEmail(order: OrderRecord) {
     getEffectiveOrderPrice(order, pricingSettings)
   );
   const teamMessage = order.team_message?.trim() || '';
+  const recipientEmail = assertValidEmailRecipient(order.customer_email);
 
   await sendResendEmail({
-    to: order.customer_email,
+    to: recipientEmail,
     subject: 'Your Stitchra embroidery quote is ready',
     replyTo: getReplyToEmail() || undefined,
     text: buildCustomerOfferText({
@@ -1116,40 +1177,19 @@ function buildTeamDecisionText(
   order: OrderRecord,
   settings: PricingSettings = defaultPricingSettings
 ) {
-  const decision = order.customer_decision;
-  const customerLink = order.public_token
-    ? `${publicSiteUrl}/order/${order.public_token}`
-    : 'No customer link available';
+  const decision =
+    order.customer_decision === 'pending'
+      ? 'Pending'
+      : formatOrderValue(order.customer_decision);
 
   return [
-    `Customer decision: ${decision}`,
-    '',
     `Customer name: ${order.customer_name}`,
     `Customer email: ${order.customer_email}`,
-    `Customer phone: ${formatEmailValue(order.customer_phone)}`,
-    `Price: ${formatEmailPrice(getEffectiveOrderPrice(order, settings))}`,
-    `Placement: ${formatPlacement(order.placement)}`,
-    `Shirt color: ${formatOrderValue(order.shirt_color)}`,
-    `Quantity: ${order.quantity ?? 1}`,
-    `Customer note: ${formatEmailValue(order.note)}`,
-    `Team message: ${formatEmailValue(order.team_message)}`,
-    `Proposed price: ${
-      order.proposed_price_eur === null
-        ? 'Not provided'
-        : formatEmailPrice(order.proposed_price_eur)
-    }`,
-    `Requested quantity: ${
-      order.requested_quantity ?? 'Not provided'
-    }`,
-    `Customer change note: ${formatEmailValue(
-      order.customer_change_note
-    )}`,
-    `Wants logo/design change: ${
-      order.wants_logo_change ? 'Yes' : 'No'
-    }`,
+    `Order status: ${formatOrderValue(order.status)}`,
+    `Final price: ${formatEmailPrice(getEffectiveOrderPrice(order, settings))}`,
+    `Customer decision: ${decision}`,
     '',
     `Studio: ${publicSiteUrl}/studio`,
-    `Customer order: ${customerLink}`,
   ].join('\n');
 }
 
@@ -1157,63 +1197,15 @@ function buildTeamDecisionHtml(
   order: OrderRecord,
   settings: PricingSettings = defaultPricingSettings
 ) {
-  const decision = order.customer_decision;
-  const customerLink = order.public_token
-    ? `${publicSiteUrl}/order/${order.public_token}`
-    : '';
-  const rows = [
-    ['Customer name', order.customer_name],
-    ['Customer email', order.customer_email],
-    ['Customer phone', formatEmailValue(order.customer_phone)],
-    ['Decision', decision],
-    ['Price', formatEmailPrice(getEffectiveOrderPrice(order, settings))],
-    ['Placement', formatPlacement(order.placement)],
-    ['Shirt color', formatOrderValue(order.shirt_color)],
-    ['Quantity', String(order.quantity ?? 1)],
-    ['Customer note', formatEmailValue(order.note)],
-    ['Team message', formatEmailValue(order.team_message)],
-    [
-      'Proposed price',
-      order.proposed_price_eur === null
-        ? 'Not provided'
-        : formatEmailPrice(order.proposed_price_eur),
-    ],
-    [
-      'Requested quantity',
-      order.requested_quantity === null
-        ? 'Not provided'
-        : String(order.requested_quantity),
-    ],
-    [
-      'Customer change note',
-      formatEmailValue(order.customer_change_note),
-    ],
-    [
-      'Wants logo/design change',
-      order.wants_logo_change ? 'Yes' : 'No',
-    ],
-  ]
-    .map(([label, value]) => buildEmailDetailRow(label, value))
-    .join('');
-  const safeCustomerLink = customerLink ? escapeHtml(customerLink) : '';
+  const text = buildTeamDecisionText(order, settings)
+    .split('\n')
+    .map((line) => escapeHtml(line))
+    .join('<br />');
 
   return `
-    <div style="font-family: Arial, Helvetica, sans-serif; background: #050607; color: #f5f7f8; padding: 28px;">
-      <div style="max-width: 640px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.12); border-radius: 22px; background: #0b0f0e; padding: 28px;">
-        <p style="margin: 0 0 10px; color: #9dffc4; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;">Stitchra order response</p>
-        <h1 style="margin: 0 0 18px; font-size: 28px; line-height: 1.1;">Order ${escapeHtml(decision)}: ${escapeHtml(order.customer_name)}</h1>
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top: 1px solid rgba(255,255,255,0.10); border-bottom: 1px solid rgba(255,255,255,0.10);">
-          ${rows}
-        </table>
-        <p style="margin: 22px 0 0;">
-          <a href="${publicSiteUrl}/studio" style="color: #03100d; background: #00ff88; padding: 12px 16px; border-radius: 12px; text-decoration: none; font-weight: 800;">Open studio</a>
-        </p>
-        ${
-          safeCustomerLink
-            ? `<p style="margin: 18px 0 0; color: #8c9a96; font-size: 13px;">Customer order link:<br /><a href="${safeCustomerLink}" style="color: #9dffc4; word-break: break-all;">${safeCustomerLink}</a></p>`
-            : ''
-        }
-      </div>
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.5;">
+      <p style="margin: 0 0 12px 0; font-weight: 700;">Stitchra order update</p>
+      <p style="margin: 0;">${text}</p>
     </div>
   `;
 }
@@ -1278,9 +1270,10 @@ async function notifyTeamOfCustomerDecision(order: OrderRecord) {
 
   try {
     const pricingSettings = await getPricingSettings();
+    const statusLabel = formatOrderValue(order.status);
     await sendResendEmail({
       to: getTeamEmail(),
-      subject: `Stitchra order ${order.customer_decision}: ${order.customer_name}`,
+      subject: `Stitchra order update: ${statusLabel}`,
       text: buildTeamDecisionText(order, pricingSettings),
       html: buildTeamDecisionHtml(order, pricingSettings),
     });
