@@ -22,11 +22,11 @@ STITCHRA WEBSITE VERSIONED IMAGE SLOTS
 Replace these files with the same filenames to update the website visuals
 without changing code:
 
-stitchra-hero-v2.jpg = hero main macro embroidery image
-stitchra-detail-v2.jpg = hero small stitch/detail image
-stitchra-thread-v2.jpg = hero small thread/material image
-stitchra-craft-v2.jpg = craft main close-up image
-stitchra-extra-v2.jpg = gallery and secondary craft/detail image
+stitchra-craft-premium-v3.jpg = hero and craft macro embroidery image
+stitchra-thread-detail-v3.jpg = stitch and thread detail image
+stitchra-fabric-texture-v3.jpg = fabric texture image
+stitchra-streetwear-mark-v3.jpg = streetwear textile detail image
+stitchra-patch-badge-v3.jpg = patch and badge detail image
 
 Art direction:
 Use cinematic macro embroidery, thread, fabric and stitch details.

@@ -15,16 +15,15 @@ const API =
 const PRACTICAL_THREAD_COLOR_LIMIT = 15;
 
 const stitchraImages = {
-  // Hero main image. Replace web/public/stitchra-hero-v2.jpg to change the large hero visual.
-  heroMain: '/stitchra-hero-v2.jpg',
-  // Hero small stitch/detail image. Replace web/public/stitchra-detail-v2.jpg to change the small detail card.
-  heroDetail: '/stitchra-detail-v2.jpg',
-  // Hero small material/thread image. Replace web/public/stitchra-thread-v2.jpg to change the small material card.
-  heroMaterial: '/stitchra-thread-v2.jpg',
-  // Craft main image. Replace web/public/stitchra-craft-v2.jpg to change the large craft-quality visual.
-  craftMain: '/stitchra-craft-v2.jpg',
-  // Gallery/extra image. Replace web/public/stitchra-extra-v2.jpg to change secondary craft/gallery visuals.
-  extra: '/stitchra-extra-v2.jpg',
+  // Images are temporary launch assets from free commercial-use stock sources and should be replaced with original Stitchra production photography later.
+  heroMain: '/stitchra-craft-premium-v3.jpg',
+  heroDetail: '/stitchra-thread-detail-v3.jpg',
+  heroMaterial: '/stitchra-streetwear-mark-v3.jpg',
+  craftMain: '/stitchra-craft-premium-v3.jpg',
+  threadDetail: '/stitchra-thread-detail-v3.jpg',
+  fabricTexture: '/stitchra-fabric-texture-v3.jpg',
+  streetwearMark: '/stitchra-streetwear-mark-v3.jpg',
+  patchBadge: '/stitchra-patch-badge-v3.jpg',
 } as const;
 
 type Estimate = {
@@ -1789,7 +1788,7 @@ export default function Home() {
 
             <div className="hero-editorial-stage">
               <div className="hero-photo-panel">
-                {/* Hero main image: replace /web/public/stitchra-hero-v2.jpg. */}
+                {/* Hero main image from the local launch asset set. */}
                 <Image
                   src={stitchraImages.heroMain}
                   alt="Cinematic close-up of embroidery texture and fabric"
@@ -1830,7 +1829,7 @@ export default function Home() {
 
               <div className="hero-side-stack">
                 <div className="hero-mini-photo-card">
-                  {/* Hero small detail image: replace /web/public/stitchra-detail-v2.jpg. */}
+                  {/* Hero stitch detail image from the local launch asset set. */}
                   <Image
                     src={stitchraImages.heroDetail}
                     alt="Close-up stitching detail on fabric"
@@ -1848,7 +1847,7 @@ export default function Home() {
                 </div>
 
                 <div className="hero-mini-photo-card">
-                  {/* Hero small material/thread image: replace /web/public/stitchra-thread-v2.jpg. */}
+                  {/* Hero material image from the local launch asset set. */}
                   <Image
                     src={stitchraImages.heroMaterial}
                     alt="Premium colorful embroidery thread"
@@ -2713,7 +2712,7 @@ export default function Home() {
 
           <div className="production-bento">
             <div className="glow-card production-photo-card production-photo-main">
-              {/* Craft main close-up image: replace /web/public/stitchra-craft-v2.jpg. */}
+              {/* Premium craft close-up image from the local launch asset set. */}
               <Image
                 src={stitchraImages.craftMain}
                 alt="Close-up embroidery detail with fabric texture"
@@ -2733,9 +2732,9 @@ export default function Home() {
             </div>
 
             <div className="glow-card production-mini-card production-thread-card">
-              {/* Craft side/detail image: replace /web/public/stitchra-extra-v2.jpg. */}
+              {/* Thread detail image from the local launch asset set. */}
               <Image
-                src={stitchraImages.extra}
+                src={stitchraImages.threadDetail}
                 alt="Close-up thread detail and fabric texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
@@ -2753,9 +2752,9 @@ export default function Home() {
             </div>
 
             <div className="glow-card production-mini-card production-gallery-card">
-              {/* Gallery/extra image: replace /web/public/stitchra-extra-v2.jpg. */}
+              {/* Fabric texture image from the local launch asset set. */}
               <Image
-                src={stitchraImages.extra}
+                src={stitchraImages.fabricTexture}
                 alt="Abstract close-up fabric texture for artwork preview"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
@@ -2914,30 +2913,6 @@ export default function Home() {
             <a href="https://stitchra.com/contact" style={footerLink}>Contact</a>
             <a href="https://stitchra.com/terms" style={footerLink}>Terms</a>
             <span>© 2026 Stitchra</span>
-            <a
-              href="https://commons.wikimedia.org/wiki/File:Colorful_thread_spools_(Unsplash).jpg"
-              target="_blank"
-              rel="noreferrer"
-              style={footerLink}
-            >
-              Thread photo: Wikimedia Commons
-            </a>
-            <a
-              href="https://commons.wikimedia.org/"
-              target="_blank"
-              rel="noreferrer"
-              style={footerLink}
-            >
-              Detail photo: Wikimedia Commons
-            </a>
-            <a
-              href="https://commons.wikimedia.org/wiki/File:Sequin_stitching-16986196536.jpg"
-              target="_blank"
-              rel="noreferrer"
-              style={footerLink}
-            >
-              Detail photo: Wikimedia Commons
-            </a>
           </div>
         </div>
       </footer>
@@ -2962,6 +2937,7 @@ function Header() {
       }}
     >
       <nav
+        className="site-nav"
         style={{
           maxWidth: 1280,
           margin: '0 auto',
@@ -3004,7 +2980,7 @@ function Header() {
               src="/stitchra-wordmark.svg"
               alt="Stitchra AI embroidery platform"
               width={188}
-              height={48}
+              height={50}
               style={{
                 display: 'block',
                 width: 188,
@@ -3530,7 +3506,17 @@ function GlobalVisualStyles() {
       {`
         html {
           scroll-behavior: smooth;
-          scroll-padding-top: 104px;
+          scroll-padding-top: 112px;
+        }
+
+        *,
+        *::before,
+        *::after {
+          box-sizing: border-box;
+        }
+
+        section[id] {
+          scroll-margin-top: 112px;
         }
 
         ::selection {
@@ -3632,7 +3618,7 @@ function GlobalVisualStyles() {
           opacity: 0.24;
         }
 
-        .glow-card > :not(img) {
+        .glow-card > :not(img):not(.production-photo-overlay):not(.production-photo-badge):not(.production-mini-copy):not(.gallery-image) {
           position: relative;
           z-index: 1;
         }
@@ -3686,11 +3672,13 @@ function GlobalVisualStyles() {
           display: grid;
           grid-template-columns: minmax(300px, 0.86fr) minmax(420px, 1.14fr);
           gap: clamp(28px, 5vw, 56px);
-          align-items: center;
+          align-items: start;
+          min-width: 0;
         }
 
         .craft-copy-panel {
           min-width: 0;
+          align-self: center;
         }
 
         .production-stat-grid {
@@ -3731,8 +3719,9 @@ function GlobalVisualStyles() {
           display: grid;
           grid-template-columns: minmax(280px, 1.2fr) minmax(190px, 0.8fr);
           grid-auto-rows: minmax(220px, auto);
-          gap: 16px;
+          gap: 18px;
           min-width: 0;
+          width: 100%;
         }
 
         .production-photo-card,
@@ -3742,6 +3731,7 @@ function GlobalVisualStyles() {
           min-width: 0;
           border: 1px solid rgba(213,255,230,0.12);
           background: rgba(255,255,255,0.04);
+          contain: paint;
           box-shadow:
             0 34px 110px rgba(0,0,0,0.44),
             0 0 54px rgba(0,215,255,0.06),
@@ -3801,6 +3791,12 @@ function GlobalVisualStyles() {
           z-index: 2;
           display: grid;
           gap: 6px;
+          min-width: 0;
+          padding: 14px 15px;
+          border-radius: 18px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(5,6,7,0.56);
+          backdrop-filter: blur(16px);
         }
 
         .production-photo-overlay {
@@ -3849,7 +3845,9 @@ function GlobalVisualStyles() {
           border-radius: 28px;
           display: grid;
           align-content: space-between;
+          gap: 24px;
           overflow: hidden !important;
+          min-width: 0;
         }
 
         .gallery-card::before {
@@ -3857,18 +3855,19 @@ function GlobalVisualStyles() {
         }
 
         .gallery-card-with-image {
-          padding-top: 132px;
+          padding-top: 150px;
         }
 
         .gallery-image {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 112px;
+          top: 16px;
+          left: 16px;
+          right: 16px;
+          height: 116px;
           overflow: hidden;
-          border-bottom: 1px solid rgba(255,255,255,0.08);
-          opacity: 0.74;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.08);
+          opacity: 0.86;
         }
 
         .gallery-image::after {
@@ -3893,6 +3892,10 @@ function GlobalVisualStyles() {
         .gallery-mark span {
           font-size: 30px;
           line-height: 1;
+        }
+
+        .site-nav {
+          width: 100%;
         }
 
         .pricing-example {
@@ -3975,11 +3978,13 @@ function GlobalVisualStyles() {
 
           .production-layout {
             grid-template-columns: 1fr;
+            gap: 34px;
           }
 
           .production-bento {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             grid-template-rows: minmax(320px, auto) minmax(220px, auto);
+            gap: 18px;
           }
 
           .production-photo-card,
@@ -4002,6 +4007,32 @@ function GlobalVisualStyles() {
         }
 
         @media (max-width: 640px) {
+          html {
+            scroll-padding-top: 92px;
+          }
+
+          section[id] {
+            scroll-margin-top: 92px;
+          }
+
+          #hero {
+            padding-top: 100px !important;
+          }
+
+          #craft,
+          #gallery {
+            padding: 88px 18px 76px !important;
+          }
+
+          #features {
+            padding-top: 88px !important;
+          }
+
+          .site-nav {
+            height: 74px !important;
+            padding: 0 16px !important;
+          }
+
           .header-wordmark {
             display: none !important;
           }
@@ -4013,24 +4044,70 @@ function GlobalVisualStyles() {
           }
 
           .header-links .lux-button {
-            min-height: 44px !important;
-            padding: 0 14px !important;
+            min-height: 46px !important;
+            padding: 0 15px !important;
             font-size: 13px !important;
+            white-space: nowrap;
+          }
+
+          .header-brand {
+            flex-shrink: 0;
+          }
+
+          .production-layout {
+            gap: 28px;
+          }
+
+          .craft-copy-panel {
+            align-self: start;
           }
 
           .production-stat-grid {
             grid-template-columns: 1fr;
+            gap: 16px;
+            margin-top: 24px;
+          }
+
+          .production-stat-card {
+            min-height: auto;
+            padding: 22px;
+            border-radius: 24px;
           }
 
           .production-bento {
             grid-template-columns: 1fr;
             grid-template-rows: none;
+            gap: 24px;
           }
 
           .production-photo-card,
           .production-photo-main,
           .production-mini-card {
-            min-height: 260px;
+            width: 100%;
+            min-height: 320px;
+            border-radius: 28px;
+          }
+
+          .production-photo-main {
+            min-height: 390px;
+          }
+
+          .production-photo-badge,
+          .production-mini-copy {
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            max-width: calc(100% - 32px);
+          }
+
+          .production-photo-badge {
+            padding: 14px 15px;
+            border-radius: 18px;
+          }
+
+          .production-mini-card strong {
+            font-size: 18px;
+            line-height: 1.25;
           }
 
           .production-proof-card {
@@ -4045,16 +4122,45 @@ function GlobalVisualStyles() {
           }
 
           .gallery-card {
-            min-height: 230px;
+            width: 100%;
+            min-height: 320px;
             padding: 24px;
+            border-radius: 28px;
+            gap: 20px;
+            align-content: end;
           }
 
           .gallery-card-with-image {
-            padding-top: 118px;
+            padding-top: 184px;
           }
 
           .gallery-image {
-            height: 96px;
+            top: 14px;
+            left: 14px;
+            right: 14px;
+            height: 150px;
+            border-radius: 22px;
+          }
+
+          .gallery-mark {
+            width: 64px;
+            height: 64px;
+            border-radius: 22px;
+          }
+
+          .gallery-mark span {
+            font-size: 24px;
+          }
+
+          .gallery-card h3 {
+            font-size: 19px !important;
+            line-height: 1.2 !important;
+            margin: 16px 0 8px !important;
+          }
+
+          .gallery-card p {
+            font-size: 14px !important;
+            line-height: 1.55 !important;
           }
 
           .pricing-example {
@@ -4331,7 +4437,7 @@ function GalleryCard({
     >
       {image ? (
         <div className="gallery-image">
-          {/* Gallery/extra image: replace /web/public/stitchra-extra-v2.jpg. */}
+          {/* Gallery image from the local launch asset set. */}
           <Image
             src={image}
             alt={`${title} embroidery texture`}
@@ -4538,17 +4644,18 @@ const galleryItems: Array<{
     title: 'Quiet monograms',
     text: 'Clean initials for small chest branding, student clubs and makers.',
     accent: 'green',
-    image: stitchraImages.extra,
   },
   {
     title: 'Streetwear marks',
     text: 'Bold symbols for creator drops, local labels and launch pieces.',
     accent: 'cyan',
+    image: stitchraImages.streetwearMark,
   },
   {
     title: 'Patch badges',
     text: 'Badge-style artwork that stays readable when stitched.',
     accent: 'purple',
+    image: stitchraImages.patchBadge,
   },
   {
     title: 'Minimal graphics',
