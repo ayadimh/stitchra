@@ -983,7 +983,7 @@ function buildCustomerOfferText(input: {
     '',
     'Stitchra Studio',
     'You received this because you requested an embroidery quote on stitchra.com.',
-    'Questions? Reply to this email.'
+    'Questions? Reply to this email and our studio team will help you.'
   );
 
   return lines.join('\n');
@@ -1120,7 +1120,7 @@ ${trustRows}
                   <td style="padding: 22px 30px 26px 30px; background-color: #070c0b; border-top: 1px solid #1f302c;">
                     <p style="margin: 0 0 6px 0; color: #d9e7e2; font-size: 13px; line-height: 20px; font-weight: 700;">Stitchra Studio</p>
                     <p style="margin: 0 0 4px 0; color: #899a94; font-size: 12px; line-height: 18px;">You received this email because you requested an embroidery quote on stitchra.com.</p>
-                    <p style="margin: 0; color: #899a94; font-size: 12px; line-height: 18px;">Questions? Reply to this email.</p>
+                    <p style="margin: 0; color: #899a94; font-size: 12px; line-height: 18px;">Questions? Reply to this email and our studio team will help you.</p>
                   </td>
                 </tr>
               </table>
