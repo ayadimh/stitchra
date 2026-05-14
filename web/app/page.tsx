@@ -16,16 +16,12 @@ const PRACTICAL_THREAD_COLOR_LIMIT = 15;
 
 const stitchraImages = {
   // Temporary launch assets from free commercial-use stock sources. Replace with original Stitchra production photos later.
-  heroMain: '/stitchra-craft-premium-v3.jpg',
-  heroDetail: '/stitchra-thread-detail-v3.jpg',
-  heroMaterial: '/stitchra-streetwear-mark-v3.jpg',
-  craftMain: '/stitchra-craft-premium-v3.jpg',
-  threadDetail: '/stitchra-thread-detail-v3.jpg',
-  fabricTexture: '/stitchra-fabric-texture-v3.jpg',
-  quietMonogram: '/stitchra-quiet-monogram-v4.jpg',
-  streetwearMark: '/stitchra-streetwear-mark-v4.jpg',
-  patchBadge: '/stitchra-patch-badge-v4.jpg',
-  minimalGraphic: '/stitchra-minimal-graphic-v4.jpg',
+  heroEmbroidery: '/stitchra-hero-embroidery-v5.jpg',
+  machineDetail: '/stitchra-machine-detail-v5.jpg',
+  threadSpools: '/stitchra-thread-spools-v5.jpg',
+  patchDetail: '/stitchra-patch-detail-v5.jpg',
+  fabricTexture: '/stitchra-fabric-texture-v5.jpg',
+  streetwear: '/stitchra-streetwear-v5.jpg',
 } as const;
 
 type Estimate = {
@@ -209,6 +205,34 @@ function getPublicQuote(estimate: Estimate): PublicQuote {
       customer_recommendations: estimate.recommendations,
     }
   );
+}
+
+function formatPricingTier(value: string) {
+  const normalized = value
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ');
+
+  if (
+    normalized.includes('manual') ||
+    normalized.includes('complex') ||
+    normalized.includes('review')
+  ) {
+    return 'Studio review';
+  }
+
+  if (normalized.includes('left')) {
+    return 'Left chest';
+  }
+
+  if (normalized.includes('center') || normalized.includes('front')) {
+    return 'Center front';
+  }
+
+  return normalized
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 export default function Home() {
@@ -627,7 +651,8 @@ export default function Home() {
         color: '#f5f7f8',
         fontFamily:
           'var(--font-geist-sans), Inter, "Avenir Next", "Helvetica Neue", Arial, sans-serif',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'visible',
         position: 'relative',
       }}
     >
@@ -682,13 +707,14 @@ export default function Home() {
               max-width: 1360px;
               margin: 0 auto;
               display: grid;
-              grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
-              gap: 64px;
+              grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+              gap: clamp(34px, 4.2vw, 56px);
               align-items: center;
             }
 
             .hero-copy-panel {
               position: relative;
+              overflow: visible;
               padding: clamp(34px, 4.4vw, 58px);
               border-radius: 34px;
               border: 1px solid rgba(185,255,204,0.12);
@@ -744,17 +770,24 @@ export default function Home() {
             }
 
             .hero-title {
-              max-width: 720px;
-              margin: 0 0 26px;
-              font-size: clamp(48px, 6.8vw, 100px);
-              line-height: 0.91;
-              letter-spacing: -0.035em;
+              max-width: 760px;
+              margin: 0 0 28px;
+              padding-bottom: 0.08em;
+              overflow: visible;
+              font-size: clamp(46px, 5.85vw, 86px);
+              line-height: 1.02;
+              letter-spacing: -0.025em;
               font-weight: 950;
               color: #f6f3eb;
+              text-wrap: balance;
             }
 
             .hero-title-accent {
               display: block;
+              margin-bottom: -0.08em;
+              padding-bottom: 0.10em;
+              overflow: visible;
+              line-height: 1.08;
               color: transparent;
               background: linear-gradient(90deg, #00ff88, #00d7ff 58%, #d36bff);
               -webkit-background-clip: text;
@@ -1392,8 +1425,9 @@ export default function Home() {
               }
 
               .hero-title {
-                font-size: clamp(36px, 11vw, 52px);
-                line-height: 0.96;
+                font-size: clamp(36px, 10.5vw, 50px);
+                line-height: 1.06;
+                letter-spacing: -0.018em;
               }
 
               .hero-proof-strip,
@@ -1792,7 +1826,7 @@ export default function Home() {
               <div className="hero-photo-panel">
                 {/* Hero main image from the local launch asset set. */}
                 <Image
-                  src={stitchraImages.heroMain}
+                  src={stitchraImages.heroEmbroidery}
                   alt="Cinematic close-up of embroidery texture and fabric"
                   fill
                   priority
@@ -1833,7 +1867,7 @@ export default function Home() {
                 <div className="hero-mini-photo-card">
                   {/* Hero stitch detail image from the local launch asset set. */}
                   <Image
-                    src={stitchraImages.heroDetail}
+                    src={stitchraImages.machineDetail}
                     alt="Close-up stitching detail on fabric"
                     fill
                     sizes="188px"
@@ -1851,7 +1885,7 @@ export default function Home() {
                 <div className="hero-mini-photo-card">
                   {/* Hero material image from the local launch asset set. */}
                   <Image
-                    src={stitchraImages.heroMaterial}
+                    src={stitchraImages.threadSpools}
                     alt="Premium colorful embroidery thread"
                     fill
                     sizes="188px"
@@ -1905,7 +1939,7 @@ export default function Home() {
                   ? publicQuote.manual_quote
                     ? 'Manual quote'
                     : `€${publicQuote.price_eur}`
-                  : '€22'}
+                  : 'From €9'}
               </strong>
             </div>
 
@@ -1934,6 +1968,7 @@ export default function Home() {
 
       <section
         id="designer"
+        className="designer-section"
         style={{
           padding: '96px 24px 128px',
           position: 'relative',
@@ -1941,17 +1976,20 @@ export default function Home() {
         }}
       >
         <div
+          className="designer-grid"
           style={{
             maxWidth: 1280,
             margin: '0 auto',
             display: 'grid',
             gridTemplateColumns:
-              'repeat(auto-fit,minmax(380px,1fr))',
+              'minmax(0,0.88fr) minmax(0,1.12fr)',
             gap: 32,
+            alignItems: 'start',
           }}
         >
-          <HoverCard style={glassCard}>
+          <HoverCard style={glassCard} className="designer-controls-card">
             <div
+              className="designer-stat-grid"
               style={{
                 display: 'grid',
                 gridTemplateColumns:
@@ -2012,6 +2050,7 @@ export default function Home() {
               </label>
 
               <div
+                className="shirt-color-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns:
@@ -2095,6 +2134,7 @@ export default function Home() {
               </label>
 
               <div
+                className="designer-prompt-row"
                 style={{
                   display: 'flex',
                   gap: 12,
@@ -2112,6 +2152,7 @@ export default function Home() {
                   style={{
                     ...input,
                     flex: 1,
+                    minWidth: 0,
                   }}
                 />
 
@@ -2389,7 +2430,9 @@ export default function Home() {
                           ? 'Manual quote needed'
                           : 'Clear price'}
                       </strong>
-                      <span>{publicQuote.pricing_tier}</span>
+                      <span>
+                        {formatPricingTier(publicQuote.pricing_tier)}
+                      </span>
                     </div>
 
                     <div>
@@ -2716,7 +2759,7 @@ export default function Home() {
             <div className="glow-card production-photo-card production-photo-main">
               {/* Premium craft close-up image from the local launch asset set. */}
               <Image
-                src={stitchraImages.craftMain}
+                src={stitchraImages.patchDetail}
                 alt="Close-up embroidery detail with fabric texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 620px"
@@ -2736,7 +2779,7 @@ export default function Home() {
             <div className="glow-card production-mini-card production-thread-card">
               {/* Thread detail image from the local launch asset set. */}
               <Image
-                src={stitchraImages.threadDetail}
+                src={stitchraImages.threadSpools}
                 alt="Close-up thread detail and fabric texture"
                 fill
                 sizes="(max-width: 900px) 100vw, 300px"
@@ -2770,6 +2813,26 @@ export default function Home() {
               <div className="production-mini-copy">
                 <span>Artwork preview</span>
                 <strong>Ready for production with a clear price before stitching.</strong>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-workflow-card">
+              {/* Machine detail image from the local launch asset set. */}
+              <Image
+                src={stitchraImages.machineDetail}
+                alt="Machine detail showing a streamlined fashion-tech embroidery workflow"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>Fashion-tech workflow</span>
+                <strong>Upload, preview and quote in one calm flow.</strong>
               </div>
             </div>
           </div>
@@ -2809,9 +2872,9 @@ export default function Home() {
         >
           <div style={priceGrid}>
             <PriceBlock label="Left chest" value="From €9" />
-            <PriceBlock label="Badge detail" value="Calculated" />
+            <PriceBlock label="Badge detail" value="Calculated after upload" />
             <PriceBlock label="Front design" value="From €13" />
-            <PriceBlock label="Manual quote" value="Complex art" highlight />
+            <PriceBlock label="Manual quote" value="Studio review" highlight />
           </div>
 
           <div className="pricing-example">
@@ -2824,7 +2887,7 @@ export default function Home() {
                 ? publicQuote.manual_quote
                   ? 'Manual quote'
                   : `€${publicQuote.price_eur}`
-                : 'Upload for quote'}
+                : 'Upload your design for a clear quote'}
             </strong>
           </div>
 
@@ -3078,6 +3141,7 @@ function MannequinPreview({
 
   return (
     <div
+      className="designer-preview-card"
       onMouseMove={(event) => {
         const rect =
           event.currentTarget.getBoundingClientRect();
@@ -3175,9 +3239,11 @@ function MannequinPreview({
       />
 
       <div
+        className="designer-preview-label"
         style={{
           position: 'absolute',
           top: 20,
+          left: 20,
           right: 20,
           padding: '10px 16px',
           borderRadius: 16,
@@ -3186,6 +3252,7 @@ function MannequinPreview({
           border:
             '1px solid rgba(255,255,255,0.08)',
           fontSize: 13,
+          textAlign: 'center',
           zIndex: 4,
           boxShadow:
             '0 18px 45px rgba(0,0,0,0.32)',
@@ -3195,6 +3262,7 @@ function MannequinPreview({
       </div>
 
       <div
+        className="designer-preview-torso"
         style={{
           position: 'absolute',
           left: '50%',
@@ -3522,7 +3590,7 @@ function GlobalVisualStyles() {
         }
 
         #gallery {
-          scroll-margin-top: 24px;
+          scroll-margin-top: 112px;
         }
 
         ::selection {
@@ -3547,11 +3615,14 @@ function GlobalVisualStyles() {
         .stitchra-file-input {
           min-height: 52px;
           width: 100%;
+          max-width: 100%;
+          min-width: 0;
           padding: 12px;
           border-radius: 16px;
           border: 1px solid rgba(255,255,255,0.12);
           background: rgba(255,255,255,0.045);
           color: rgba(245,247,248,0.78);
+          line-height: 1.35;
         }
 
         .stitchra-file-input::file-selector-button {
@@ -3564,6 +3635,40 @@ function GlobalVisualStyles() {
           color: #06100a;
           font-weight: 850;
           cursor: pointer;
+        }
+
+        .designer-section {
+          scroll-margin-top: 112px;
+        }
+
+        .designer-grid,
+        .designer-controls-card,
+        .designer-stat-grid,
+        .shirt-color-grid,
+        .designer-prompt-row {
+          min-width: 0;
+        }
+
+        .designer-controls-card {
+          overflow: hidden !important;
+        }
+
+        .designer-prompt-row {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(150px, 180px);
+          align-items: stretch;
+        }
+
+        .designer-prompt-row input {
+          min-width: 0;
+        }
+
+        .designer-preview-card {
+          width: 100%;
+        }
+
+        .designer-preview-label {
+          max-width: calc(100% - 40px);
         }
 
         .glow-card {
@@ -3724,7 +3829,7 @@ function GlobalVisualStyles() {
         .production-bento {
           display: grid;
           grid-template-columns: minmax(280px, 1.2fr) minmax(190px, 0.8fr);
-          grid-auto-rows: minmax(220px, auto);
+          grid-auto-rows: minmax(170px, auto);
           gap: 18px;
           min-width: 0;
           width: 100%;
@@ -3750,11 +3855,11 @@ function GlobalVisualStyles() {
 
         .production-photo-main {
           min-height: 520px;
-          grid-row: span 2;
+          grid-row: span 3;
         }
 
         .production-mini-card {
-          min-height: 252px;
+          min-height: 170px;
           border-radius: 28px;
         }
 
@@ -3764,6 +3869,10 @@ function GlobalVisualStyles() {
 
         .production-gallery-card {
           --card-glow: rgba(0,255,136,0.14);
+        }
+
+        .production-workflow-card {
+          --card-glow: rgba(168,121,255,0.14);
         }
 
         .production-image {
@@ -4034,7 +4143,11 @@ function GlobalVisualStyles() {
           }
 
           #hero {
-            padding-top: 100px !important;
+            padding-top: 112px !important;
+          }
+
+          #designer {
+            padding: 104px 16px 116px !important;
           }
 
           #craft,
@@ -4043,7 +4156,7 @@ function GlobalVisualStyles() {
           }
 
           #gallery {
-            scroll-margin-top: 20px;
+            scroll-margin-top: 96px;
             padding-top: 96px !important;
           }
 
@@ -4081,6 +4194,61 @@ function GlobalVisualStyles() {
             gap: 28px;
           }
 
+          .designer-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+
+          .designer-controls-card {
+            padding: 22px !important;
+            border-radius: 24px !important;
+          }
+
+          .designer-stat-grid,
+          .shirt-color-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .designer-prompt-row {
+            grid-template-columns: 1fr !important;
+          }
+
+          .designer-prompt-row .lux-button {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .stitchra-file-input {
+            padding: 10px;
+            font-size: 13px;
+          }
+
+          .stitchra-file-input::file-selector-button {
+            display: block;
+            width: 100%;
+            margin: 0 0 8px;
+          }
+
+          .designer-preview-card {
+            min-height: 560px !important;
+            border-radius: 28px !important;
+          }
+
+          .designer-preview-label {
+            top: 16px !important;
+            left: 16px !important;
+            right: 16px !important;
+            max-width: calc(100% - 32px);
+            padding: 9px 12px !important;
+            font-size: 12px !important;
+          }
+
+          .designer-preview-torso {
+            top: 54px !important;
+            width: min(360px, 112%) !important;
+            height: 500px !important;
+          }
+
           .craft-copy-panel {
             align-self: start;
           }
@@ -4107,7 +4275,7 @@ function GlobalVisualStyles() {
           .production-photo-main,
           .production-mini-card {
             width: 100%;
-            min-height: 320px;
+            min-height: 300px;
             border-radius: 28px;
           }
 
@@ -4226,14 +4394,16 @@ function BackgroundEffects() {
 
 function HoverCard({
   children,
+  className,
   style,
 }: {
   children: ReactNode;
+  className?: string;
   style?: CSSProperties;
 }) {
   return (
     <div
-      className="glow-card"
+      className={className ? `glow-card ${className}` : 'glow-card'}
       style={{
         transition:
           'transform 180ms ease, border-color 180ms ease',
@@ -4662,25 +4832,25 @@ const galleryItems: Array<{
     title: 'Quiet monograms',
     text: 'Clean initials for small chest branding, student clubs and makers.',
     accent: 'green',
-    image: stitchraImages.quietMonogram,
+    image: stitchraImages.heroEmbroidery,
   },
   {
     title: 'Streetwear marks',
     text: 'Bold symbols for creator drops, local labels and launch pieces.',
     accent: 'cyan',
-    image: stitchraImages.streetwearMark,
+    image: stitchraImages.streetwear,
   },
   {
     title: 'Patch badges',
     text: 'Badge-style artwork that stays readable when stitched.',
     accent: 'purple',
-    image: stitchraImages.patchBadge,
+    image: stitchraImages.patchDetail,
   },
   {
     title: 'Minimal graphics',
     text: 'Low-detail artwork with a premium, quiet fashion look.',
     accent: 'pink',
-    image: stitchraImages.minimalGraphic,
+    image: stitchraImages.machineDetail,
   },
 ];
 
@@ -4871,7 +5041,8 @@ const priceLabel: CSSProperties = {
 };
 
 const priceValue: CSSProperties = {
-  fontSize: 28,
+  fontSize: 'clamp(20px, 2.7vw, 28px)',
+  lineHeight: 1.12,
   fontWeight: 900,
   color: '#f5f7f8',
 };

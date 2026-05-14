@@ -1,4 +1,4 @@
-STITCHRA BRAND PACK V4
+STITCHRA BRAND PACK V5
 
 Best files for website:
 
@@ -31,6 +31,12 @@ stitchra-quiet-monogram-v4.jpg = visual directions card for quiet monograms
 stitchra-streetwear-mark-v4.jpg = visual directions card for streetwear marks
 stitchra-patch-badge-v4.jpg = visual directions card for patch badges
 stitchra-minimal-graphic-v4.jpg = visual directions card for minimal graphics
+stitchra-hero-embroidery-v5.jpg = shared hero and quiet monogram embroidery image
+stitchra-machine-detail-v5.jpg = shared machine/detail and minimal graphics image
+stitchra-thread-spools-v5.jpg = shared thread detail image
+stitchra-patch-detail-v5.jpg = shared patch and stitched finish image
+stitchra-fabric-texture-v5.jpg = shared fabric texture and artwork preview image
+stitchra-streetwear-v5.jpg = shared streetwear visual direction image
 
 Art direction:
 Use cinematic macro embroidery, thread, fabric and stitch details.
