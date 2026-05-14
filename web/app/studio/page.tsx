@@ -677,6 +677,16 @@ function formatDateTime(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : 'Not set';
 }
 
+function formatPaymentSessionId(value: string | null) {
+  if (!value) {
+    return 'Not set';
+  }
+
+  return value.length <= 20
+    ? value
+    : `${value.slice(0, 12)}...${value.slice(-6)}`;
+}
+
 function formatCoverage(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
@@ -2586,6 +2596,20 @@ function OrdersDashboard({
           complete: selectedOrder.payment_status === 'paid',
         },
         {
+          label: 'Payment requested',
+          value: selectedOrder.payment_requested_at
+            ? formatDateTime(selectedOrder.payment_requested_at)
+            : 'Not requested',
+          complete: Boolean(selectedOrder.payment_requested_at),
+        },
+        {
+          label: 'Payment completed',
+          value: selectedOrder.payment_completed_at
+            ? formatDateTime(selectedOrder.payment_completed_at)
+            : 'Not completed',
+          complete: selectedOrder.payment_status === 'paid',
+        },
+        {
           label: 'Sent to production',
           value:
             selectedOrder.status === 'sent_to_production' ||
@@ -2898,6 +2922,17 @@ function OrdersDashboard({
                       <span style={paymentBadge(selectedOrder.payment_status)}>
                         Payment: {paymentStatusLabels[selectedOrder.payment_status]}
                       </span>
+                      {selectedOrder.payment_status === 'paid' && (
+                        <span style={paymentBadge('paid')}>
+                          Ready for production
+                        </span>
+                      )}
+                      {selectedOrder.customer_decision === 'accepted' &&
+                        selectedOrder.payment_status !== 'paid' && (
+                        <span style={paymentBadge('pending')}>
+                          Awaiting payment
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -3391,6 +3426,59 @@ function OrdersDashboard({
                         <h3 style={panelTitle}>Status timeline</h3>
                       </div>
                     </div>
+                    <div style={summaryGridWide}>
+                      <Meta
+                        label="Payment status"
+                        value={paymentStatusLabels[selectedOrder.payment_status]}
+                      />
+                      <Meta
+                        label="Payment requested"
+                        value={formatDateTime(selectedOrder.payment_requested_at)}
+                      />
+                      <Meta
+                        label="Payment completed"
+                        value={formatDateTime(selectedOrder.payment_completed_at)}
+                      />
+                      <Meta
+                        label="Payment provider"
+                        value={selectedOrder.payment_provider ?? 'Not set'}
+                      />
+                      <Meta
+                        label="Stripe session"
+                        value={formatPaymentSessionId(
+                          selectedOrder.payment_session_id
+                        )}
+                      />
+                    </div>
+                    {selectedOrder.public_token && (
+                      <div style={paymentLinkCard}>
+                        <div>
+                          <span style={detailLabel}>Payment page link</span>
+                          <a
+                            href={getPaymentLink(selectedOrder.public_token)}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={inlineTextLink}
+                          >
+                            {getPaymentLink(selectedOrder.public_token)}
+                          </a>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onCopyPaymentLink(selectedOrder)}
+                          style={secondaryButton}
+                        >
+                          Copy payment link
+                        </button>
+                      </div>
+                    )}
+                    {selectedOrder.payment_status === 'paid' && (
+                      <p style={successText}>Paid. Ready for production.</p>
+                    )}
+                    {selectedOrder.customer_decision === 'accepted' &&
+                      selectedOrder.payment_status !== 'paid' && (
+                      <p style={warningCard}>Awaiting payment.</p>
+                    )}
                     <div style={workflowTimelineGrid}>
                       {workflowItems.map((item) => (
                         <div key={item.label} style={workflowTimelineItem}>
@@ -4493,6 +4581,28 @@ const calculatorActionsWide: CSSProperties = {
   gap: 10,
   flexWrap: 'wrap',
   justifyContent: 'flex-end',
+};
+
+const paymentLinkCard: CSSProperties = {
+  border: '1px solid rgba(0,200,255,0.18)',
+  borderRadius: 18,
+  padding: 16,
+  background: 'rgba(0,200,255,0.055)',
+  display: 'flex',
+  gap: 14,
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  margin: '14px 0',
+};
+
+const inlineTextLink: CSSProperties = {
+  display: 'block',
+  marginTop: 6,
+  color: '#9ee8ff',
+  textDecoration: 'none',
+  overflowWrap: 'anywhere',
+  fontWeight: 760,
 };
 
 const workflowTimelineGrid: CSSProperties = {

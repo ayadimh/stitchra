@@ -819,6 +819,155 @@ export async function getOrderById(id: string) {
   return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
 }
 
+export async function getOrderByPublicToken(token: string) {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const pricingSettings = await getPricingSettings();
+  const params = new URLSearchParams({
+    public_token: `eq.${token}`,
+    select: '*',
+  });
+
+  const rows = await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${params.toString()}`
+  );
+
+  return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
+}
+
+export function getStripeCheckoutPrice(order: OrderRecord) {
+  return (
+    order.revised_price_eur ??
+    (order.manual_quote ? null : order.customer_price_eur)
+  );
+}
+
+async function updateOrderPaymentByPublicToken(
+  token: string,
+  input: {
+    payment_status: PaymentStatus;
+    payment_provider?: string | null;
+    payment_session_id?: string | null;
+    payment_requested_at?: string | null;
+    payment_completed_at?: string | null;
+  }
+) {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  const existingOrder = await getOrderByPublicToken(token);
+
+  if (!existingOrder) {
+    return null;
+  }
+
+  if (
+    existingOrder.payment_status === 'paid' &&
+    input.payment_status !== 'paid'
+  ) {
+    return existingOrder;
+  }
+
+  const now = new Date().toISOString();
+  const updates: Record<string, unknown> = {
+    payment_status: input.payment_status,
+    updated_at: now,
+  };
+
+  if (hasOwn(input, 'payment_provider')) {
+    updates.payment_provider = input.payment_provider;
+  }
+
+  if (hasOwn(input, 'payment_session_id')) {
+    updates.payment_session_id = input.payment_session_id;
+  }
+
+  if (hasOwn(input, 'payment_requested_at')) {
+    updates.payment_requested_at = input.payment_requested_at;
+  }
+
+  if (hasOwn(input, 'payment_completed_at')) {
+    updates.payment_completed_at = input.payment_completed_at;
+  }
+
+  if (input.payment_status === 'paid') {
+    updates.payment_completed_at =
+      input.payment_completed_at ?? now;
+
+    if (
+      existingOrder.status === 'customer_accepted' ||
+      existingOrder.status === 'pre_production'
+    ) {
+      updates.status = 'pre_production';
+    }
+  }
+
+  const params = new URLSearchParams({
+    public_token: `eq.${token}`,
+    select: '*',
+  });
+  const rows = await supabaseRequest<SupabaseOrderRow[]>(
+    `orders?${params.toString()}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(updates),
+    }
+  );
+  const pricingSettings = await getPricingSettings();
+
+  return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
+}
+
+export async function markStripeCheckoutPending(input: {
+  public_token: string;
+  session_id: string;
+}) {
+  return updateOrderPaymentByPublicToken(input.public_token, {
+    payment_status: 'pending',
+    payment_provider: 'stripe',
+    payment_session_id: input.session_id,
+    payment_requested_at: new Date().toISOString(),
+  });
+}
+
+export async function markStripeCheckoutPaid(input: {
+  public_token: string;
+  session_id: string;
+}) {
+  return updateOrderPaymentByPublicToken(input.public_token, {
+    payment_status: 'paid',
+    payment_provider: 'stripe',
+    payment_session_id: input.session_id,
+    payment_completed_at: new Date().toISOString(),
+  });
+}
+
+export async function markStripeCheckoutFailed(input: {
+  public_token: string;
+  session_id?: string | null;
+}) {
+  const updates: {
+    payment_status: PaymentStatus;
+    payment_provider: string;
+    payment_session_id?: string;
+  } = {
+    payment_status: 'failed',
+    payment_provider: 'stripe',
+  };
+
+  if (input.session_id) {
+    updates.payment_session_id = input.session_id;
+  }
+
+  return updateOrderPaymentByPublicToken(input.public_token, updates);
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')

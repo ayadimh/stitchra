@@ -8,13 +8,13 @@ import {
   type PaymentStatus,
   type PublicOrderRecord,
 } from '@/lib/orders';
+import { PaymentCheckoutButton } from './payment-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// TODO(Stripe): add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
-// TODO(Stripe): implement POST /api/payments/create-checkout-session and POST /api/payments/webhook.
-// TODO(Stripe): create Checkout Sessions server-side and redirect customers to Stripe-hosted checkout.
+// TODO(Stripe live): keep test keys active until legal/business bank setup is ready.
+// TODO(Stripe live): add the live webhook endpoint in Stripe Dashboard before going live.
 
 const statusLabels: Record<OrderStatus, string> = {
   new: 'New request',
@@ -77,10 +77,23 @@ function formatPlacement(value: string) {
   return formatValue(value);
 }
 
+function getFinalPaymentAmount(order: PublicOrderRecord) {
+  return (
+    order.revised_price_eur ??
+    (order.manual_quote ? null : order.customer_price_eur)
+  );
+}
+
 export default async function PaymentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{
+    success?: string;
+    cancelled?: string;
+    session_id?: string;
+  }>;
 }) {
   if (!isDatabaseConfigured()) {
     return (
@@ -97,14 +110,23 @@ export default async function PaymentPage({
   }
 
   const { token } = await params;
+  const resolvedSearchParams = await searchParams;
   const order = await getPublicOrderByToken(token);
 
   if (!order) {
     notFound();
   }
 
-  const finalAmount =
-    order.revised_price_eur ?? order.customer_price_eur;
+  const finalAmount = getFinalPaymentAmount(order);
+  const isAccepted = order.customer_decision === 'accepted';
+  const isPaid = order.payment_status === 'paid';
+  const canAttemptPayment =
+    isAccepted &&
+    !isPaid &&
+    finalAmount !== null &&
+    finalAmount > 0;
+  const successPending = resolvedSearchParams.success === '1';
+  const cancelled = resolvedSearchParams.cancelled === '1';
 
   return (
     <main style={pageShell}>
@@ -112,9 +134,29 @@ export default async function PaymentPage({
         <div style={summaryPanel}>
           <p style={eyebrow}>Secure payment</p>
           <h1 style={title}>Secure payment</h1>
-          <p style={mutedText}>
-            Payment checkout will be available soon.
-          </p>
+          {isPaid ? (
+            <p style={successNotice}>Payment received. Thank you.</p>
+          ) : !isAccepted ? (
+            <p style={warningNotice}>
+              Please accept the offer before payment.
+            </p>
+          ) : successPending ? (
+            <p style={successNotice}>
+              Payment confirmation is being processed.
+            </p>
+          ) : order.payment_status === 'pending' ? (
+            <p style={warningNotice}>
+              Payment pending. You can retry if the checkout session expired.
+            </p>
+          ) : cancelled ? (
+            <p style={warningNotice}>
+              Checkout was cancelled. You can try again when ready.
+            </p>
+          ) : (
+            <p style={mutedText}>
+              Use secure Stripe Checkout to complete your Stitchra order.
+            </p>
+          )}
 
           <div style={amountPanel}>
             <span style={detailLabel}>Final amount</span>
@@ -123,9 +165,14 @@ export default async function PaymentPage({
             </strong>
           </div>
 
-          <button type="button" disabled style={disabledButton}>
-            Stripe checkout coming soon
-          </button>
+          {canAttemptPayment && (
+            <PaymentCheckoutButton publicToken={order.public_token} />
+          )}
+          {!isPaid && isAccepted && !canAttemptPayment && (
+            <p style={warningNotice}>
+              Payment is not available until the studio sets a final price.
+            </p>
+          )}
           <a href={`/order/${order.public_token}`} style={secondaryLink}>
             Back to offer
           </a>
@@ -269,6 +316,24 @@ const mutedText: CSSProperties = {
   lineHeight: 1.55,
 };
 
+const successNotice: CSSProperties = {
+  margin: '14px 0 0',
+  border: '1px solid rgba(157,255,196,0.24)',
+  borderRadius: 16,
+  padding: '14px 16px',
+  background: 'rgba(157,255,196,0.08)',
+  color: '#dfffea',
+  lineHeight: 1.5,
+  fontWeight: 780,
+};
+
+const warningNotice: CSSProperties = {
+  ...successNotice,
+  border: '1px solid rgba(255,224,131,0.24)',
+  background: 'rgba(255,224,131,0.08)',
+  color: '#ffe7a3',
+};
+
 const amountPanel: CSSProperties = {
   margin: '28px 0 18px',
   border: '1px solid rgba(157,255,196,0.22)',
@@ -283,18 +348,6 @@ const amountText: CSSProperties = {
   marginTop: 8,
   fontSize: 'clamp(42px, 8vw, 72px)',
   lineHeight: 0.95,
-};
-
-const disabledButton: CSSProperties = {
-  width: '100%',
-  border: 0,
-  borderRadius: 16,
-  padding: '16px 18px',
-  background: 'rgba(255,255,255,0.14)',
-  color: 'rgba(245,247,248,0.52)',
-  fontSize: 15,
-  fontWeight: 850,
-  cursor: 'not-allowed',
 };
 
 const secondaryLink: CSSProperties = {
