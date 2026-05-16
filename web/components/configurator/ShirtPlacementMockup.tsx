@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
 import {
@@ -17,6 +18,31 @@ type ZoneLayout = {
   height: number;
   rotate?: number;
 };
+
+const WHITE_SHIRT_RENDER_PATHS = {
+  front: '/mockups/shirts/shirt-front-white.png',
+  back: '/mockups/shirts/shirt-back-white.png',
+} as const;
+
+// Raw FBX files are intentionally not loaded in production. The configurator uses static optimized shirt render images for speed and stability.
+function getStaticShirtRenderPath(
+  shirtColor: ShirtConfiguratorProps['shirtColor'],
+  side: ReturnType<typeof getPlacementSideLabel>
+) {
+  if (shirtColor !== 'white') {
+    return null;
+  }
+
+  if (side === 'front') {
+    return WHITE_SHIRT_RENDER_PATHS.front;
+  }
+
+  if (side === 'back') {
+    return WHITE_SHIRT_RENDER_PATHS.back;
+  }
+
+  return null;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -56,6 +82,8 @@ export default function ShirtPlacementMockup({
   const zoneRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+  const [failedShirtRenderPath, setFailedShirtRenderPath] =
+    useState<string | null>(null);
   const [mouse, setMouse] = useState({
     x: 0,
     y: 0,
@@ -65,6 +93,14 @@ export default function ShirtPlacementMockup({
   const layout = getZoneLayout(placementZone);
   const sideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
+  const staticShirtRenderPath = getStaticShirtRenderPath(
+    shirtColor,
+    sideLabel
+  );
+  const useStaticShirtRender = Boolean(
+    staticShirtRenderPath &&
+      failedShirtRenderPath !== staticShirtRenderPath
+  );
   const logoLoadFailed = Boolean(logoUrl && failedLogoUrl === logoUrl);
   const logoWidthPercent = (config.logo_width_mm / zone.maxWidthMm) * 100;
   const logoHeightPercent = (config.logo_height_mm / zone.maxHeightMm) * 100;
@@ -231,6 +267,28 @@ export default function ShirtPlacementMockup({
             />
             {sideLabel === 'back' && <div style={backYoke} />}
           </div>
+
+          {useStaticShirtRender && staticShirtRenderPath && (
+            <div style={staticShirtRenderLayer} aria-hidden="true">
+              <Image
+                src={staticShirtRenderPath}
+                alt=""
+                fill
+                sizes="(max-width: 760px) 82vw, 420px"
+                onError={() =>
+                  setFailedShirtRenderPath(staticShirtRenderPath)
+                }
+                style={{
+                  objectFit: 'contain',
+                  objectPosition: 'center center',
+                  filter:
+                    'drop-shadow(0 42px 72px rgba(0,0,0,0.42)) drop-shadow(0 0 42px rgba(124,240,212,0.10))',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              />
+            </div>
+          )}
 
           <div
             ref={zoneRef}
@@ -451,6 +509,17 @@ const shirtBody: CSSProperties = {
     'polygon(17% 0, 35% 0, 42% 12%, 58% 12%, 65% 0, 83% 0, 98% 22%, 87% 100%, 13% 100%, 2% 22%)',
   animation: 'stitchraBreath 5.8s ease-in-out infinite',
   overflow: 'hidden',
+};
+
+const staticShirtRenderLayer: CSSProperties = {
+  position: 'absolute',
+  left: '50%',
+  top: -8,
+  transform: 'translateX(-50%) translateZ(66px)',
+  width: 390,
+  height: 520,
+  zIndex: 4,
+  pointerEvents: 'none',
 };
 
 const fabricTexture: CSSProperties = {

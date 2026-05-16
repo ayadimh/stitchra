@@ -1,0 +1,5 @@
+source-assets/
+*.fbx
+*.zprj
+*.rar
+.DS_Store
