@@ -93,6 +93,25 @@ type PaymentStatus =
   | 'failed'
   | 'refunded';
 
+type ProductionState =
+  | 'not_started'
+  | 'active'
+  | 'paused'
+  | 'stopped'
+  | 'completed';
+
+type ProductionStopType = 'temporary_hold' | 'permanent_stop';
+
+type ProductionAction = 'pause' | 'resume' | 'stop';
+
+type ProductionControlModalState = {
+  action: 'pause' | 'stop';
+  reason: string;
+  customReason: string;
+  note: string;
+  error: string;
+};
+
 type OrderRecord = {
   id: string;
   created_at: string;
@@ -145,6 +164,13 @@ type OrderRecord = {
   payment_completed_at: string | null;
   payment_provider: string | null;
   payment_session_id: string | null;
+  production_state: ProductionState;
+  production_paused_at: string | null;
+  production_resumed_at: string | null;
+  production_stopped_at: string | null;
+  production_stop_reason: string | null;
+  production_stop_note: string | null;
+  production_stop_type: ProductionStopType | null;
   completed_at: string | null;
   archived_at: string | null;
   archive_reason: string | null;
@@ -353,6 +379,23 @@ const paymentStatusLabels: Record<PaymentStatus, string> = {
   refunded: 'Refunded',
 };
 
+const productionStateLabels: Record<ProductionState, string> = {
+  not_started: 'Not started',
+  active: 'Active production',
+  paused: 'Production paused',
+  stopped: 'Stopped by team',
+  completed: 'Completed',
+};
+
+const productionStopReasonOptions = [
+  'Material issue',
+  'Artwork issue',
+  'Machine maintenance',
+  'Customer clarification needed',
+  'Payment or refund review',
+  'Other',
+];
+
 const statusToastLabels: Record<OrderStatus, string> = {
   new: 'Order updated',
   needs_review: 'Order updated',
@@ -452,9 +495,17 @@ function getCancelledStatus(order: OrderRecord) {
   return null;
 }
 
+function isProductionStopped(order: OrderRecord) {
+  return (
+    order.production_state === 'stopped' ||
+    order.archive_reason === 'team_stopped_production'
+  );
+}
+
 function getOrderPipelineStage(order: OrderRecord): PipelineStage {
   if (
     order.status === 'completed' ||
+    isProductionStopped(order) ||
     getDeclinedStatus(order) !== null ||
     getCancelledStatus(order) !== null
   ) {
@@ -516,6 +567,10 @@ function getPipelineStageLabel(order: OrderRecord) {
       return 'Archive / Completed';
     }
 
+    if (isProductionStopped(order)) {
+      return 'Archive / Stopped production';
+    }
+
     if (declinedStatus === 'customer_declined') {
       return 'Archive / Customer declined';
     }
@@ -532,6 +587,10 @@ function getPipelineStageLabel(order: OrderRecord) {
 
 function getOrderBadgeLabel(order: OrderRecord) {
   const declinedStatus = getDeclinedStatus(order);
+
+  if (isProductionStopped(order)) {
+    return 'Stopped by team';
+  }
 
   if (declinedStatus) {
     return statusLabels[declinedStatus];
@@ -553,7 +612,9 @@ function getOrderBadgeLabel(order: OrderRecord) {
   }
 
   if (order.status === 'sent_to_production') {
-    return 'In production';
+    return order.production_state === 'paused'
+      ? 'Production paused'
+      : 'In production';
   }
 
   if (order.status === 'pre_production') {
@@ -997,6 +1058,8 @@ export default function StudioPage() {
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [statusActionLoading, setStatusActionLoading] =
     useState<OrderStatus | null>(null);
+  const [productionActionLoading, setProductionActionLoading] =
+    useState<ProductionAction | null>(null);
   const [customerLinkStatus, setCustomerLinkStatus] = useState('');
   const [paymentLinkStatus, setPaymentLinkStatus] = useState('');
   const [emailConfigured, setEmailConfigured] = useState<
@@ -1231,7 +1294,18 @@ export default function StudioPage() {
 
     if (
       nextStatus === 'completed' &&
-      !window.confirm('Mark this order as completed?')
+      order.payment_status !== 'paid'
+    ) {
+      const message =
+        'Payment must be completed before marking production as completed.';
+      setOrdersError(message);
+      showToast(message, 'error', false);
+      return;
+    }
+
+    if (
+      nextStatus === 'completed' &&
+      !window.confirm('Mark this paid order as completed?')
     ) {
       return;
     }
@@ -1277,6 +1351,83 @@ export default function StudioPage() {
       console.error(error);
     } finally {
       setStatusActionLoading(null);
+    }
+  };
+
+  const updateProductionControl = async (
+    order: OrderRecord,
+    action: ProductionAction,
+    details: {
+      reason?: string;
+      note?: string;
+    } = {}
+  ) => {
+    setOrdersError('');
+    setProductionActionLoading(action);
+
+    const payload =
+      action === 'pause'
+        ? {
+            production_state: 'paused' as ProductionState,
+            production_stop_type: 'temporary_hold' as ProductionStopType,
+            production_stop_reason: details.reason,
+            production_stop_note: details.note ?? null,
+          }
+        : action === 'stop'
+          ? {
+              production_state: 'stopped' as ProductionState,
+              production_stop_type: 'permanent_stop' as ProductionStopType,
+              production_stop_reason: details.reason,
+              production_stop_note: details.note ?? null,
+            }
+          : {
+              production_state: 'active' as ProductionState,
+            };
+
+    try {
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-studio-passcode': passcode,
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as {
+        order?: OrderRecord;
+        message?: string;
+        details?: string;
+        errors?: Record<string, string>;
+      };
+
+      if (!response.ok || !result.order) {
+        const message =
+          result.details ??
+          Object.values(result.errors ?? {})[0] ??
+          result.message ??
+          'Could not update production control.';
+        setOrdersError(message);
+        showToast(message, 'error', false);
+        return;
+      }
+
+      replaceStoredOrderForCurrentPipeline(result.order);
+      showToast(
+        action === 'pause'
+          ? 'Production paused'
+          : action === 'stop'
+            ? 'Production stopped'
+            : 'Production resumed'
+      );
+    } catch (error) {
+      const message = 'Could not update production control.';
+      setOrdersError(message);
+      showToast(message, 'error', false);
+      console.error(error);
+    } finally {
+      setProductionActionLoading(null);
     }
   };
 
@@ -1945,6 +2096,7 @@ export default function StudioPage() {
           orderEditStatus={orderEditStatus}
           savingOrder={isSavingOrder}
           statusActionLoading={statusActionLoading}
+          productionActionLoading={productionActionLoading}
           customerLinkStatus={customerLinkStatus}
           paymentLinkStatus={paymentLinkStatus}
           emailConfigured={emailConfigured}
@@ -1965,6 +2117,7 @@ export default function StudioPage() {
           onSelectOrder={selectOrder}
           onRefresh={() => void loadOrders()}
           onChangeStatus={changeOrderStatus}
+          onProductionControl={updateProductionControl}
           onAcceptRequestedChanges={acceptRequestedChanges}
         />
       )}
@@ -2415,6 +2568,7 @@ function OrdersDashboard({
   orderEditStatus,
   savingOrder,
   statusActionLoading,
+  productionActionLoading,
   customerLinkStatus,
   paymentLinkStatus,
   emailConfigured,
@@ -2435,6 +2589,7 @@ function OrdersDashboard({
   onSelectOrder,
   onRefresh,
   onChangeStatus,
+  onProductionControl,
   onAcceptRequestedChanges,
 }: {
   orders: OrderRecord[];
@@ -2448,6 +2603,7 @@ function OrdersDashboard({
   orderEditStatus: string;
   savingOrder: boolean;
   statusActionLoading: OrderStatus | null;
+  productionActionLoading: ProductionAction | null;
   customerLinkStatus: string;
   paymentLinkStatus: string;
   emailConfigured: boolean | null;
@@ -2477,6 +2633,14 @@ function OrdersDashboard({
     order: OrderRecord,
     status: OrderStatus
   ) => void;
+  onProductionControl: (
+    order: OrderRecord,
+    action: ProductionAction,
+    details?: {
+      reason?: string;
+      note?: string;
+    }
+  ) => void;
   onAcceptRequestedChanges: (order: OrderRecord) => void;
 }) {
   const [orderSearch, setOrderSearch] = useState('');
@@ -2488,6 +2652,8 @@ function OrdersDashboard({
     workflow: false,
     notes: false,
   });
+  const [productionModal, setProductionModal] =
+    useState<ProductionControlModalState | null>(null);
   const targetMargin = parseTargetMargin(
     orderEditForm.target_margin_percent
   );
@@ -2623,12 +2789,55 @@ function OrdersDashboard({
       selectedOrderPipelineStage === 'waiting_customer' ||
       selectedOrderPipelineStage === 'changes_requested');
   const statusActionInFlight = statusActionLoading !== null;
+  const canCompleteProduction =
+    selectedOrder?.payment_status === 'paid' &&
+    productionActionLoading === null &&
+    !statusActionInFlight;
 
   const toggleSection = (section: OrderDetailSection) => {
     setOpenSections((current) => ({
       ...current,
       [section]: !current[section],
     }));
+  };
+
+  const openProductionModal = (action: 'pause' | 'stop') => {
+    setProductionModal({
+      action,
+      reason: '',
+      customReason: '',
+      note: '',
+      error: '',
+    });
+  };
+
+  const submitProductionModal = () => {
+    if (!selectedOrder || !productionModal) {
+      return;
+    }
+
+    const reason =
+      productionModal.reason === 'Other'
+        ? productionModal.customReason.trim()
+        : productionModal.reason.trim();
+
+    if (!reason) {
+      setProductionModal((current) =>
+        current
+          ? {
+              ...current,
+              error: 'Internal reason is required.',
+            }
+          : current
+      );
+      return;
+    }
+
+    onProductionControl(selectedOrder, productionModal.action, {
+      reason,
+      note: productionModal.note.trim() || undefined,
+    });
+    setProductionModal(null);
   };
 
   const renderStatusButton = (
@@ -2713,6 +2922,32 @@ function OrdersDashboard({
           complete:
             selectedOrder.status === 'sent_to_production' ||
             selectedOrder.status === 'completed',
+        },
+        {
+          label: 'Production state',
+          value: productionStateLabels[selectedOrder.production_state],
+          complete: selectedOrder.production_state !== 'not_started',
+        },
+        {
+          label: 'Production paused',
+          value: selectedOrder.production_paused_at
+            ? formatDateTime(selectedOrder.production_paused_at)
+            : 'Not paused',
+          complete: Boolean(selectedOrder.production_paused_at),
+        },
+        {
+          label: 'Production resumed',
+          value: selectedOrder.production_resumed_at
+            ? formatDateTime(selectedOrder.production_resumed_at)
+            : 'Not resumed',
+          complete: Boolean(selectedOrder.production_resumed_at),
+        },
+        {
+          label: 'Production stopped',
+          value: selectedOrder.production_stopped_at
+            ? formatDateTime(selectedOrder.production_stopped_at)
+            : 'Not stopped',
+          complete: Boolean(selectedOrder.production_stopped_at),
         },
         {
           label: 'Completed',
@@ -2882,12 +3117,21 @@ function OrdersDashboard({
                     >
                       <div style={orderCardHeader}>
                         <span
-                          style={statusBadge(
-                            archiveStatus ?? order.status
-                          )}
+                          style={
+                            isProductionStopped(order)
+                              ? productionStateBadge('stopped')
+                              : statusBadge(
+                                  archiveStatus ?? order.status
+                                )
+                          }
                         >
                           {getOrderBadgeLabel(order)}
                         </span>
+                        {order.production_state === 'paused' && (
+                          <span style={productionStateBadge('paused')}>
+                            Production paused
+                          </span>
+                        )}
                         {order.manual_quote && (
                           <span style={manualQuoteBadge}>
                             Manual quote
@@ -2916,6 +3160,11 @@ function OrdersDashboard({
                         <span style={paymentBadge(order.payment_status)}>
                           Payment: {paymentStatusLabels[order.payment_status]}
                         </span>
+                        {order.production_state === 'paused' && (
+                          <span style={productionStateBadge('paused')}>
+                            Internal hold
+                          </span>
+                        )}
                       </div>
                       <div style={orderQuickFactsGrid}>
                         <Meta
@@ -2993,14 +3242,38 @@ function OrdersDashboard({
                     </div>
                     <div style={detailHeaderBadges}>
                       <span
-                        style={statusBadge(
-                          getDeclinedStatus(selectedOrder) ??
-                            getCancelledStatus(selectedOrder) ??
-                            selectedOrder.status
-                        )}
+                        style={
+                          isProductionStopped(selectedOrder)
+                            ? productionStateBadge('stopped')
+                            : statusBadge(
+                                getDeclinedStatus(selectedOrder) ??
+                                  getCancelledStatus(selectedOrder) ??
+                                  selectedOrder.status
+                              )
+                        }
                       >
                         {getOrderBadgeLabel(selectedOrder)}
                       </span>
+                      {selectedOrder.production_state !== 'not_started' && (
+                        <span
+                          style={productionStateBadge(
+                            selectedOrder.production_state
+                          )}
+                        >
+                          {productionStateLabels[selectedOrder.production_state]}
+                        </span>
+                      )}
+                      {selectedOrder.production_state === 'paused' && (
+                        <span style={productionStateBadge('paused')}>
+                          Internal hold
+                        </span>
+                      )}
+                      {selectedOrder.production_state === 'stopped' &&
+                        selectedOrder.payment_status === 'paid' && (
+                        <span style={paymentBadge('failed')}>
+                          Paid order stopped. Manual refund/review needed.
+                        </span>
+                      )}
                       <span style={workflowStageBadge}>
                         {getPipelineStageLabel(selectedOrder)}
                       </span>
@@ -3185,13 +3458,6 @@ function OrdersDashboard({
                           'sent_to_production',
                           'primary'
                         )}
-                      {selectedOrderPipelineStage === 'production' &&
-                        renderStatusButton(
-                          'Mark completed',
-                          'Marking...',
-                          'completed',
-                          'primary'
-                        )}
                     </div>
 
                     <div className="studio-action-group" style={actionGroup}>
@@ -3251,6 +3517,188 @@ function OrdersDashboard({
                       </div>
                     )}
                   </div>
+
+                  {(selectedOrderPipelineStage === 'production' ||
+                    isProductionStopped(selectedOrder)) && (
+                    <div style={productionControlPanel}>
+                      <div style={productionControlHeader}>
+                        <div>
+                          <p style={eyebrow}>Production control</p>
+                          <h3 style={sectionMiniTitle}>
+                            Internal production state
+                          </h3>
+                        </div>
+                        <div style={badgeRow}>
+                          <span
+                            style={productionStateBadge(
+                              selectedOrder.production_state
+                            )}
+                          >
+                            {
+                              productionStateLabels[
+                                selectedOrder.production_state
+                              ]
+                            }
+                          </span>
+                          {selectedOrder.production_state ===
+                            'paused' && (
+                            <span style={productionStateBadge('paused')}>
+                              Internal hold
+                            </span>
+                          )}
+                          {selectedOrder.production_state === 'stopped' &&
+                            selectedOrder.payment_status === 'paid' && (
+                            <span style={paymentBadge('failed')}>
+                              Paid order stopped. Manual refund/review needed.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={summaryGridWide}>
+                        <Meta
+                          label="Production state"
+                          value={
+                            productionStateLabels[
+                              selectedOrder.production_state
+                            ]
+                          }
+                        />
+                        <Meta
+                          label="Reason"
+                          value={
+                            selectedOrder.production_stop_reason ??
+                            'Not set'
+                          }
+                        />
+                        <Meta
+                          label="Paused at"
+                          value={formatDateTime(
+                            selectedOrder.production_paused_at
+                          )}
+                        />
+                        <Meta
+                          label="Resumed at"
+                          value={formatDateTime(
+                            selectedOrder.production_resumed_at
+                          )}
+                        />
+                        <Meta
+                          label="Stopped at"
+                          value={formatDateTime(
+                            selectedOrder.production_stopped_at
+                          )}
+                        />
+                      </div>
+
+                      {selectedOrder.production_stop_note && (
+                        <div style={noteCardStrong}>
+                          <span style={detailLabel}>
+                            Internal production note
+                          </span>
+                          <p style={messageText}>
+                            {selectedOrder.production_stop_note}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedOrderPipelineStage === 'production' &&
+                        selectedOrder.production_state !== 'stopped' &&
+                        selectedOrder.production_state !== 'completed' && (
+                        <>
+                          <div
+                            className="studio-action-groups"
+                            style={productionControlActions}
+                          >
+                            {selectedOrder.production_state === 'paused' ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onProductionControl(
+                                    selectedOrder,
+                                    'resume'
+                                  )
+                                }
+                                disabled={
+                                  productionActionLoading !== null ||
+                                  statusActionInFlight
+                                }
+                                style={actionButtonStyle(
+                                  'primary',
+                                  productionActionLoading !== null ||
+                                    statusActionInFlight
+                                )}
+                              >
+                                {productionActionLoading === 'resume'
+                                  ? 'Resuming...'
+                                  : 'Resume production'}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openProductionModal('pause')
+                                }
+                                disabled={
+                                  productionActionLoading !== null ||
+                                  statusActionInFlight
+                                }
+                                style={actionButtonStyle(
+                                  'secondary',
+                                  productionActionLoading !== null ||
+                                    statusActionInFlight
+                                )}
+                              >
+                                {productionActionLoading === 'pause'
+                                  ? 'Pausing...'
+                                  : 'Pause production'}
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => openProductionModal('stop')}
+                              disabled={
+                                productionActionLoading !== null ||
+                                statusActionInFlight
+                              }
+                              style={actionButtonStyle(
+                                'danger',
+                                productionActionLoading !== null ||
+                                  statusActionInFlight
+                              )}
+                            >
+                              {productionActionLoading === 'stop'
+                                ? 'Stopping...'
+                                : 'Stop production permanently'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onChangeStatus(selectedOrder, 'completed')
+                              }
+                              disabled={!canCompleteProduction}
+                              style={actionButtonStyle(
+                                'primary',
+                                !canCompleteProduction
+                              )}
+                            >
+                              {statusActionLoading === 'completed'
+                                ? 'Marking...'
+                                : 'Mark completed'}
+                            </button>
+                          </div>
+                          {selectedOrder.payment_status !== 'paid' && (
+                            <p style={compactWarningText}>
+                              Payment must be completed before marking
+                              production as completed.
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   {(customerLinkStatus || paymentLinkStatus) && (
                     <div style={statusMessageRow}>
@@ -3828,6 +4276,124 @@ function OrdersDashboard({
               </>
             )}
           </section>
+        </div>
+      )}
+
+      {productionModal && (
+        <div style={modalBackdrop} role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="production-control-title"
+            style={modalPanel}
+          >
+            <p style={eyebrow}>Production control</p>
+            <h3 id="production-control-title" style={panelTitle}>
+              {productionModal.action === 'pause'
+                ? 'Pause production'
+                : 'Stop production permanently'}
+            </h3>
+            {productionModal.action === 'stop' && (
+              <p style={warningCard}>
+                This will move the order to Archive. Internal reason will
+                not be visible to the customer.
+              </p>
+            )}
+            <label style={fieldLabel}>
+              Internal reason
+              <select
+                value={productionModal.reason}
+                onChange={(event) =>
+                  setProductionModal((current) =>
+                    current
+                      ? {
+                          ...current,
+                          reason: event.target.value,
+                          error: '',
+                        }
+                      : current
+                  )
+                }
+                style={inputStyle}
+              >
+                <option value="">Select a reason</option>
+                {productionStopReasonOptions.map((reason) => (
+                  <option key={reason} value={reason}>
+                    {reason}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {productionModal.reason === 'Other' && (
+              <label style={fieldLabel}>
+                Custom reason
+                <input
+                  value={productionModal.customReason}
+                  onChange={(event) =>
+                    setProductionModal((current) =>
+                      current
+                        ? {
+                            ...current,
+                            customReason: event.target.value,
+                            error: '',
+                          }
+                        : current
+                    )
+                  }
+                  style={inputStyle}
+                  placeholder="Enter internal reason"
+                />
+              </label>
+            )}
+            <label style={fieldLabel}>
+              Internal note
+              <textarea
+                value={productionModal.note}
+                onChange={(event) =>
+                  setProductionModal((current) =>
+                    current
+                      ? {
+                          ...current,
+                          note: event.target.value,
+                        }
+                      : current
+                  )
+                }
+                rows={4}
+                style={{
+                  ...inputStyle,
+                  resize: 'vertical',
+                }}
+                placeholder="Optional internal context for the studio"
+              />
+            </label>
+            {productionModal.error && (
+              <p style={errorText}>{productionModal.error}</p>
+            )}
+            <div style={modalActions}>
+              <button
+                type="button"
+                onClick={() => setProductionModal(null)}
+                style={secondaryButton}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitProductionModal}
+                style={actionButtonStyle(
+                  productionModal.action === 'stop'
+                    ? 'danger'
+                    : 'primary',
+                  false
+                )}
+              >
+                {productionModal.action === 'pause'
+                  ? 'Pause production'
+                  : 'Stop production permanently'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -4739,6 +5305,40 @@ const actionGroupLabel: CSSProperties = {
   textTransform: 'uppercase',
 };
 
+const productionControlPanel: CSSProperties = {
+  display: 'grid',
+  gap: 14,
+  marginTop: 16,
+  border: '1px solid rgba(255,224,131,0.22)',
+  borderRadius: 20,
+  padding: 16,
+  background:
+    'linear-gradient(145deg, rgba(255,224,131,0.075), rgba(0,0,0,0.18))',
+};
+
+const productionControlHeader: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 14,
+  alignItems: 'flex-start',
+  flexWrap: 'wrap',
+};
+
+const productionControlActions: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  alignItems: 'center',
+};
+
+const compactWarningText: CSSProperties = {
+  color: '#ffe083',
+  fontSize: 13,
+  fontWeight: 800,
+  lineHeight: 1.45,
+  margin: 0,
+};
+
 const dangerButton: CSSProperties = {
   border: '1px solid rgba(255,143,179,0.28)',
   borderRadius: 18,
@@ -4933,6 +5533,37 @@ const noteStackCompact: CSSProperties = {
   marginTop: 12,
 };
 
+const modalBackdrop: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 70,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 18,
+  background: 'rgba(0,0,0,0.68)',
+  backdropFilter: 'blur(14px)',
+};
+
+const modalPanel: CSSProperties = {
+  width: 'min(520px, 100%)',
+  maxHeight: 'calc(100vh - 36px)',
+  overflowY: 'auto',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 24,
+  padding: 22,
+  background:
+    'linear-gradient(145deg, rgba(16,25,23,0.98), rgba(5,8,7,0.98))',
+  boxShadow: '0 30px 100px rgba(0,0,0,0.62)',
+};
+
+const modalActions: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: 10,
+  flexWrap: 'wrap',
+  marginTop: 18,
+};
+
 function statusBadge(status: OrderStatus): CSSProperties {
   const color =
     status === 'customer_declined'
@@ -4992,6 +5623,21 @@ function paymentBadge(status: PaymentStatus): CSSProperties {
           ? '#7ed7ff'
           : status === 'pending'
             ? '#ffe083'
+            : '#b9c4c0';
+
+  return compactBadge(color);
+}
+
+function productionStateBadge(state: ProductionState): CSSProperties {
+  const color =
+    state === 'active'
+      ? '#7ed7ff'
+      : state === 'paused'
+        ? '#ffe083'
+        : state === 'stopped'
+          ? '#ff8fb3'
+          : state === 'completed'
+            ? '#9dffc4'
             : '#b9c4c0';
 
   return compactBadge(color);

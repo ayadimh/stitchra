@@ -45,6 +45,24 @@ export const PAYMENT_STATUSES = [
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+export const PRODUCTION_STATES = [
+  'not_started',
+  'active',
+  'paused',
+  'stopped',
+  'completed',
+] as const;
+
+export type ProductionState = (typeof PRODUCTION_STATES)[number];
+
+export const PRODUCTION_STOP_TYPES = [
+  'temporary_hold',
+  'permanent_stop',
+] as const;
+
+export type ProductionStopType =
+  (typeof PRODUCTION_STOP_TYPES)[number];
+
 export type OrderRecord = {
   id: string;
   created_at: string;
@@ -93,6 +111,13 @@ export type OrderRecord = {
   payment_completed_at: string | null;
   payment_provider: string | null;
   payment_session_id: string | null;
+  production_state: ProductionState;
+  production_paused_at: string | null;
+  production_resumed_at: string | null;
+  production_stopped_at: string | null;
+  production_stop_reason: string | null;
+  production_stop_note: string | null;
+  production_stop_type: ProductionStopType | null;
   completed_at: string | null;
   archived_at: string | null;
   archive_reason: string | null;
@@ -501,6 +526,31 @@ function parsePaymentStatus(value: unknown): PaymentStatus {
     : 'unpaid';
 }
 
+function parseProductionState(
+  value: unknown,
+  status?: OrderStatus
+): ProductionState {
+  if (PRODUCTION_STATES.includes(value as ProductionState)) {
+    return value as ProductionState;
+  }
+
+  if (status === 'completed') {
+    return 'completed';
+  }
+
+  if (status === 'sent_to_production') {
+    return 'active';
+  }
+
+  return 'not_started';
+}
+
+function parseProductionStopType(value: unknown) {
+  return PRODUCTION_STOP_TYPES.includes(value as ProductionStopType)
+    ? (value as ProductionStopType)
+    : null;
+}
+
 function getTokenPrefix(token: string) {
   return token.slice(0, 8);
 }
@@ -545,6 +595,7 @@ function parseOrder(
   pricingSettings: PricingSettings = defaultPricingSettings
 ): OrderRecord {
   const productionNotes = row.production_notes;
+  const status = parseStatus(row);
 
   return {
     id: String(row.id),
@@ -606,7 +657,7 @@ function parseOrder(
         manualQuote: Boolean(row.manual_quote),
       }
     ),
-    status: parseStatus(row),
+    status,
     customer_decision: parseCustomerDecision(row.customer_decision),
     customer_decision_at: parseDate(row.customer_decision_at),
     customer_viewed_at: parseDate(row.customer_viewed_at),
@@ -636,6 +687,19 @@ function parseOrder(
     payment_session_id: row.payment_session_id
       ? String(row.payment_session_id)
       : null,
+    production_state: parseProductionState(row.production_state, status),
+    production_paused_at: parseDate(row.production_paused_at),
+    production_resumed_at: parseDate(row.production_resumed_at),
+    production_stopped_at: parseDate(row.production_stopped_at),
+    production_stop_reason: row.production_stop_reason
+      ? String(row.production_stop_reason)
+      : null,
+    production_stop_note: row.production_stop_note
+      ? String(row.production_stop_note)
+      : null,
+    production_stop_type: parseProductionStopType(
+      row.production_stop_type
+    ),
     completed_at: parseDate(row.completed_at),
     archived_at: parseDate(row.archived_at),
     archive_reason: row.archive_reason
@@ -1792,7 +1856,11 @@ export async function updateOrder(
   id: string,
   input: {
     status?: OrderStatus;
+    production_state?: ProductionState;
     production_notes?: string[];
+    production_stop_reason?: string | null;
+    production_stop_note?: string | null;
+    production_stop_type?: ProductionStopType | null;
     team_message?: string | null;
     revised_price_eur?: number | null;
     customer_price_eur?: number | null;
@@ -1821,21 +1889,23 @@ export async function updateOrder(
     return null;
   }
 
+  const now = new Date().toISOString();
   const updates: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
 
   if (input.status) {
     updates.status = input.status;
 
     if (input.status === 'completed') {
-      updates.completed_at = new Date().toISOString();
+      updates.completed_at = now;
       updates.archived_at = updates.completed_at;
       updates.archive_reason = 'completed';
+      updates.production_state = 'completed';
     }
 
     if (input.status === 'customer_declined') {
-      updates.archived_at = new Date().toISOString();
+      updates.archived_at = now;
       updates.archive_reason = 'customer_declined';
     }
 
@@ -1846,8 +1916,21 @@ export async function updateOrder(
     }
 
     if (input.status === 'team_declined') {
-      updates.archived_at = new Date().toISOString();
+      updates.archived_at = now;
       updates.archive_reason = 'team_declined';
+    }
+
+    if (input.status === 'sent_to_production') {
+      updates.production_state = 'active';
+      updates.production_stop_type = null;
+      updates.archived_at = null;
+      updates.archive_reason = null;
+    }
+
+    if (input.status === 'pre_production') {
+      updates.production_state = 'not_started';
+      updates.archived_at = null;
+      updates.archive_reason = null;
     }
 
     if (input.status === 'offer_sent') {
@@ -1860,6 +1943,8 @@ export async function updateOrder(
     if (input.status === 'needs_review') {
       updates.archived_at = null;
       updates.archive_reason = null;
+      updates.production_state = 'not_started';
+      updates.production_stop_type = null;
 
       if (
         existingOrder.status === 'customer_declined' ||
@@ -1873,6 +1958,42 @@ export async function updateOrder(
         updates.customer_decision = 'pending';
         updates.customer_decision_at = null;
       }
+    }
+  }
+
+  if (hasOwn(input, 'production_state') && input.production_state) {
+    updates.production_state = input.production_state;
+
+    if (input.production_state === 'paused') {
+      updates.production_paused_at = now;
+      updates.production_stop_type = 'temporary_hold';
+      updates.production_stop_reason =
+        input.production_stop_reason?.trim() || null;
+      updates.production_stop_note =
+        input.production_stop_note?.trim() || null;
+      updates.archived_at = null;
+      updates.archive_reason = null;
+    }
+
+    if (input.production_state === 'active') {
+      updates.production_resumed_at = now;
+    }
+
+    if (input.production_state === 'stopped') {
+      updates.production_stopped_at = now;
+      updates.production_stop_type = 'permanent_stop';
+      updates.production_stop_reason =
+        input.production_stop_reason?.trim() || null;
+      updates.production_stop_note =
+        input.production_stop_note?.trim() || null;
+      updates.archived_at = now;
+      updates.archive_reason = 'team_stopped_production';
+    }
+
+    if (input.production_state === 'completed') {
+      updates.completed_at = now;
+      updates.archived_at = now;
+      updates.archive_reason = 'completed';
     }
   }
 
@@ -1939,16 +2060,58 @@ export async function updateOrder(
     select: '*',
   });
 
-  const rows = await supabaseRequest<SupabaseOrderRow[]>(
-    `orders?${params.toString()}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify(updates),
+  const optionalProductionColumns = new Set([
+    'production_state',
+    'production_paused_at',
+    'production_resumed_at',
+    'production_stopped_at',
+    'production_stop_reason',
+    'production_stop_note',
+    'production_stop_type',
+  ]);
+  const hasDirectProductionStateUpdate =
+    hasOwn(input, 'production_state') && Boolean(input.production_state);
+  const safeUpdates = { ...updates };
+  let rows: SupabaseOrderRow[] | null = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      rows = await supabaseRequest<SupabaseOrderRow[]>(
+        `orders?${params.toString()}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(safeUpdates),
+        }
+      );
+      break;
+    } catch (error) {
+      const missingColumn = getMissingOrderColumn(error);
+
+      if (
+        missingColumn &&
+        optionalProductionColumns.has(missingColumn) &&
+        !hasDirectProductionStateUpdate &&
+        hasOwn(safeUpdates, missingColumn)
+      ) {
+        delete safeUpdates[missingColumn];
+        console.error('[orders.updateOrder] optional column unavailable', {
+          order_id: id,
+          column: missingColumn,
+          error_message: getOrderErrorMessage(error),
+        });
+        continue;
+      }
+
+      throw error;
     }
-  );
+  }
+
+  if (!rows) {
+    throw new Error('Order update failed.');
+  }
 
   return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
 }
