@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { OrderMannequinPreview } from '@/components/OrderMannequinPreview';
+import { formatPlacementLabel } from '@/lib/embroideryZones';
 import type {
   CustomerDecision,
   PublicOrderRecord,
@@ -81,17 +82,7 @@ function formatValue(value: string) {
 }
 
 function formatPlacement(value: string) {
-  const normalized = value.toLowerCase();
-
-  if (normalized === 'left' || normalized.includes('left')) {
-    return 'Left chest';
-  }
-
-  if (normalized === 'center' || normalized.includes('center')) {
-    return 'Center front';
-  }
-
-  return formatValue(value);
+  return formatPlacementLabel(value);
 }
 
 function getPaymentLabel(order: PublicOrderRecord) {

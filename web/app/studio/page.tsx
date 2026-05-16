@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { formatPlacementLabel } from '@/lib/embroideryZones';
 import {
   calculatePricing,
   costBreakdownLabels,
@@ -58,11 +59,16 @@ type EstimateResponse = {
 };
 
 type OrderDesignConfig = {
+  placement?: string;
   placement_zone?: string;
   logo_position_x?: number;
   logo_position_y?: number;
   logo_width_mm?: number;
   logo_height_mm?: number;
+  logo_scale?: number;
+  logo_offset_x?: number;
+  logo_offset_y?: number;
+  side?: string;
   shirt_color?: string;
 };
 
@@ -375,15 +381,7 @@ function formatOrderValue(value: string) {
 }
 
 function formatPlacement(value: string) {
-  if (value === 'left') {
-    return 'Left chest';
-  }
-
-  if (value === 'center') {
-    return 'Center front';
-  }
-
-  return formatOrderValue(value);
+  return formatPlacementLabel(value);
 }
 
 function formatDesignPosition(config: OrderDesignConfig | null) {

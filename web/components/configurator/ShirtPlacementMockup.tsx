@@ -1,17 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import type { CSSProperties } from 'react';
+import Image from 'next/image';
+import { useMemo, useRef, useState } from 'react';
+import type { CSSProperties, PointerEvent } from 'react';
 import {
-  formatPlacementLabel,
+  clampLogoPlacementConfig,
+  formatLogoSize,
   getEmbroideryZone,
-  getEmbroideryZoneByLabel,
   getPlacementSideLabel,
-  type EmbroideryZoneId,
 } from '@/lib/embroideryZones';
+import type { ShirtConfiguratorProps } from './types';
 
-type ShirtColor = 'black' | 'white' | string;
-type PreviewLayout = {
+type ZoneLayout = {
   left: number;
   top: number;
   width: number;
@@ -19,74 +19,66 @@ type PreviewLayout = {
   rotate?: number;
 };
 
-function getOrderPreviewLayout(zoneId: EmbroideryZoneId): PreviewLayout {
-  const layouts: Record<EmbroideryZoneId, PreviewLayout> = {
-    left_chest: { left: 60, top: 30, width: 30, height: 16 },
-    right_chest: { left: 40, top: 30, width: 30, height: 16 },
-    center_chest: { left: 50, top: 34, width: 38, height: 20 },
-    center_front: { left: 50, top: 53, width: 56, height: 38 },
-    lower_front: { left: 50, top: 74, width: 42, height: 24 },
-    front_left_bottom: { left: 34, top: 77, width: 36, height: 22 },
-    front_right_bottom: { left: 66, top: 77, width: 36, height: 22 },
-    upper_back: { left: 50, top: 28, width: 42, height: 20 },
-    center_back: { left: 50, top: 52, width: 58, height: 40 },
-    lower_back: { left: 50, top: 72, width: 56, height: 34 },
-    back_left_shoulder: { left: 36, top: 28, width: 34, height: 19 },
-    back_right_shoulder: { left: 64, top: 28, width: 34, height: 19 },
-    back_left_bottom: { left: 34, top: 77, width: 36, height: 22 },
-    back_right_bottom: { left: 66, top: 77, width: 36, height: 22 },
-    left_sleeve: { left: 12, top: 44, width: 25, height: 26, rotate: 7 },
-    right_sleeve: { left: 88, top: 44, width: 25, height: 26, rotate: -7 },
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getZoneLayout(zoneId: ShirtConfiguratorProps['placementZone']): ZoneLayout {
+  const layouts: Record<ShirtConfiguratorProps['placementZone'], ZoneLayout> = {
+    left_chest: { left: 58, top: 37, width: 27, height: 14 },
+    right_chest: { left: 42, top: 37, width: 27, height: 14 },
+    center_chest: { left: 50, top: 39, width: 34, height: 18 },
+    center_front: { left: 50, top: 55, width: 48, height: 35 },
+    lower_front: { left: 50, top: 73, width: 36, height: 19 },
+    front_left_bottom: { left: 36, top: 76, width: 31, height: 18 },
+    front_right_bottom: { left: 64, top: 76, width: 31, height: 18 },
+    upper_back: { left: 50, top: 32, width: 42, height: 20 },
+    center_back: { left: 50, top: 54, width: 52, height: 38 },
+    lower_back: { left: 50, top: 73, width: 50, height: 32 },
+    back_left_shoulder: { left: 38, top: 31, width: 31, height: 18 },
+    back_right_shoulder: { left: 62, top: 31, width: 31, height: 18 },
+    back_left_bottom: { left: 36, top: 76, width: 31, height: 18 },
+    back_right_bottom: { left: 64, top: 76, width: 31, height: 18 },
+    left_sleeve: { left: 18, top: 47, width: 22, height: 24, rotate: 7 },
+    right_sleeve: { left: 82, top: 47, width: 22, height: 24, rotate: -7 },
   };
 
   return layouts[zoneId];
 }
 
-export function OrderMannequinPreview({
+export default function ShirtPlacementMockup({
   logoUrl,
   shirtColor,
-  placement,
-  placementSize,
-  minHeight = 540,
-}: {
-  logoUrl: string | null;
-  shirtColor: ShirtColor;
-  placement: string;
-  placementSize?: string;
-  minHeight?: number | string;
-}) {
+  placementZone,
+  config,
+  logoAspectRatio,
+  onConfigChange,
+}: ShirtConfiguratorProps) {
+  const zoneRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [mouse, setMouse] = useState({
     x: 0,
     y: 0,
     active: false,
   });
-  const normalizedPlacement = placement.toLowerCase().includes('center')
-    ? 'center_front'
-    : 'left_chest';
-  const zoneId =
-    getEmbroideryZoneByLabel(placement) ??
-    (normalizedPlacement as EmbroideryZoneId);
-  const zone = getEmbroideryZone(zoneId);
-  const sideLabel = getPlacementSideLabel(zoneId);
-  const normalizedShirtColor = shirtColor.toLowerCase().includes('white')
-    ? 'white'
-    : 'black';
-  const isWhite = normalizedShirtColor === 'white';
+  const zone = getEmbroideryZone(placementZone);
+  const layout = getZoneLayout(placementZone);
+  const sideLabel = getPlacementSideLabel(placementZone);
+  const isWhite = shirtColor === 'white';
+  const logoWidthPercent = (config.logo_width_mm / zone.maxWidthMm) * 100;
+  const logoHeightPercent = (config.logo_height_mm / zone.maxHeightMm) * 100;
+  const logoLeftPercent = config.logo_position_x * 100 - logoWidthPercent / 2;
+  const logoTopPercent = config.logo_position_y * 100 - logoHeightPercent / 2;
   const rotateX = mouse.active ? mouse.y * -4 : 0;
   const rotateY = mouse.active ? mouse.x * 6 : 0;
   const lightX = mouse.active ? 50 + mouse.x * 18 : 50;
   const lightY = mouse.active ? 32 + mouse.y * 12 : 32;
-  const placementLabel = formatPlacementLabel(placement);
-  const sizeLabel =
-    placementSize ??
-    `${zone.maxWidthMm} x ${zone.maxHeightMm} mm`;
-  const layout = getOrderPreviewLayout(zoneId);
   const shirtSurface = isWhite
     ? 'radial-gradient(circle at 38% 18%, rgba(255,255,255,0.95), transparent 18%), linear-gradient(145deg,#fffdf7 0%,#dedbd2 46%,#f7f3ea 100%)'
-    : 'radial-gradient(circle at 38% 18%, rgba(255,255,255,0.12), transparent 18%), linear-gradient(145deg,#101719 0%,#111514 45%,#030404 100%)';
+    : 'radial-gradient(circle at 38% 18%, rgba(255,255,255,0.16), transparent 18%), linear-gradient(145deg,#172224 0%,#101716 46%,#060808 100%)';
   const sleeveSurface = isWhite
     ? 'linear-gradient(145deg,#fbf7ec,#d6d2c8 54%,#f5f1e8)'
-    : 'linear-gradient(145deg,#0b1011,#18201f 55%,#030404)';
+    : 'linear-gradient(145deg,#101719,#1a2423 55%,#050707)';
   const seamColor = isWhite
     ? 'rgba(35,31,26,0.14)'
     : 'rgba(255,255,255,0.10)';
@@ -94,8 +86,39 @@ export function OrderMannequinPreview({
     ? 'multiply'
     : 'screen';
 
+  const labelText = useMemo(
+    () =>
+      `T-shirt ${sideLabel} · ${zone.label} · ${zone.maxWidthMm} × ${zone.maxHeightMm} mm`,
+    [sideLabel, zone]
+  );
+
+  const updateFromPointer = (event: PointerEvent<HTMLElement>) => {
+    const rect = zoneRef.current?.getBoundingClientRect();
+
+    if (!rect) {
+      return;
+    }
+
+    const nextX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const nextY = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+
+    onConfigChange(
+      clampLogoPlacementConfig(
+        {
+          ...config,
+          placement_zone: placementZone,
+          shirt_color: shirtColor,
+          logo_position_x: nextX,
+          logo_position_y: nextY,
+        },
+        logoAspectRatio
+      )
+    );
+  };
+
   return (
     <div
+      className="designer-preview-card shirt-placement-preview-card"
       onMouseMove={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = (event.clientX - rect.left) / rect.width - 0.5;
@@ -106,10 +129,10 @@ export function OrderMannequinPreview({
       onMouseLeave={() => setMouse({ x: 0, y: 0, active: false })}
       style={{
         ...stage,
-        minHeight,
-        background: `radial-gradient(circle at ${lightX}% ${lightY}%, rgba(124,240,212,0.20), transparent 18%), linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))`,
+        background: `radial-gradient(circle at ${lightX}% ${lightY}%, rgba(124,240,212,0.22), transparent 18%), linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))`,
       }}
     >
+      {/* Future upgrade: 3D FBX shirt preview with React Three Fiber. */}
       <style>
         {`
           @keyframes stitchraTorsoFloat {
@@ -138,23 +161,20 @@ export function OrderMannequinPreview({
           }
         `}
       </style>
-
       <div
         style={{
           ...gridOverlay,
-          transform: `translate3d(${mouse.x * -10}px, ${
-            mouse.y * -10
-          }px, 0)`,
+          transform: `translate3d(${mouse.x * -10}px, ${mouse.y * -10}px, 0)`,
         }}
       />
-
       <div style={glowField} />
 
-      <div style={previewLabel}>
-        T-shirt {sideLabel} - {placementLabel} - {sizeLabel}
+      <div className="designer-preview-label" style={previewLabel}>
+        {labelText}
       </div>
 
       <div
+        className="designer-preview-torso"
         style={{
           ...torsoRig,
           transform: `translateX(-50%) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
@@ -180,13 +200,13 @@ export function OrderMannequinPreview({
               background: shirtSurface,
               boxShadow: isWhite
                 ? 'inset 24px 22px 38px rgba(255,255,255,0.70), inset -36px -42px 60px rgba(120,112,98,0.34), 0 56px 115px rgba(0,0,0,0.48), 0 0 74px rgba(124,240,212,0.13)'
-                : 'inset 24px 22px 42px rgba(255,255,255,0.055), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
+                : 'inset 24px 22px 42px rgba(255,255,255,0.07), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
             }}
           >
             <div
               style={{
                 ...fabricTexture,
-                opacity: isWhite ? 0.44 : 0.26,
+                opacity: isWhite ? 0.44 : 0.3,
               }}
             />
             <div style={collar} />
@@ -194,72 +214,103 @@ export function OrderMannequinPreview({
               style={{
                 ...neckSeam,
                 background: seamColor,
-                boxShadow: `0 22px 0 ${seamColor}`,
+                boxShadow:
+                  sideLabel === 'back'
+                    ? `0 30px 0 ${seamColor}, 0 62px 0 ${seamColor}`
+                    : `0 22px 0 ${seamColor}`,
               }}
             />
+            {sideLabel === 'back' && <div style={backYoke} />}
+          </div>
+
+          <div
+            ref={zoneRef}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setDragging(true);
+              updateFromPointer(event);
+            }}
+            onPointerMove={(event) => {
+              if (dragging) {
+                updateFromPointer(event);
+              }
+            }}
+            onPointerUp={(event) => {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+              setDragging(false);
+            }}
+            onPointerCancel={() => setDragging(false)}
+            style={{
+              ...placementBox,
+              left: `${layout.left}%`,
+              top: `${layout.top}%`,
+              width: `${layout.width}%`,
+              height: `${layout.height}%`,
+              transform: `translate(-50%, -50%) rotate(${layout.rotate ?? 0}deg)`,
+              border: logoUrl
+                ? '1px solid rgba(124,240,212,0.34)'
+                : '1px solid rgba(124,240,212,0.86)',
+              boxShadow: logoUrl
+                ? '0 0 18px rgba(124,240,212,0.22), 0 0 58px rgba(0,200,255,0.10), inset 0 0 16px rgba(124,240,212,0.08)'
+                : '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)',
+              animation: logoUrl
+                ? 'none'
+                : 'stitchraGlow 3.2s ease-in-out infinite',
+            }}
+          >
             <div
               style={{
-                ...placementBox,
-                left: `${layout.left}%`,
-                top: `${layout.top}%`,
-                width: `${layout.width}%`,
-                height: `${layout.height}%`,
-                transform: `translateX(-50%) rotate(${layout.rotate ?? 0}deg)`,
-                border: logoUrl
-                  ? '1px solid rgba(124,240,212,0.30)'
-                  : '1px solid rgba(124,240,212,0.86)',
-                boxShadow: logoUrl
-                  ? '0 0 18px rgba(124,240,212,0.22), 0 0 58px rgba(0,200,255,0.10), inset 0 0 16px rgba(124,240,212,0.08)'
-                  : '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)',
-                background: logoUrl
-                  ? 'transparent'
-                  : 'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
-                animation: logoUrl
-                  ? 'none'
-                  : 'stitchraGlow 3.2s ease-in-out infinite',
+                ...threadGrid,
+                opacity: logoUrl ? (isWhite ? 0.1 : 0.13) : 0.32,
               }}
-            >
+            />
+            {logoUrl ? (
               <div
+                aria-label="Design preview on shirt"
                 style={{
-                  ...threadGrid,
-                  opacity: logoUrl
-                    ? isWhite
-                      ? 0.1
-                      : 0.12
-                    : isWhite
-                      ? 0.24
-                      : 0.34,
+                  ...logoFrame,
+                  left: `${logoLeftPercent}%`,
+                  top: `${logoTopPercent}%`,
+                  width: `${logoWidthPercent}%`,
+                  height: `${logoHeightPercent}%`,
                 }}
-              />
-              {logoUrl ? (
-                <div
-                  aria-label="Design preview on shirt"
+              >
+                <Image
+                  src={logoUrl}
+                  alt="Uploaded embroidery logo"
+                  fill
+                  unoptimized
+                  sizes="220px"
                   style={{
-                    ...logoOnShirt,
-                    backgroundImage: `url(${logoUrl})`,
+                    objectFit: 'contain',
                     mixBlendMode: logoBlend,
-                    opacity: isWhite ? 0.86 : 0.82,
+                    opacity: isWhite ? 0.88 : 0.84,
                     filter: isWhite
                       ? 'contrast(1.18) saturate(0.95) brightness(0.98) drop-shadow(0 1px 2px rgba(0,0,0,0.20))'
-                      : 'contrast(1.55) saturate(1.20) brightness(0.78) drop-shadow(0 0 10px rgba(124,240,212,0.36))',
+                      : 'contrast(1.48) saturate(1.18) brightness(0.86) drop-shadow(0 0 10px rgba(124,240,212,0.30))',
                   }}
                 />
-              ) : (
-                <span
-                  style={{
-                    ...placeholderText,
-                    color: isWhite
-                      ? 'rgba(8,12,14,0.48)'
-                      : 'rgba(224,255,244,0.72)',
-                  }}
-                >
-                  Logo
-                </span>
-              )}
-            </div>
+              </div>
+            ) : (
+              <span
+                style={{
+                  ...placeholderText,
+                  color: isWhite
+                    ? 'rgba(8,12,14,0.48)'
+                    : 'rgba(224,255,244,0.74)',
+                }}
+              >
+                Logo
+              </span>
+            )}
           </div>
+
           <div style={bottomGlow} />
         </div>
+      </div>
+
+      <div style={footerHint}>
+        Drag inside the highlighted zone · Logo size {formatLogoSize(config)}
       </div>
     </div>
   );
@@ -267,7 +318,8 @@ export function OrderMannequinPreview({
 
 const stage: CSSProperties = {
   position: 'relative',
-  borderRadius: 30,
+  minHeight: 650,
+  borderRadius: 36,
   overflow: 'hidden',
   border: '1px solid rgba(255,255,255,0.10)',
   boxShadow:
@@ -291,22 +343,23 @@ const glowField: CSSProperties = {
   position: 'absolute',
   inset: '14% 5% 7%',
   background:
-    'radial-gradient(ellipse at center, rgba(124,240,212,0.20), transparent 55%)',
+    'radial-gradient(ellipse at center, rgba(124,240,212,0.22), transparent 55%)',
   filter: 'blur(28px)',
-  opacity: 0.72,
+  opacity: 0.76,
   animation: 'stitchraGlow 4.6s ease-in-out infinite',
 };
 
 const previewLabel: CSSProperties = {
   position: 'absolute',
-  top: 18,
-  right: 18,
-  padding: '10px 14px',
+  top: 20,
+  left: 20,
+  right: 20,
+  padding: '10px 16px',
   borderRadius: 16,
   background: 'rgba(0,0,0,0.45)',
   border: '1px solid rgba(255,255,255,0.08)',
-  color: '#f5f7f8',
   fontSize: 13,
+  textAlign: 'center',
   zIndex: 4,
   boxShadow: '0 18px 45px rgba(0,0,0,0.32)',
 };
@@ -314,7 +367,7 @@ const previewLabel: CSSProperties = {
 const torsoRig: CSSProperties = {
   position: 'absolute',
   left: '50%',
-  top: 50,
+  top: 72,
   width: 420,
   height: 520,
   transformStyle: 'preserve-3d',
@@ -336,31 +389,27 @@ const shadow: CSSProperties = {
   width: 320,
   height: 58,
   borderRadius: '50%',
-  background:
-    'radial-gradient(ellipse at center, rgba(0,0,0,0.66), transparent 68%)',
+  background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.66), transparent 68%)',
   filter: 'blur(12px)',
   opacity: 0.9,
 };
 
-const sleeveBase: CSSProperties = {
+const leftSleeve: CSSProperties = {
   position: 'absolute',
+  left: 20,
   top: 122,
   width: 128,
   height: 255,
-  boxShadow:
-    'inset 18px 22px 32px rgba(255,255,255,0.08), inset -24px -30px 46px rgba(0,0,0,0.42), 0 34px 70px rgba(0,0,0,0.42)',
-};
-
-const leftSleeve: CSSProperties = {
-  ...sleeveBase,
-  left: 20,
   borderRadius: '52px 22px 44px 68px',
   clipPath: 'polygon(42% 0, 100% 15%, 78% 100%, 18% 91%, 0 24%)',
+  boxShadow:
+    'inset 18px 22px 32px rgba(255,255,255,0.08), inset -24px -30px 46px rgba(0,0,0,0.42), 0 34px 70px rgba(0,0,0,0.42)',
   transform: 'rotate(7deg) translateZ(18px)',
 };
 
 const rightSleeve: CSSProperties = {
-  ...sleeveBase,
+  ...leftSleeve,
+  left: 'auto',
   right: 20,
   borderRadius: '22px 52px 68px 44px',
   clipPath: 'polygon(0 15%, 58% 0, 100% 24%, 82% 91%, 22% 100%)',
@@ -413,13 +462,26 @@ const neckSeam: CSSProperties = {
   height: 1,
 };
 
+const backYoke: CSSProperties = {
+  position: 'absolute',
+  left: '18%',
+  right: '18%',
+  top: 116,
+  height: 1,
+  background:
+    'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)',
+};
+
 const placementBox: CSSProperties = {
   position: 'absolute',
-  transform: 'translateX(-50%)',
+  zIndex: 6,
   borderRadius: 18,
   display: 'grid',
   placeItems: 'center',
   overflow: 'hidden',
+  background: 'linear-gradient(135deg, rgba(124,240,212,0.12), rgba(0,0,0,0.06))',
+  cursor: 'grab',
+  touchAction: 'none',
 };
 
 const threadGrid: CSSProperties = {
@@ -433,14 +495,14 @@ const threadGrid: CSSProperties = {
   zIndex: 0,
 };
 
-const logoOnShirt: CSSProperties = {
+const logoFrame: CSSProperties = {
   position: 'absolute',
-  inset: 7,
+  minWidth: 20,
+  minHeight: 20,
+  borderRadius: 12,
+  overflow: 'hidden',
+  isolation: 'isolate',
   zIndex: 1,
-  borderRadius: 14,
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'center',
-  backgroundSize: 'contain',
 };
 
 const placeholderText: CSSProperties = {
@@ -463,4 +525,20 @@ const bottomGlow: CSSProperties = {
     'linear-gradient(90deg, transparent, rgba(124,240,212,0.24), transparent)',
   filter: 'blur(20px)',
   opacity: 0.8,
+};
+
+const footerHint: CSSProperties = {
+  position: 'absolute',
+  left: 22,
+  right: 22,
+  bottom: 18,
+  zIndex: 8,
+  margin: 0,
+  padding: '10px 14px',
+  borderRadius: 14,
+  background: 'rgba(0,0,0,0.38)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: 'rgba(245,247,248,0.68)',
+  fontSize: 13,
+  textAlign: 'center',
 };

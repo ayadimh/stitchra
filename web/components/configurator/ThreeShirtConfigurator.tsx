@@ -17,7 +17,7 @@ import {
   formatLogoSize,
   getEmbroideryZone,
 } from '@/lib/embroideryZones';
-import FlatShirtConfigurator from './FlatShirtConfigurator';
+import ShirtPlacementMockup from './ShirtPlacementMockup';
 import type { ShirtConfiguratorProps } from './types';
 
 const WORLD_PER_MM = 0.00635;
@@ -26,9 +26,26 @@ const PROTOTYPE_SHIRT_MODEL_PATH = '/models/stitchra-shirt-prototype.glb';
 const PROTOTYPE_SHIRT_MODEL_MANIFEST =
   '/models/stitchra-shirt-prototype.json';
 
-const zoneCenters = {
+const zoneCenters: Record<
+  ShirtConfiguratorProps['placementZone'],
+  THREE.Vector3
+> = {
   left_chest: new THREE.Vector3(0.42, 0.47, 0.13),
+  right_chest: new THREE.Vector3(-0.42, 0.47, 0.13),
+  center_chest: new THREE.Vector3(0, 0.36, 0.13),
   center_front: new THREE.Vector3(0, 0.02, 0.13),
+  lower_front: new THREE.Vector3(0, -0.44, 0.13),
+  front_left_bottom: new THREE.Vector3(0.36, -0.48, 0.13),
+  front_right_bottom: new THREE.Vector3(-0.36, -0.48, 0.13),
+  upper_back: new THREE.Vector3(0, 0.5, -0.13),
+  center_back: new THREE.Vector3(0, 0.04, -0.13),
+  lower_back: new THREE.Vector3(0, -0.46, -0.13),
+  back_left_shoulder: new THREE.Vector3(0.34, 0.5, -0.13),
+  back_right_shoulder: new THREE.Vector3(-0.34, 0.5, -0.13),
+  back_left_bottom: new THREE.Vector3(0.36, -0.48, -0.13),
+  back_right_bottom: new THREE.Vector3(-0.36, -0.48, -0.13),
+  left_sleeve: new THREE.Vector3(0.82, 0.05, 0.06),
+  right_sleeve: new THREE.Vector3(-0.82, 0.05, 0.06),
 };
 
 function hasWebGLSupport() {
@@ -354,11 +371,11 @@ export default function ThreeShirtConfigurator(
   }, [canUse3D, modelAvailability]);
 
   if (!canUse3D || modelAvailability === 'unavailable') {
-    return <FlatShirtConfigurator {...props} />;
+    return <ShirtPlacementMockup {...props} />;
   }
 
   return (
-    <ModelFallbackBoundary fallback={<FlatShirtConfigurator {...props} />}>
+    <ModelFallbackBoundary fallback={<ShirtPlacementMockup {...props} />}>
       <div ref={cardRef} className="shirt-configurator-card" style={cardStyle}>
         <div style={topBarStyle}>
           <span style={badgeStyle}>360° prototype</span>

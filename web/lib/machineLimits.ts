@@ -1,4 +1,7 @@
-import type { EmbroideryZoneId } from './embroideryZones';
+import {
+  getEmbroideryZone,
+  type EmbroideryZoneId,
+} from './embroideryZones';
 
 export const machineLimits = {
   maxColors: 15,
@@ -22,9 +25,12 @@ export type MachineCapabilityResult = {
 };
 
 export function getMachineLimitForZone(zoneId: EmbroideryZoneId) {
-  return zoneId === 'left_chest'
-    ? machineLimits.leftChestMax
-    : machineLimits.centerFrontMax;
+  const zone = getEmbroideryZone(zoneId);
+
+  return {
+    widthMm: zone.maxWidthMm,
+    heightMm: zone.maxHeightMm,
+  };
 }
 
 export function evaluateMachineCapability({

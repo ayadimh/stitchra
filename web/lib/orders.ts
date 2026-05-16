@@ -6,6 +6,7 @@ import {
   type CostBreakdown,
   type PricingSettings,
 } from './pricing';
+import { formatPlacementLabel } from './embroideryZones';
 
 export const ORDER_STATUSES = [
   'new',
@@ -105,6 +106,9 @@ export type OrderDesignConfig = {
   logo_width_mm?: number;
   logo_height_mm?: number;
   logo_scale?: number;
+  logo_offset_x?: number;
+  logo_offset_y?: number;
+  side?: string;
   shirt_color?: string;
 };
 
@@ -412,6 +416,10 @@ function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
     config.placement = source.placement;
   }
 
+  if (typeof source.side === 'string') {
+    config.side = source.side;
+  }
+
   if (typeof source.shirt_color === 'string') {
     config.shirt_color = source.shirt_color;
   }
@@ -422,6 +430,8 @@ function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
     'logo_width_mm',
     'logo_height_mm',
     'logo_scale',
+    'logo_offset_x',
+    'logo_offset_y',
   ] as const) {
     const parsedValue = parseNumber(source[key]);
 
@@ -1077,17 +1087,7 @@ function formatOrderValue(value: string) {
 }
 
 function formatPlacement(value: string) {
-  const normalized = value.toLowerCase();
-
-  if (normalized === 'left' || normalized.includes('left')) {
-    return 'Left chest';
-  }
-
-  if (normalized === 'center' || normalized.includes('center')) {
-    return 'Center front';
-  }
-
-  return formatOrderValue(value);
+  return formatPlacementLabel(value);
 }
 
 function getSuggestedOrderPrice(

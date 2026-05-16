@@ -251,8 +251,50 @@ export function normalizePricingSettings(value: unknown): PricingSettings {
   };
 }
 
+function getPlacementPricingGroup(value: string) {
+  const normalized = value.toLowerCase().replace(/[\s-]+/g, '_');
+
+  if (
+    normalized === 'left' ||
+    normalized.includes('left_chest') ||
+    normalized.includes('right_chest') ||
+    normalized.includes('sleeve')
+  ) {
+    return 'small';
+  }
+
+  if (
+    normalized.includes('center_chest') ||
+    normalized.includes('upper_back') ||
+    normalized.includes('shoulder')
+  ) {
+    return 'medium';
+  }
+
+  if (
+    normalized === 'center' ||
+    normalized.includes('center_front') ||
+    normalized.includes('center_back') ||
+    normalized.includes('lower_back')
+  ) {
+    return 'large';
+  }
+
+  if (
+    normalized.includes('lower_front') ||
+    normalized.includes('front_left_bottom') ||
+    normalized.includes('front_right_bottom') ||
+    normalized.includes('back_left_bottom') ||
+    normalized.includes('back_right_bottom')
+  ) {
+    return 'medium';
+  }
+
+  return 'unknown';
+}
+
 export function normalizePlacement(value: string) {
-  return value.toLowerCase().includes('center') ? 'center' : 'left';
+  return getPlacementPricingGroup(value) === 'small' ? 'left' : 'center';
 }
 
 export function getCostBreakdownTotal(costBreakdown: CostBreakdown) {
@@ -279,8 +321,10 @@ export function isManualQuoteRequired(input: {
   placement: string;
 }) {
   const placement = normalizePlacement(input.placement);
+  const placementGroup = getPlacementPricingGroup(input.placement);
 
   return (
+    placementGroup === 'unknown' ||
     input.colors > 15 ||
     input.stitches >= 90000 ||
     (placement === 'left' && input.stitches > 25000) ||
@@ -296,7 +340,7 @@ export function calculatePricing(input: {
   costBreakdown?: CostBreakdown;
   revisedPrice?: number | null;
 }) {
-  const placement = normalizePlacement(input.placement);
+  const placementGroup = getPlacementPricingGroup(input.placement);
   const manualQuote = isManualQuoteRequired(input);
   const costBreakdown =
     input.costBreakdown ??
@@ -340,6 +384,6 @@ export function calculatePricing(input: {
     manual_quote: manualQuote,
     pricing_tier: manualQuote
       ? 'Manual quote'
-      : `${placement === 'center' ? 'Center front' : 'Left chest'} calculated`,
+      : `${placementGroup === 'small' ? 'Small placement' : placementGroup === 'medium' ? 'Medium placement' : 'Large placement'} calculated`,
   };
 }

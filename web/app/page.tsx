@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import type {
   CSSProperties,
@@ -14,10 +13,15 @@ import {
   getDefaultLogoPlacementConfig,
   getEmbroideryZone,
   getMaxLogoWidthForAspect,
+  getPlacementSideLabel,
+  getPricingPlacementValue,
+  placementGroups,
+  type EmbroideryPlacementGroup,
   type EmbroideryZoneId,
   type LogoPlacementConfig,
 } from '@/lib/embroideryZones';
 import { evaluateMachineCapability } from '@/lib/machineLimits';
+import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
 import {
   createTranslator,
   getLocaleDirection,
@@ -32,14 +36,6 @@ import {
 const API =
   process.env.NEXT_PUBLIC_API_URL ??
   'https://stitchra-production.up.railway.app';
-
-const ThreeShirtConfigurator = dynamic(
-  () => import('@/components/configurator/ThreeShirtConfigurator'),
-  {
-    ssr: false,
-    loading: () => <ConfiguratorLoadingCard />,
-  }
-);
 
 const PRACTICAL_THREAD_COLOR_LIMIT = 15;
 
@@ -133,7 +129,7 @@ type DesignPreparation = {
   simplified_description: string;
 };
 
-type Placement = 'left' | 'center';
+type Placement = EmbroideryZoneId;
 type TeeColor = 'black' | 'white';
 type OrderFormState = {
   name: string;
@@ -146,25 +142,9 @@ type OrderFormErrors = Partial<
   Record<keyof OrderFormState, string>
 >;
 
-const placementZoneByPreset: Record<Placement, EmbroideryZoneId> = {
-  left: 'left_chest',
-  center: 'center_front',
-};
-
 const emailPattern =
   /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const phonePattern = /^[+\d\s()-]+$/;
-
-const placementPresets = {
-  left: {
-    label: 'Left chest',
-    size: '90 × 60 mm',
-  },
-  center: {
-    label: 'Center front',
-    size: '250 × 200 mm',
-  },
-} as const;
 
 function validateOrderForm(
   form: OrderFormState,
@@ -314,7 +294,9 @@ export default function Home({ locale }: HomeProps = {}) {
 
   useHtmlLocale(activeLocale);
 
-  const [placement, setPlacement] = useState<Placement>('left');
+  const [placement, setPlacement] = useState<Placement>('left_chest');
+  const [placementGroup, setPlacementGroup] =
+    useState<EmbroideryPlacementGroup>('front');
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -363,9 +345,10 @@ export default function Home({ locale }: HomeProps = {}) {
     []
   );
 
-  const placementZoneId = placementZoneByPreset[placement];
+  const placementZoneId = placement;
   const selectedZone = getEmbroideryZone(placementZoneId);
-  const preset = placementPresets[placement];
+  const pricingPlacement = getPricingPlacementValue(placementZoneId);
+  const previewSideLabel = getPlacementSideLabel(placementZoneId);
   const placementSize = {
     width: Math.round(logoPlacementConfig.logo_width_mm),
     height: Math.round(logoPlacementConfig.logo_height_mm),
@@ -408,14 +391,17 @@ export default function Home({ locale }: HomeProps = {}) {
   };
 
   const updatePlacement = (nextPlacement: Placement) => {
-    const nextZoneId = placementZoneByPreset[nextPlacement];
-
+    setPlacementGroup(getEmbroideryZone(nextPlacement).group);
     setPlacement(nextPlacement);
     setEstimate(null);
     setStatus('');
     setError('');
     setLogoPlacementConfig(
-      getDefaultLogoPlacementConfig(nextZoneId, teeColor, logoAspectRatio)
+      getDefaultLogoPlacementConfig(
+        nextPlacement,
+        teeColor,
+        logoAspectRatio
+      )
     );
   };
 
@@ -519,7 +505,7 @@ export default function Home({ locale }: HomeProps = {}) {
     try {
       const prepareData = new FormData();
       prepareData.append('customer_prompt', logoPrompt);
-      prepareData.append('placement', placement);
+      prepareData.append('placement', pricingPlacement);
       prepareData.append('width_mm', String(placementSize.width));
       prepareData.append('height_mm', String(placementSize.height));
       prepareData.append('shirt_color', teeColor);
@@ -547,7 +533,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
       const fd = new FormData();
       fd.append('prompt', logoPrompt);
-      fd.append('placement', placement);
+      fd.append('placement', pricingPlacement);
       fd.append('width_mm', String(placementSize.width));
       fd.append('height_mm', String(placementSize.height));
       fd.append('shirt_color', teeColor);
@@ -645,7 +631,7 @@ export default function Home({ locale }: HomeProps = {}) {
           stitches: data.stitches,
           colors: data.colors,
           coverage: data.coverage,
-          placement,
+          placement: placementZoneId,
         }),
       });
 
@@ -769,11 +755,12 @@ export default function Home({ locale }: HomeProps = {}) {
             designPreparation?.simplified_description ||
             logoPrompt.trim() ||
             undefined,
-          placement: preset.label,
+          placement: selectedZone.label,
           shirt_color: teeColor,
           logo_preview_url: preview ?? undefined,
           design_config: {
             placement: selectedZone.label,
+            side: previewSideLabel,
             placement_zone: placementZoneId,
             logo_position_x: Number(
               logoPlacementConfig.logo_position_x.toFixed(4)
@@ -789,6 +776,12 @@ export default function Home({ locale }: HomeProps = {}) {
             ),
             logo_scale: Number(
               logoPlacementConfig.logo_scale.toFixed(4)
+            ),
+            logo_offset_x: Number(
+              logoPlacementConfig.logo_offset_x.toFixed(2)
+            ),
+            logo_offset_y: Number(
+              logoPlacementConfig.logo_offset_y.toFixed(2)
             ),
             shirt_color: teeColor,
           },
@@ -2217,7 +2210,8 @@ export default function Home({ locale }: HomeProps = {}) {
                     marginTop: 3,
                   }}
                 >
-                  {preset.size} · {t('hero.productionReady')}
+                  {selectedZone.maxWidthMm} × {selectedZone.maxHeightMm} mm ·{' '}
+                  {t('hero.productionReady')}
                 </div>
               </div>
             </div>
@@ -2325,26 +2319,69 @@ export default function Home({ locale }: HomeProps = {}) {
                 {t('designer.choosePlacement')}
               </label>
 
-              <select
-                value={placement}
-                onChange={(e) =>
-                  updatePlacement(
-                    e.target.value ===
-                      'center'
-                      ? 'center'
-                      : 'left'
-                  )
-                }
-                style={input}
-              >
-                <option value="left">
-                  {t('placement.left')}
-                </option>
+              <div style={placementSelector}>
+                <div className="placement-tab-row" style={placementTabRow}>
+                  {placementGroups.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => setPlacementGroup(group.id)}
+                      style={placementTabButton(
+                        placementGroup === group.id
+                      )}
+                    >
+                      {group.label}
+                    </button>
+                  ))}
+                </div>
 
-                <option value="center">
-                  {t('placement.center')}
-                </option>
-              </select>
+                <div className="placement-chip-grid" style={placementChipGrid}>
+                  {placementGroups
+                    .find((group) => group.id === placementGroup)
+                    ?.zones.map((zoneId) => {
+                      const zone = getEmbroideryZone(zoneId);
+                      const active = placement === zoneId;
+
+                      return (
+                        <button
+                          key={zoneId}
+                          type="button"
+                          onClick={() => updatePlacement(zoneId)}
+                          style={placementChipButton(active)}
+                        >
+                          <span>{zone.label}</span>
+                          <small>
+                            {zone.maxWidthMm} × {zone.maxHeightMm} mm
+                          </small>
+                        </button>
+                      );
+                    })}
+                </div>
+
+                <select
+                  className="placement-mobile-select"
+                  value={placement}
+                  onChange={(event) =>
+                    updatePlacement(event.target.value as Placement)
+                  }
+                  style={input}
+                  aria-label="Choose embroidery placement"
+                >
+                  {placementGroups.map((group) => (
+                    <optgroup key={group.id} label={group.label}>
+                      {group.zones.map((zoneId) => {
+                        const zone = getEmbroideryZone(zoneId);
+
+                        return (
+                          <option key={zoneId} value={zoneId}>
+                            {zone.label}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
 
               <label style={label}>
                 {t('designer.chooseShirtColor')}
@@ -2430,7 +2467,7 @@ export default function Home({ locale }: HomeProps = {}) {
                 <span className="stitchra-upload-copy">
                   {file
                     ? file.name
-                    : 'PNG, JPG or transparent artwork'}
+                    : 'PNG, JPG or SVG recommended'}
                 </span>
               </label>
 
@@ -3026,7 +3063,7 @@ export default function Home({ locale }: HomeProps = {}) {
             </div>
           </HoverCard>
 
-          <ThreeShirtConfigurator
+          <ShirtPlacementMockup
             logoUrl={preview}
             shirtColor={teeColor}
             placementZone={placementZoneId}
@@ -4165,6 +4202,16 @@ function GlobalVisualStyles() {
           width: 100%;
         }
 
+        .placement-mobile-select {
+          display: none;
+        }
+
+        .placement-chip-grid small {
+          color: rgba(245,247,248,0.52);
+          font-size: 11px;
+          font-weight: 760;
+        }
+
         .designer-preview-label {
           max-width: calc(100% - 40px);
         }
@@ -4719,6 +4766,28 @@ function GlobalVisualStyles() {
             min-width: 0 !important;
           }
 
+          .placement-tab-row {
+            margin-inline: -2px;
+            padding-bottom: 8px;
+          }
+
+          .placement-chip-grid {
+            display: flex !important;
+            overflow-x: auto;
+            gap: 10px !important;
+            padding-bottom: 8px;
+            scroll-snap-type: x proximity;
+          }
+
+          .placement-chip-grid button {
+            min-width: 168px;
+            scroll-snap-align: start;
+          }
+
+          .placement-mobile-select {
+            display: block;
+          }
+
           .stitchra-file-input {
             padding: 10px;
             font-size: 13px;
@@ -4965,29 +5034,6 @@ function Metric({
           {helper}
         </div>
       )}
-    </div>
-  );
-}
-
-function ConfiguratorLoadingCard() {
-  return (
-    <div
-      className="designer-preview-card"
-      style={{
-        minHeight: 650,
-        borderRadius: 36,
-        display: 'grid',
-        placeItems: 'center',
-        border: '1px solid rgba(255,255,255,0.10)',
-        background:
-          'linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))',
-        color: '#9dffc4',
-        fontWeight: 850,
-        boxShadow:
-          '0 44px 130px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.08)',
-      }}
-    >
-      Loading 3D preview...
     </div>
   );
 }
@@ -5721,6 +5767,63 @@ const configuratorControlPanel: CSSProperties = {
   background:
     'linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,200,255,0.045)), rgba(255,255,255,0.035)',
 };
+
+const placementSelector: CSSProperties = {
+  display: 'grid',
+  gap: 12,
+};
+
+const placementTabRow: CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  overflowX: 'auto',
+  paddingBottom: 2,
+};
+
+function placementTabButton(active: boolean): CSSProperties {
+  return {
+    minHeight: 42,
+    border: active
+      ? '1px solid rgba(0,255,136,0.70)'
+      : '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 999,
+    padding: '0 15px',
+    background: active
+      ? 'linear-gradient(135deg, rgba(0,255,136,0.17), rgba(0,200,255,0.10))'
+      : 'rgba(255,255,255,0.045)',
+    color: active ? '#9dffc4' : 'rgba(245,247,248,0.72)',
+    fontWeight: 900,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  };
+}
+
+const placementChipGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(142px, 1fr))',
+  gap: 10,
+};
+
+function placementChipButton(active: boolean): CSSProperties {
+  return {
+    minHeight: 68,
+    display: 'grid',
+    gap: 4,
+    alignContent: 'center',
+    border: active
+      ? '1px solid rgba(0,255,136,0.72)'
+      : '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 16,
+    padding: '10px 12px',
+    background: active
+      ? 'linear-gradient(135deg, rgba(0,255,136,0.14), rgba(0,200,255,0.08))'
+      : 'rgba(255,255,255,0.04)',
+    color: '#f5f7f8',
+    textAlign: 'left',
+    cursor: 'pointer',
+    boxShadow: active ? '0 0 24px rgba(0,255,136,0.12)' : 'none',
+  };
+}
 
 const configuratorControlHeader: CSSProperties = {
   display: 'flex',

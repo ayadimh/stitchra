@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { CSSProperties } from 'react';
+import { formatPlacementLabel } from '@/lib/embroideryZones';
 import {
   getPublicOrderByToken,
   isDatabaseConfigured,
@@ -66,15 +67,7 @@ function formatValue(value: string) {
 }
 
 function formatPlacement(value: string) {
-  if (value === 'left') {
-    return 'Left chest';
-  }
-
-  if (value === 'center') {
-    return 'Center front';
-  }
-
-  return formatValue(value);
+  return formatPlacementLabel(value);
 }
 
 function getFinalPaymentAmount(order: PublicOrderRecord) {
