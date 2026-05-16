@@ -773,6 +773,7 @@ export default function Home({ locale }: HomeProps = {}) {
           shirt_color: teeColor,
           logo_preview_url: preview ?? undefined,
           design_config: {
+            placement: selectedZone.label,
             placement_zone: placementZoneId,
             logo_position_x: Number(
               logoPlacementConfig.logo_position_x.toFixed(4)
@@ -785,6 +786,9 @@ export default function Home({ locale }: HomeProps = {}) {
             ),
             logo_height_mm: Number(
               logoPlacementConfig.logo_height_mm.toFixed(1)
+            ),
+            logo_scale: Number(
+              logoPlacementConfig.logo_scale.toFixed(4)
             ),
             shirt_color: teeColor,
           },

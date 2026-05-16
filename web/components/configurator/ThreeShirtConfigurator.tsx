@@ -1,9 +1,16 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
+import {
+  Component,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Canvas, type ThreeEvent } from '@react-three/fiber';
-import { OrbitControls, useTexture } from '@react-three/drei';
+import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   clampLogoPlacementConfig,
@@ -14,6 +21,10 @@ import FlatShirtConfigurator from './FlatShirtConfigurator';
 import type { ShirtConfiguratorProps } from './types';
 
 const WORLD_PER_MM = 0.00635;
+// Temporary prototype 3D asset. Replace with original Stitchra 3D garment model before final commercial launch.
+const PROTOTYPE_SHIRT_MODEL_PATH = '/models/stitchra-shirt-prototype.glb';
+const PROTOTYPE_SHIRT_MODEL_MANIFEST =
+  '/models/stitchra-shirt-prototype.json';
 
 const zoneCenters = {
   left_chest: new THREE.Vector3(0.42, 0.47, 0.13),
@@ -35,6 +46,25 @@ function hasWebGLSupport() {
   }
 }
 
+function shouldUseFlatPerformanceFallback() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return true;
+  }
+
+  const reducedMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)'
+  ).matches;
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const narrowScreen = window.matchMedia('(max-width: 520px)').matches;
+  const memory = (navigator as Navigator & { deviceMemory?: number })
+    .deviceMemory;
+
+  return Boolean(
+    reducedMotion ||
+      (coarsePointer && narrowScreen && memory !== undefined && memory <= 4)
+  );
+}
+
 function getLogoWorldPosition(config: ShirtConfiguratorProps['config']) {
   const zone = getEmbroideryZone(config.placement_zone);
   const center = zoneCenters[config.placement_zone];
@@ -50,67 +80,61 @@ function getLogoWorldPosition(config: ShirtConfiguratorProps['config']) {
   );
 }
 
-function ShirtBody({ shirtColor }: { shirtColor: 'black' | 'white' }) {
-  const shirtShape = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.9, -1.42);
-    shape.lineTo(0.9, -1.42);
-    shape.lineTo(1.02, -0.34);
-    shape.lineTo(1.23, 0.82);
-    shape.lineTo(0.72, 1.32);
-    shape.lineTo(0.46, 1.32);
-    shape.quadraticCurveTo(0.35, 1.07, 0.2, 1.01);
-    shape.quadraticCurveTo(0, 0.94, -0.2, 1.01);
-    shape.quadraticCurveTo(-0.35, 1.07, -0.46, 1.32);
-    shape.lineTo(-0.72, 1.32);
-    shape.lineTo(-1.23, 0.82);
-    shape.lineTo(-1.02, -0.34);
-    shape.closePath();
-    return shape;
-  }, []);
-  const materialColor = shirtColor === 'white' ? '#f3efe6' : '#101a1b';
-  const roughness = shirtColor === 'white' ? 0.82 : 0.9;
+class ModelFallbackBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  state = {
+    hasError: false,
+  };
+
+  static getDerivedStateFromError() {
+    return {
+      hasError: true,
+    };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('Prototype shirt model unavailable; using flat preview.', error);
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+function PrototypeShirtModel({
+  shirtColor,
+}: {
+  shirtColor: 'black' | 'white';
+}) {
+  const { scene } = useGLTF(PROTOTYPE_SHIRT_MODEL_PATH);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    const material = new THREE.MeshStandardMaterial({
+      color: shirtColor === 'white' ? '#f3efe6' : '#101a1b',
+      roughness: shirtColor === 'white' ? 0.78 : 0.88,
+      metalness: 0.02,
+    });
+
+    clone.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material = material;
+      }
+    });
+
+    return clone;
+  }, [scene, shirtColor]);
 
   return (
-    <group>
-      <mesh castShadow receiveShadow position={[0, 0, -0.05]}>
-        <extrudeGeometry
-          args={[
-            shirtShape,
-            {
-              depth: 0.12,
-              bevelEnabled: true,
-              bevelSegments: 8,
-              bevelSize: 0.035,
-              bevelThickness: 0.035,
-            },
-          ]}
-        />
-        <meshStandardMaterial
-          color={materialColor}
-          roughness={roughness}
-          metalness={0.02}
-        />
-      </mesh>
-
-      <mesh position={[0, 1.18, 0.025]} rotation={[0, 0, 0]}>
-        <torusGeometry args={[0.24, 0.025, 16, 64, Math.PI]} />
-        <meshStandardMaterial
-          color={shirtColor === 'white' ? '#d7d0c4' : '#020505'}
-          roughness={0.86}
-        />
-      </mesh>
-
-      <mesh position={[0, -0.16, 0.075]}>
-        <planeGeometry args={[1.65, 2.1, 32, 32]} />
-        <meshStandardMaterial
-          color={shirtColor === 'white' ? '#fffaf0' : '#101a1b'}
-          transparent
-          opacity={shirtColor === 'white' ? 0.18 : 0.12}
-          roughness={0.9}
-        />
-      </mesh>
-    </group>
+    <primitive
+      object={model}
+      position={[0, -0.1, -0.08]}
+      rotation={[0, Math.PI, 0]}
+      scale={1.35}
+    />
   );
 }
 
@@ -226,7 +250,7 @@ function ConfiguratorScene(props: ShirtConfiguratorProps) {
       <pointLight position={[2.4, -1.4, 2]} intensity={0.85} color="#00ff88" />
 
       <group rotation={[0.08, 0, 0]} position={[0, -0.12, 0]} scale={0.78}>
-        <ShirtBody shirtColor={props.shirtColor} />
+        <PrototypeShirtModel shirtColor={props.shirtColor} />
         <ZonePlane {...props} />
         {props.logoUrl && (
           <Suspense fallback={null}>
@@ -261,53 +285,124 @@ function ConfiguratorScene(props: ShirtConfiguratorProps) {
 export default function ThreeShirtConfigurator(
   props: ShirtConfiguratorProps
 ) {
-  const [webglSupported] = useState(hasWebGLSupport);
+  const [canUse3D] = useState(
+    () => hasWebGLSupport() && !shouldUseFlatPerformanceFallback()
+  );
+  const [modelAvailability, setModelAvailability] = useState<
+    'checking' | 'available' | 'unavailable'
+  >('checking');
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const zone = getEmbroideryZone(props.placementZone);
 
-  if (webglSupported === false) {
+  useEffect(() => {
+    if (!canUse3D) {
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch(PROTOTYPE_SHIRT_MODEL_MANIFEST, {
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        const payload = response.ok
+          ? ((await response.json().catch(() => null)) as {
+              available?: boolean;
+            } | null)
+          : null;
+
+        if (!cancelled) {
+          setModelAvailability(
+            payload?.available ? 'available' : 'unavailable'
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setModelAvailability('unavailable');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canUse3D]);
+
+  useEffect(() => {
+    const element = cardRef.current;
+
+    if (!element || !canUse3D || modelAvailability !== 'available') {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '180px',
+      }
+    );
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [canUse3D, modelAvailability]);
+
+  if (!canUse3D || modelAvailability === 'unavailable') {
     return <FlatShirtConfigurator {...props} />;
   }
 
   return (
-    <div className="shirt-configurator-card" style={cardStyle}>
-      <div style={topBarStyle}>
-        <span style={badgeStyle}>360° preview</span>
-        <span style={metaStyle}>
-          Placement: {zone.label} · Logo size: {formatLogoSize(props.config)}
-        </span>
-      </div>
+    <ModelFallbackBoundary fallback={<FlatShirtConfigurator {...props} />}>
+      <div ref={cardRef} className="shirt-configurator-card" style={cardStyle}>
+        <div style={topBarStyle}>
+          <span style={badgeStyle}>360° prototype</span>
+          <span style={metaStyle}>
+            Placement: {zone.label} · Logo size: {formatLogoSize(props.config)}
+          </span>
+        </div>
 
-      <Canvas
-        shadows
-        dpr={[1, 1.75]}
-        camera={{
-          position: [0, 0.08, 4.8],
-          fov: 36,
-          near: 0.1,
-          far: 100,
-        }}
-        gl={{
-          alpha: true,
-          antialias: true,
-          powerPreference: 'high-performance',
-          preserveDrawingBuffer: true,
-        }}
-        style={{
-          position: 'absolute',
-          inset: 0,
-        }}
-      >
-        <fog attach="fog" args={['#050607', 5.5, 8]} />
-        <Suspense fallback={null}>
-          <ConfiguratorScene {...props} />
-        </Suspense>
-      </Canvas>
+        {modelAvailability === 'available' && isVisible ? (
+          <Canvas
+            shadows
+            dpr={[1, 1.75]}
+            camera={{
+              position: [0, 0.08, 4.8],
+              fov: 36,
+              near: 0.1,
+              far: 100,
+            }}
+            gl={{
+              alpha: true,
+              antialias: true,
+              powerPreference: 'high-performance',
+              preserveDrawingBuffer: true,
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+            }}
+          >
+            <fog attach="fog" args={['#050607', 5.5, 8]} />
+            <Suspense fallback={null}>
+              <ConfiguratorScene {...props} />
+            </Suspense>
+          </Canvas>
+        ) : (
+          <div style={loadingStyle}>Loading 3D preview...</div>
+        )}
 
-      <div style={bottomHintStyle}>
-        Drag to rotate the shirt. Drag the logo within the highlighted
-        embroidery zone.
+        <div style={bottomHintStyle}>
+          Drag to rotate the shirt. Drag the logo within the highlighted
+          embroidery zone.
+        </div>
       </div>
-    </div>
+    </ModelFallbackBoundary>
   );
 }
 
@@ -354,6 +449,17 @@ const metaStyle: CSSProperties = {
   color: 'rgba(245,247,248,0.72)',
   fontSize: 13,
   fontWeight: 750,
+};
+
+const loadingStyle: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  color: '#9dffc4',
+  fontWeight: 850,
+  background:
+    'radial-gradient(circle at 50% 35%, rgba(0,255,136,0.13), transparent 28%)',
 };
 
 const bottomHintStyle: CSSProperties = {

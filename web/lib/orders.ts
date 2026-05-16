@@ -98,11 +98,13 @@ export type OrderRecord = {
 };
 
 export type OrderDesignConfig = {
+  placement?: string;
   placement_zone?: string;
   logo_position_x?: number;
   logo_position_y?: number;
   logo_width_mm?: number;
   logo_height_mm?: number;
+  logo_scale?: number;
   shirt_color?: string;
 };
 
@@ -406,6 +408,10 @@ function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
     config.placement_zone = source.placement_zone;
   }
 
+  if (typeof source.placement === 'string') {
+    config.placement = source.placement;
+  }
+
   if (typeof source.shirt_color === 'string') {
     config.shirt_color = source.shirt_color;
   }
@@ -415,6 +421,7 @@ function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
     'logo_position_y',
     'logo_width_mm',
     'logo_height_mm',
+    'logo_scale',
   ] as const) {
     const parsedValue = parseNumber(source[key]);
 

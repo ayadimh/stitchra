@@ -29,6 +29,7 @@ export type LogoPlacementConfig = {
   logo_position_y: number;
   logo_width_mm: number;
   logo_height_mm: number;
+  logo_scale: number;
   shirt_color: 'black' | 'white';
 };
 
@@ -115,6 +116,7 @@ export function clampLogoPlacementConfig(
     ),
     logo_width_mm: size.widthMm,
     logo_height_mm: size.heightMm,
+    logo_scale: Number((size.widthMm / zone.maxWidthMm).toFixed(4)),
   };
 }
 
@@ -137,6 +139,7 @@ export function getDefaultLogoPlacementConfig(
       logo_position_y: 0.5,
       logo_width_mm: size.widthMm,
       logo_height_mm: size.heightMm,
+      logo_scale: Number((size.widthMm / zone.maxWidthMm).toFixed(4)),
       shirt_color: shirtColor,
     },
     aspectRatio || zone.defaultWidthMm / zone.defaultHeightMm
