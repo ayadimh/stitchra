@@ -70,6 +70,10 @@ export async function POST(request: Request) {
       placement: body.placement,
       shirt_color: body.shirt_color,
       logo_preview_url: body.logo_preview_url || undefined,
+      design_config:
+        body.design_config && typeof body.design_config === 'object'
+          ? body.design_config
+          : undefined,
       stitches: body.stitches,
       colors: body.colors,
       coverage: body.coverage,

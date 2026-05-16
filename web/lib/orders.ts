@@ -58,6 +58,7 @@ export type OrderRecord = {
   placement: string;
   shirt_color: string;
   logo_preview_url: string | null;
+  design_config: OrderDesignConfig | null;
   stitches: number;
   colors: number;
   coverage: number;
@@ -96,6 +97,15 @@ export type OrderRecord = {
   archive_reason: string | null;
 };
 
+export type OrderDesignConfig = {
+  placement_zone?: string;
+  logo_position_x?: number;
+  logo_position_y?: number;
+  logo_width_mm?: number;
+  logo_height_mm?: number;
+  shirt_color?: string;
+};
+
 export type CreateOrderInput = {
   customer_name: string;
   customer_email: string;
@@ -106,6 +116,7 @@ export type CreateOrderInput = {
   placement: string;
   shirt_color: string;
   logo_preview_url?: string;
+  design_config?: OrderDesignConfig | null;
   stitches: number;
   colors: number;
   coverage: number;
@@ -383,6 +394,38 @@ function parseJsonArray(value: unknown) {
   return [];
 }
 
+function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const source = value as Record<string, unknown>;
+  const config: OrderDesignConfig = {};
+
+  if (typeof source.placement_zone === 'string') {
+    config.placement_zone = source.placement_zone;
+  }
+
+  if (typeof source.shirt_color === 'string') {
+    config.shirt_color = source.shirt_color;
+  }
+
+  for (const key of [
+    'logo_position_x',
+    'logo_position_y',
+    'logo_width_mm',
+    'logo_height_mm',
+  ] as const) {
+    const parsedValue = parseNumber(source[key]);
+
+    if (parsedValue !== null) {
+      config[key] = parsedValue;
+    }
+  }
+
+  return Object.keys(config).length > 0 ? config : null;
+}
+
 function parseNumber(value: unknown) {
   if (value === null || value === undefined || value === '') {
     return null;
@@ -514,6 +557,7 @@ function parseOrder(
     logo_preview_url: row.logo_preview_url
       ? String(row.logo_preview_url)
       : null,
+    design_config: parseOrderDesignConfig(row.design_config),
     stitches: Number(row.stitches),
     colors: Number(row.colors),
     coverage: Number(row.coverage),
@@ -737,43 +781,63 @@ export async function createOrder(input: CreateOrderInput) {
   const status: OrderStatus = pricing.manual_quote
     ? 'needs_review'
     : 'new';
-  const rows = await supabaseRequest<SupabaseOrderRow[]>(
-    'orders?select=*',
-    {
+  const insertBody: Record<string, unknown> = {
+    customer_name: input.customer_name,
+    public_token: createPublicToken(),
+    customer_email: input.customer_email,
+    customer_phone: input.customer_phone || null,
+    quantity: input.quantity,
+    customer_note: input.note || null,
+    prompt: input.prompt || null,
+    placement: input.placement,
+    shirt_color: input.shirt_color,
+    logo_preview_url: input.logo_preview_url || null,
+    design_config: input.design_config ?? null,
+    stitches: input.stitches,
+    colors: input.colors,
+    coverage: input.coverage,
+    customer_price_eur: pricing.customer_price_eur,
+    internal_cost_eur: pricing.internal_cost_eur,
+    estimated_profit_eur: pricing.estimated_profit_eur,
+    profit_margin_percent: pricing.profit_margin_percent,
+    pricing_tier: pricing.pricing_tier,
+    manual_quote: pricing.manual_quote,
+    warnings: input.warnings ?? [],
+    recommendations: input.recommendations ?? [],
+    production_notes: '',
+    cost_breakdown: pricing.cost_breakdown,
+    customer_decision: 'pending',
+    payment_status: 'unpaid',
+    status,
+  };
+  let rows: SupabaseOrderRow[];
+
+  try {
+    rows = await supabaseRequest<SupabaseOrderRow[]>('orders?select=*', {
       method: 'POST',
       headers: {
         Prefer: 'return=representation',
       },
-      body: JSON.stringify({
-        customer_name: input.customer_name,
-        public_token: createPublicToken(),
-        customer_email: input.customer_email,
-        customer_phone: input.customer_phone || null,
-        quantity: input.quantity,
-        customer_note: input.note || null,
-        prompt: input.prompt || null,
-        placement: input.placement,
-        shirt_color: input.shirt_color,
-        logo_preview_url: input.logo_preview_url || null,
-        stitches: input.stitches,
-        colors: input.colors,
-        coverage: input.coverage,
-        customer_price_eur: pricing.customer_price_eur,
-        internal_cost_eur: pricing.internal_cost_eur,
-        estimated_profit_eur: pricing.estimated_profit_eur,
-        profit_margin_percent: pricing.profit_margin_percent,
-        pricing_tier: pricing.pricing_tier,
-        manual_quote: pricing.manual_quote,
-        warnings: input.warnings ?? [],
-        recommendations: input.recommendations ?? [],
-        production_notes: '',
-        cost_breakdown: pricing.cost_breakdown,
-        customer_decision: 'pending',
-        payment_status: 'unpaid',
-        status,
-      }),
+      body: JSON.stringify(insertBody),
+    });
+  } catch (error) {
+    if (getMissingOrderColumn(error) === 'design_config') {
+      delete insertBody.design_config;
+      console.error('[orders.createOrder] optional column unavailable', {
+        column: 'design_config',
+        error_message: getOrderErrorMessage(error),
+      });
+      rows = await supabaseRequest<SupabaseOrderRow[]>('orders?select=*', {
+        method: 'POST',
+        headers: {
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify(insertBody),
+      });
+    } else {
+      throw error;
     }
-  );
+  }
 
   return rows[0] ? parseOrder(rows[0], pricingSettings) : null;
 }

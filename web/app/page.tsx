@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import type {
   CSSProperties,
@@ -7,6 +8,16 @@ import type {
   ReactNode,
 } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  clampLogoPlacementConfig,
+  formatLogoSize,
+  getDefaultLogoPlacementConfig,
+  getEmbroideryZone,
+  getMaxLogoWidthForAspect,
+  type EmbroideryZoneId,
+  type LogoPlacementConfig,
+} from '@/lib/embroideryZones';
+import { evaluateMachineCapability } from '@/lib/machineLimits';
 import {
   createTranslator,
   getLocaleDirection,
@@ -21,6 +32,14 @@ import {
 const API =
   process.env.NEXT_PUBLIC_API_URL ??
   'https://stitchra-production.up.railway.app';
+
+const ThreeShirtConfigurator = dynamic(
+  () => import('@/components/configurator/ThreeShirtConfigurator'),
+  {
+    ssr: false,
+    loading: () => <ConfiguratorLoadingCard />,
+  }
+);
 
 const PRACTICAL_THREAD_COLOR_LIMIT = 15;
 
@@ -127,6 +146,11 @@ type OrderFormErrors = Partial<
   Record<keyof OrderFormState, string>
 >;
 
+const placementZoneByPreset: Record<Placement, EmbroideryZoneId> = {
+  left: 'left_chest',
+  center: 'center_front',
+};
+
 const emailPattern =
   /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const phonePattern = /^[+\d\s()-]+$/;
@@ -208,6 +232,22 @@ async function blobToDataUrl(blob: Blob) {
   });
 }
 
+async function getImageAspectRatio(src: string) {
+  return new Promise<number>((resolve) => {
+    const image = new window.Image();
+
+    image.onload = () => {
+      resolve(
+        image.naturalWidth > 0 && image.naturalHeight > 0
+          ? image.naturalWidth / image.naturalHeight
+          : 70 / 45
+      );
+    };
+    image.onerror = () => resolve(70 / 45);
+    image.src = src;
+  });
+}
+
 function getPublicQuote(estimate: Estimate): PublicQuote {
   return (
     estimate.public_quote ?? {
@@ -278,6 +318,11 @@ export default function Home({ locale }: HomeProps = {}) {
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [logoAspectRatio, setLogoAspectRatio] = useState(70 / 45);
+  const [logoPlacementConfig, setLogoPlacementConfig] =
+    useState<LogoPlacementConfig>(() =>
+      getDefaultLogoPlacementConfig('left_chest', 'black')
+    );
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -318,11 +363,24 @@ export default function Home({ locale }: HomeProps = {}) {
     []
   );
 
+  const placementZoneId = placementZoneByPreset[placement];
+  const selectedZone = getEmbroideryZone(placementZoneId);
   const preset = placementPresets[placement];
-  const placementSize =
-    placement === 'left'
-      ? { width: 90, height: 60 }
-      : { width: 250, height: 200 };
+  const placementSize = {
+    width: Math.round(logoPlacementConfig.logo_width_mm),
+    height: Math.round(logoPlacementConfig.logo_height_mm),
+  };
+  const maxLogoWidthMm = getMaxLogoWidthForAspect(
+    placementZoneId,
+    logoAspectRatio
+  );
+  const capabilityPreview = evaluateMachineCapability({
+    zoneId: placementZoneId,
+    widthMm: logoPlacementConfig.logo_width_mm,
+    heightMm: logoPlacementConfig.logo_height_mm,
+    colors: Math.max(1, logoAnalysis?.colors_count ?? 3),
+    stitches: estimate?.stitches ?? null,
+  });
   const publicQuote = estimate
     ? getPublicQuote(estimate)
     : null;
@@ -331,6 +389,59 @@ export default function Home({ locale }: HomeProps = {}) {
   const galleryItems = getGalleryItems(activeLocale);
   const craftStats = getCraftStats(activeLocale);
   const faqItems = getFaqItems(activeLocale);
+
+  const applyLogoPreview = async (src: string) => {
+    setPreview(src);
+    const aspectRatio = await getImageAspectRatio(src);
+
+    setLogoAspectRatio(aspectRatio);
+    setLogoPlacementConfig((current) =>
+      clampLogoPlacementConfig(
+        {
+          ...current,
+          logo_height_mm: current.logo_width_mm / aspectRatio,
+          shirt_color: teeColor,
+        },
+        aspectRatio
+      )
+    );
+  };
+
+  const updatePlacement = (nextPlacement: Placement) => {
+    const nextZoneId = placementZoneByPreset[nextPlacement];
+
+    setPlacement(nextPlacement);
+    setEstimate(null);
+    setStatus('');
+    setError('');
+    setLogoPlacementConfig(
+      getDefaultLogoPlacementConfig(nextZoneId, teeColor, logoAspectRatio)
+    );
+  };
+
+  const updateShirtColor = (nextColor: TeeColor) => {
+    setTeeColor(nextColor);
+    setLogoPlacementConfig((current) => ({
+      ...current,
+      shirt_color: nextColor,
+    }));
+  };
+
+  const updateLogoPlacementConfig = (nextConfig: LogoPlacementConfig) => {
+    setLogoPlacementConfig(
+      clampLogoPlacementConfig(
+        {
+          ...nextConfig,
+          placement_zone: placementZoneId,
+          shirt_color: teeColor,
+        },
+        logoAspectRatio
+      )
+    );
+    setEstimate(null);
+    setOrderStatus('');
+    setOrderError('');
+  };
 
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -349,7 +460,7 @@ export default function Home({ locale }: HomeProps = {}) {
       return;
     }
 
-    setPreview(await blobToDataUrl(selectedFile));
+    await applyLogoPreview(await blobToDataUrl(selectedFile));
     setIsAnalyzing(true);
     setStatus(t('status.analyzingLogo'));
 
@@ -378,7 +489,7 @@ export default function Home({ locale }: HomeProps = {}) {
       );
 
       setFile(processedFile);
-      setPreview(analysis.processed_png);
+      await applyLogoPreview(analysis.processed_png);
       setLogoAnalysis(analysis);
       setStatus(
         analysis.colors_count <= PRACTICAL_THREAD_COLOR_LIMIT
@@ -460,7 +571,7 @@ export default function Home({ locale }: HomeProps = {}) {
       const previewDataUrl = await blobToDataUrl(blob);
 
       setFile(generatedFile);
-      setPreview(previewDataUrl);
+      await applyLogoPreview(previewDataUrl);
       setLogoAnalysis(null);
 
       setStatus(t('status.generated'));
@@ -480,6 +591,21 @@ export default function Home({ locale }: HomeProps = {}) {
       return;
     }
 
+    const capability = evaluateMachineCapability({
+      zoneId: placementZoneId,
+      widthMm: logoPlacementConfig.logo_width_mm,
+      heightMm: logoPlacementConfig.logo_height_mm,
+      colors: Math.max(1, logoAnalysis?.colors_count ?? 3),
+    });
+
+    if (capability.blocked) {
+      setError(
+        capability.message ??
+          'This design is too large for the selected placement. Reduce size or choose another placement.'
+      );
+      return;
+    }
+
     setIsEstimating(true);
 
     try {
@@ -487,15 +613,9 @@ export default function Home({ locale }: HomeProps = {}) {
 
       fd.append('file', file);
 
-      fd.append(
-        'width_mm',
-        placement === 'left' ? '90' : '250'
-      );
+      fd.append('width_mm', String(placementSize.width));
 
-      fd.append(
-        'height_mm',
-        placement === 'left' ? '60' : '200'
-      );
+      fd.append('height_mm', String(placementSize.height));
 
       fd.append(
         'colors',
@@ -553,6 +673,40 @@ export default function Home({ locale }: HomeProps = {}) {
             },
           };
         }
+      }
+
+      const estimatedCapability = evaluateMachineCapability({
+        zoneId: placementZoneId,
+        widthMm: logoPlacementConfig.logo_width_mm,
+        heightMm: logoPlacementConfig.logo_height_mm,
+        colors: data.colors,
+        stitches: data.stitches,
+      });
+
+      if (estimatedCapability.blocked) {
+        setError(
+          estimatedCapability.message ??
+            'This design is too large for the selected placement. Reduce size or choose another placement.'
+        );
+        return;
+      }
+
+      if (estimatedCapability.reviewRequired) {
+        pricedEstimate = {
+          ...pricedEstimate,
+          manual_quote: true,
+          pricing_tier: 'studio_review',
+          public_quote: {
+            ...getPublicQuote(pricedEstimate),
+            manual_quote: true,
+            pricing_tier: 'studio_review',
+            customer_warnings: [
+              estimatedCapability.message ??
+                'Studio review recommended for this design.',
+              ...getPublicQuote(pricedEstimate).customer_warnings,
+            ],
+          },
+        };
       }
 
       const customerQuote = getPublicQuote(pricedEstimate);
@@ -618,6 +772,22 @@ export default function Home({ locale }: HomeProps = {}) {
           placement: preset.label,
           shirt_color: teeColor,
           logo_preview_url: preview ?? undefined,
+          design_config: {
+            placement_zone: placementZoneId,
+            logo_position_x: Number(
+              logoPlacementConfig.logo_position_x.toFixed(4)
+            ),
+            logo_position_y: Number(
+              logoPlacementConfig.logo_position_y.toFixed(4)
+            ),
+            logo_width_mm: Number(
+              logoPlacementConfig.logo_width_mm.toFixed(1)
+            ),
+            logo_height_mm: Number(
+              logoPlacementConfig.logo_height_mm.toFixed(1)
+            ),
+            shirt_color: teeColor,
+          },
           stitches: publicQuote.stitches,
           colors: publicQuote.colors,
           coverage: publicQuote.coverage,
@@ -2154,7 +2324,7 @@ export default function Home({ locale }: HomeProps = {}) {
               <select
                 value={placement}
                 onChange={(e) =>
-                  setPlacement(
+                  updatePlacement(
                     e.target.value ===
                       'center'
                       ? 'center'
@@ -2195,7 +2365,7 @@ export default function Home({ locale }: HomeProps = {}) {
                         key={color}
                         type="button"
                         onClick={() =>
-                          setTeeColor(color)
+                          updateShirtColor(color)
                         }
                         style={{
                           minHeight: 54,
@@ -2246,15 +2416,62 @@ export default function Home({ locale }: HomeProps = {}) {
                 {t('designer.uploadLogo')}
               </label>
 
-              <input
-                className="stitchra-file-input"
-                type="file"
-                accept="image/*"
-                onChange={onFile}
-                style={{
-                  color: '#fff',
-                }}
-              />
+              <label className="stitchra-upload-box">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onFile}
+                />
+                <span className="stitchra-upload-button">Choose logo</span>
+                <span className="stitchra-upload-copy">
+                  {file
+                    ? file.name
+                    : 'PNG, JPG or transparent artwork'}
+                </span>
+              </label>
+
+              <div style={configuratorControlPanel}>
+                <div style={configuratorControlHeader}>
+                  <strong>Logo placement</strong>
+                  <span>{selectedZone.label}</span>
+                </div>
+                <label style={sliderLabel}>
+                  Logo size: {formatLogoSize(logoPlacementConfig)}
+                  <input
+                    type="range"
+                    min="20"
+                    max={Math.round(maxLogoWidthMm)}
+                    step="1"
+                    value={Math.round(logoPlacementConfig.logo_width_mm)}
+                    onChange={(event) => {
+                      const widthMm = Number(event.target.value);
+
+                      updateLogoPlacementConfig({
+                        ...logoPlacementConfig,
+                        logo_width_mm: widthMm,
+                        logo_height_mm: widthMm / logoAspectRatio,
+                      });
+                    }}
+                    style={rangeInput}
+                  />
+                </label>
+                <p style={configuratorHint}>
+                  Drag the logo on the shirt preview. The placement zone
+                  is locked to current embroidery limits.
+                </p>
+                {capabilityPreview.message && (
+                  <p
+                    style={{
+                      ...configuratorWarning,
+                      color: capabilityPreview.blocked
+                        ? '#ffb4b4'
+                        : '#ffe083',
+                    }}
+                  >
+                    {capabilityPreview.message}
+                  </p>
+                )}
+              </div>
 
               <label style={label}>
                 {t('designer.describeIdea')}
@@ -2805,17 +3022,13 @@ export default function Home({ locale }: HomeProps = {}) {
             </div>
           </HoverCard>
 
-          <DesignerPreview
-            preview={preview}
-            preset={preset}
-            placementLabel={
-              placement === 'left'
-                ? t('placement.left')
-                : t('placement.center')
-            }
-            previewTopLabel={t('designer.previewTopLabel')}
-            logoLabel={t('designer.logo')}
-            teeColor={teeColor}
+          <ThreeShirtConfigurator
+            logoUrl={preview}
+            shirtColor={teeColor}
+            placementZone={placementZoneId}
+            config={logoPlacementConfig}
+            logoAspectRatio={logoAspectRatio}
+            onConfigChange={updateLogoPlacementConfig}
           />
         </div>
       </section>
@@ -3775,6 +3988,8 @@ function MannequinPreview({
   );
 }
 
+// Kept temporarily as a legacy 2D preview reference while the 3D configurator settles.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function DesignerPreview({
   preview,
   preset,
@@ -3870,6 +4085,50 @@ function GlobalVisualStyles() {
           color: #06100a;
           font-weight: 850;
           cursor: pointer;
+        }
+
+        .stitchra-upload-box {
+          width: 100%;
+          min-height: 92px;
+          display: grid;
+          grid-template-columns: minmax(130px, auto) minmax(0, 1fr);
+          align-items: center;
+          gap: 14px;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background:
+            linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.028));
+          cursor: pointer;
+        }
+
+        .stitchra-upload-box input {
+          position: absolute;
+          inline-size: 1px;
+          block-size: 1px;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .stitchra-upload-button {
+          min-height: 44px;
+          padding: 0 16px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #f7fff9, #dff7ff);
+          color: #06100a;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .stitchra-upload-copy {
+          min-width: 0;
+          color: rgba(245,247,248,0.62);
+          font-size: 13px;
+          line-height: 1.4;
+          overflow-wrap: anywhere;
         }
 
         .designer-section {
@@ -4467,6 +4726,16 @@ function GlobalVisualStyles() {
             margin: 0 0 8px;
           }
 
+          .stitchra-upload-box {
+            grid-template-columns: 1fr;
+            padding: 14px;
+            gap: 10px;
+          }
+
+          .stitchra-upload-button {
+            width: 100%;
+          }
+
           .designer-preview-card {
             min-height: 560px !important;
             border-radius: 28px !important;
@@ -4692,6 +4961,29 @@ function Metric({
           {helper}
         </div>
       )}
+    </div>
+  );
+}
+
+function ConfiguratorLoadingCard() {
+  return (
+    <div
+      className="designer-preview-card"
+      style={{
+        minHeight: 650,
+        borderRadius: 36,
+        display: 'grid',
+        placeItems: 'center',
+        border: '1px solid rgba(255,255,255,0.10)',
+        background:
+          'linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))',
+        color: '#9dffc4',
+        fontWeight: 850,
+        boxShadow:
+          '0 44px 130px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.08)',
+      }}
+    >
+      Loading 3D preview...
     </div>
   );
 }
@@ -5414,6 +5706,52 @@ const formError: CSSProperties = {
   fontSize: 13,
   lineHeight: 1.45,
   marginTop: 2,
+};
+
+const configuratorControlPanel: CSSProperties = {
+  display: 'grid',
+  gap: 12,
+  padding: 16,
+  borderRadius: 20,
+  border: '1px solid rgba(124,240,212,0.18)',
+  background:
+    'linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,200,255,0.045)), rgba(255,255,255,0.035)',
+};
+
+const configuratorControlHeader: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  alignItems: 'center',
+  color: 'rgba(245,247,248,0.72)',
+  fontSize: 13,
+};
+
+const sliderLabel: CSSProperties = {
+  display: 'grid',
+  gap: 10,
+  color: '#f5f7f8',
+  fontSize: 13,
+  fontWeight: 850,
+};
+
+const rangeInput: CSSProperties = {
+  width: '100%',
+  accentColor: '#00ff88',
+};
+
+const configuratorHint: CSSProperties = {
+  margin: 0,
+  color: 'rgba(245,247,248,0.62)',
+  fontSize: 13,
+  lineHeight: 1.45,
+};
+
+const configuratorWarning: CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.45,
+  fontWeight: 750,
 };
 
 const label: CSSProperties = {

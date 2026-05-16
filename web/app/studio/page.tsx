@@ -57,6 +57,15 @@ type EstimateResponse = {
   internal_quote?: InternalQuote;
 };
 
+type OrderDesignConfig = {
+  placement_zone?: string;
+  logo_position_x?: number;
+  logo_position_y?: number;
+  logo_width_mm?: number;
+  logo_height_mm?: number;
+  shirt_color?: string;
+};
+
 type OrderStatus =
   | 'new'
   | 'needs_review'
@@ -91,6 +100,7 @@ type OrderRecord = {
   placement: string;
   shirt_color: string;
   logo_preview_url: string | null;
+  design_config: OrderDesignConfig | null;
   stitches: number;
   colors: number;
   coverage: number;
@@ -374,6 +384,32 @@ function formatPlacement(value: string) {
   }
 
   return formatOrderValue(value);
+}
+
+function formatDesignPosition(config: OrderDesignConfig | null) {
+  if (
+    config?.logo_position_x === undefined ||
+    config.logo_position_y === undefined
+  ) {
+    return 'Not provided';
+  }
+
+  return `${Math.round(config.logo_position_x * 100)}% x ${Math.round(
+    config.logo_position_y * 100
+  )}%`;
+}
+
+function formatDesignSize(config: OrderDesignConfig | null) {
+  if (
+    config?.logo_width_mm === undefined ||
+    config.logo_height_mm === undefined
+  ) {
+    return 'Not provided';
+  }
+
+  return `${Math.round(config.logo_width_mm)} x ${Math.round(
+    config.logo_height_mm
+  )} mm`;
 }
 
 function getEffectiveCustomerPrice(
@@ -3350,6 +3386,29 @@ function OrdersDashboard({
                         <Meta
                           label="Shirt color"
                           value={formatOrderValue(selectedOrder.shirt_color)}
+                        />
+                        <Meta
+                          label="Placement zone"
+                          value={
+                            selectedOrder.design_config?.placement_zone
+                              ? formatPlacement(
+                                  selectedOrder.design_config
+                                    .placement_zone
+                                )
+                              : formatPlacement(selectedOrder.placement)
+                          }
+                        />
+                        <Meta
+                          label="Logo size"
+                          value={formatDesignSize(
+                            selectedOrder.design_config
+                          )}
+                        />
+                        <Meta
+                          label="Logo position"
+                          value={formatDesignPosition(
+                            selectedOrder.design_config
+                          )}
                         />
                         <label style={fieldLabelCompact}>
                           Quantity
