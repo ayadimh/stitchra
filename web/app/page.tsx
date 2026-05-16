@@ -6,7 +6,17 @@ import type {
   FormEvent,
   ReactNode,
 } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  createTranslator,
+  getLocaleDirection,
+  getLocalizedArray,
+  localeLabels,
+  locales,
+  resolveLocale,
+  type Locale,
+  type Translator,
+} from '@/lib/i18n';
 
 const API =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -132,7 +142,10 @@ const placementPresets = {
   },
 } as const;
 
-function validateOrderForm(form: OrderFormState) {
+function validateOrderForm(
+  form: OrderFormState,
+  t: Translator
+) {
   const errors: OrderFormErrors = {};
   const name = form.name.trim();
   const email = form.email.trim();
@@ -140,28 +153,27 @@ function validateOrderForm(form: OrderFormState) {
   const quantity = Number(form.quantity);
 
   if (!name) {
-    errors.name = 'Name is required.';
+    errors.name = t('validation.nameRequired');
   }
 
   if (!email) {
-    errors.email = 'Email is required.';
+    errors.email = t('validation.emailRequired');
   } else if (!emailPattern.test(email)) {
-    errors.email = 'Enter a valid email address.';
+    errors.email = t('validation.emailInvalid');
   }
 
   if (phone) {
     const digitCount = phone.replace(/\D/g, '').length;
 
     if (!phonePattern.test(phone) || digitCount < 7) {
-      errors.phone =
-        'Use +, spaces, digits, brackets or dashes, with at least 7 digits.';
+      errors.phone = t('validation.phoneInvalid');
     }
   }
 
   if (!form.quantity.trim()) {
-    errors.quantity = 'Quantity is required.';
+    errors.quantity = t('validation.quantityRequired');
   } else if (!Number.isInteger(quantity) || quantity < 1) {
-    errors.quantity = 'Quantity must be at least 1.';
+    errors.quantity = t('validation.quantityInvalid');
   }
 
   return errors;
@@ -211,7 +223,7 @@ function getPublicQuote(estimate: Estimate): PublicQuote {
   );
 }
 
-function formatPricingTier(value: string) {
+function formatPricingTier(value: string, t: Translator) {
   const normalized = value
     .toLowerCase()
     .replace(/[_-]+/g, ' ');
@@ -221,15 +233,15 @@ function formatPricingTier(value: string) {
     normalized.includes('complex') ||
     normalized.includes('review')
   ) {
-    return 'Studio review';
+    return t('pricingTier.review');
   }
 
   if (normalized.includes('left')) {
-    return 'Left chest';
+    return t('pricingTier.left');
   }
 
   if (normalized.includes('center') || normalized.includes('front')) {
-    return 'Center front';
+    return t('pricingTier.center');
   }
 
   return normalized
@@ -239,7 +251,29 @@ function formatPricingTier(value: string) {
     .join(' ');
 }
 
-export default function Home() {
+type HomeProps = {
+  locale?: Locale;
+};
+
+function useHtmlLocale(locale: Locale) {
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = getLocaleDirection(locale);
+
+    return () => {
+      document.documentElement.lang = 'en';
+      document.documentElement.dir = 'ltr';
+    };
+  }, [locale]);
+}
+
+export default function Home({ locale }: HomeProps = {}) {
+  const activeLocale = resolveLocale(locale);
+  const t = createTranslator(activeLocale);
+  const dir = getLocaleDirection(activeLocale);
+
+  useHtmlLocale(activeLocale);
+
   const [placement, setPlacement] = useState<Placement>('left');
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
   const [file, setFile] = useState<File | null>(null);
@@ -292,6 +326,11 @@ export default function Home() {
   const publicQuote = estimate
     ? getPublicQuote(estimate)
     : null;
+  const processSteps = getProcessSteps(activeLocale);
+  const features = getFeatures(activeLocale);
+  const galleryItems = getGalleryItems(activeLocale);
+  const craftStats = getCraftStats(activeLocale);
+  const faqItems = getFaqItems(activeLocale);
 
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -312,7 +351,7 @@ export default function Home() {
 
     setPreview(await blobToDataUrl(selectedFile));
     setIsAnalyzing(true);
-    setStatus('Analyzing logo...');
+    setStatus(t('status.analyzingLogo'));
 
     try {
       const formData = new FormData();
@@ -326,7 +365,7 @@ export default function Home() {
 
       if (!response.ok) {
         setStatus(
-          'Logo uploaded — automatic cleanup unavailable.'
+          t('status.cleanupUnavailable')
         );
         return;
       }
@@ -343,12 +382,12 @@ export default function Home() {
       setLogoAnalysis(analysis);
       setStatus(
         analysis.colors_count <= PRACTICAL_THREAD_COLOR_LIMIT
-          ? 'Logo cleaned and ready for embroidery.'
-          : 'Logo cleaned — manual color review may be needed.'
+          ? t('status.logoReady')
+          : t('status.manualColorReview')
       );
     } catch {
       setStatus(
-        'Logo uploaded — automatic cleanup unavailable.'
+        t('status.cleanupUnavailable')
       );
     } finally {
       setIsAnalyzing(false);
@@ -360,7 +399,7 @@ export default function Home() {
     setStatus('');
 
     if (!logoPrompt.trim()) {
-      setError('Describe your logo first.');
+      setError(t('status.describeLogoFirst'));
       return;
     }
 
@@ -387,7 +426,7 @@ export default function Home() {
       );
 
       if (!prepareResponse.ok) {
-        setError('Design preparation failed.');
+        setError(t('status.designPreparationFailed'));
         return;
       }
 
@@ -409,7 +448,7 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        setError('Generator failed.');
+        setError(t('status.generatorFailed'));
         return;
       }
 
@@ -424,9 +463,9 @@ export default function Home() {
       setPreview(previewDataUrl);
       setLogoAnalysis(null);
 
-      setStatus('Embroidery-ready design generated.');
+      setStatus(t('status.generated'));
     } catch {
-      setError('Network error.');
+      setError(t('status.networkError'));
     } finally {
       setIsGenerating(false);
     }
@@ -437,7 +476,7 @@ export default function Home() {
     setStatus('');
 
     if (!file) {
-      setError('Upload a logo first.');
+      setError(t('status.uploadLogoFirst'));
       return;
     }
 
@@ -469,7 +508,7 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        setError('Estimator failed.');
+        setError(t('status.estimatorFailed'));
         return;
       }
 
@@ -524,11 +563,11 @@ export default function Home() {
 
       setStatus(
         customerQuote.manual_quote
-          ? 'Manual quote needed.'
-          : 'Quote ready.'
+          ? t('status.manualQuoteNeeded')
+          : t('status.quoteReady')
       );
     } catch {
-      setError('Network error.');
+      setError(t('status.networkError'));
     } finally {
       setIsEstimating(false);
     }
@@ -540,11 +579,11 @@ export default function Home() {
     setOrderStatus('');
 
     if (!estimate || !publicQuote) {
-      setOrderError('Get a quote before requesting an order.');
+      setOrderError(t('status.getQuoteBeforeOrder'));
       return;
     }
 
-    const validationErrors = validateOrderForm(orderForm);
+    const validationErrors = validateOrderForm(orderForm, t);
 
     if (Object.keys(validationErrors).length > 0) {
       setOrderFieldErrors(validationErrors);
@@ -553,7 +592,7 @@ export default function Home() {
           validationErrors.name ??
           validationErrors.phone ??
           validationErrors.quantity ??
-          'Please fix the highlighted fields.'
+          t('status.fixFields')
       );
       return;
     }
@@ -616,16 +655,16 @@ export default function Home() {
         setOrderError(
           payload.details ??
             payload.message ??
-            'Database not configured.'
+            t('status.databaseNotConfigured')
         );
         return;
       }
 
-      setOrderStatus('Request sent. We will review your design.');
+      setOrderStatus(t('status.requestSent'));
       setOrderFieldErrors({});
       setOrderOpen(false);
     } catch (error) {
-      setOrderError('Could not send this order request.');
+      setOrderError(t('status.orderSendFailed'));
       console.error(error);
     } finally {
       setIsRequestingOrder(false);
@@ -649,6 +688,8 @@ export default function Home() {
 
   return (
     <main
+      lang={activeLocale}
+      dir={dir}
       style={{
         minHeight: '100vh',
         background: bg,
@@ -663,7 +704,7 @@ export default function Home() {
       <BackgroundEffects />
       <GlobalVisualStyles />
 
-      <Header />
+      <Header locale={activeLocale} t={t} />
 
       <section
         id="hero"
@@ -1795,25 +1836,25 @@ export default function Home() {
           <div className="hero-copy-panel">
             <div className="hero-kicker">
               <span className="hero-kicker-dot" />
-              AI embroidery atelier
+              {t('hero.kicker')}
             </div>
 
             <h1 className="hero-title">
-              Design.
+              {t('hero.title1')}
               <br />
-              Preview.
+              {t('hero.title2')}
               <span className="hero-title-accent">
                 <span className="hero-title-accent-part">
-                  Stitch
+                  {t('hero.title3')}
                 </span>
                 <span className="hero-title-accent-part">
-                  it right.
+                  {t('hero.title4')}
                 </span>
               </span>
             </h1>
 
             <p className="hero-subcopy">
-              Turn a logo idea into a premium embroidered T-shirt. See the fabric, placement and price before the first stitch is made.
+              {t('hero.subtitle')}
             </p>
 
             <div className="hero-actions">
@@ -1822,7 +1863,7 @@ export default function Home() {
                 className="lux-button"
                 style={primaryButton}
               >
-                Start Designing →
+                {t('nav.start')}
               </a>
 
               <a
@@ -1830,35 +1871,37 @@ export default function Home() {
                 className="lux-button"
                 style={secondaryButton}
               >
-                See Craft Quality
+                {t('hero.secondaryCta')}
               </a>
             </div>
 
             <div className="hero-proof-strip">
               <div className="hero-proof-item">
                 <div className="hero-proof-label">
-                  Studio
+                  {t('hero.proofStudioLabel')}
                 </div>
                 <div className="hero-proof-value">
-                  Premium finish
+                  {t('hero.proofStudioValue')}
                 </div>
               </div>
 
               <div className="hero-proof-item">
                 <div className="hero-proof-label">
-                  Artwork
+                  {t('hero.proofArtworkLabel')}
                 </div>
                 <div className="hero-proof-value">
-                  {preview ? 'Logo ready' : 'AI or upload'}
+                  {preview
+                    ? t('hero.proofArtworkReady')
+                    : t('hero.proofArtworkDefault')}
                 </div>
               </div>
 
               <div className="hero-proof-item">
                 <div className="hero-proof-label">
-                  Quote
+                  {t('hero.proofQuoteLabel')}
                 </div>
                 <div className="hero-proof-value">
-                  Clear before checkout
+                  {t('hero.proofQuoteValue')}
                 </div>
               </div>
             </div>
@@ -1869,7 +1912,7 @@ export default function Home() {
               <span className="hero-window-dot" />
               <span className="hero-window-dot" />
               <span className="hero-window-dot" />
-              Embroidery detail
+              {t('hero.toolbar')}
             </div>
 
             <div className="hero-ai-badge">
@@ -1882,7 +1925,7 @@ export default function Home() {
                     marginBottom: 2,
                   }}
                 >
-                  Artwork ready
+                  {t('hero.badgeTitle')}
                 </div>
                 <div
                   style={{
@@ -1890,7 +1933,7 @@ export default function Home() {
                     fontSize: 12,
                   }}
                 >
-                  Artwork preview ready
+                  {t('hero.badgeText')}
                 </div>
               </div>
             </div>
@@ -1900,7 +1943,7 @@ export default function Home() {
                 {/* Hero main image from the local launch asset set. */}
                 <Image
                   src={homepageImages.heroMain}
-                  alt="Cinematic close-up of embroidery texture and fabric"
+                  alt={t('hero.mainImageAlt')}
                   fill
                   priority
                   sizes="(max-width: 767px) calc(100vw - 64px), (max-width: 1099px) 680px, 620px"
@@ -1915,7 +1958,7 @@ export default function Home() {
                   <div className="hero-preview-logo">
                     <Image
                       src={preview}
-                      alt="Current logo preview"
+                      alt={t('hero.logoAlt')}
                       fill
                       unoptimized
                       style={{
@@ -1929,9 +1972,9 @@ export default function Home() {
                 ) : null}
 
                 <div className="hero-photo-caption">
-                  <span>Fabric and thread detail</span>
+                  <span>{t('hero.photoCaptionLabel')}</span>
                   <strong>
-                    Premium artwork prepared for a stitched finish.
+                    {t('hero.photoCaptionText')}
                   </strong>
                 </div>
               </div>
@@ -1950,8 +1993,8 @@ export default function Home() {
                     }}
                   />
                   <div className="hero-mini-copy">
-                    <span>Stitch finish</span>
-                    <strong>Clean edges and readable details.</strong>
+                    <span>{t('hero.stitchFinishLabel')}</span>
+                    <strong>{t('hero.stitchFinishText')}</strong>
                   </div>
                 </div>
 
@@ -1968,16 +2011,16 @@ export default function Home() {
                     }}
                   />
                   <div className="hero-mini-copy">
-                    <span>Stitches</span>
-                    <strong>Curated tones for a premium stitched finish.</strong>
+                    <span>{t('hero.threadLabel')}</span>
+                    <strong>{t('hero.threadText')}</strong>
                   </div>
                 </div>
               </div>
 
               <div className="hero-fabric-note">
-                <span>Fashion-tech workflow</span>
+                <span>{t('hero.workflowLabel')}</span>
                 <strong>
-                  Create the idea, check the chest placement and quote with confidence.
+                  {t('hero.workflowText')}
                 </strong>
               </div>
             </div>
@@ -1991,7 +2034,7 @@ export default function Home() {
                     fontWeight: 860,
                   }}
                 >
-                  Artwork preview
+                  {t('hero.previewTitle')}
                 </div>
                 <div
                   style={{
@@ -2000,27 +2043,38 @@ export default function Home() {
                     marginTop: 3,
                   }}
                 >
-                  {preset.size} · ready for production
+                  {preset.size} · {t('hero.productionReady')}
                 </div>
               </div>
             </div>
 
             <div className="hero-floating-quote">
-              <span>Clear price before stitching</span>
+              <span>{t('hero.priceLabel')}</span>
               <strong>
                 {publicQuote
                   ? publicQuote.manual_quote
-                    ? 'Manual quote'
+                    ? t('hero.manualQuote')
                     : `€${publicQuote.price_eur}`
-                  : 'From €9'}
+                  : t('hero.fromPrice')}
               </strong>
             </div>
 
             <div className="hero-spec-grid">
               {[
-                ['Artwork', preview ? 'Logo loaded' : 'AI-ready'],
-                ['Colors', estimate ? String(estimate.colors) : 'Auto'],
-                ['Stitches', estimate ? estimate.stitches.toLocaleString() : '12,450'],
+                [
+                  t('hero.specArtwork'),
+                  preview
+                    ? t('hero.specLogoLoaded')
+                    : t('hero.specAiReady'),
+                ],
+                [
+                  t('hero.specColors'),
+                  estimate ? String(estimate.colors) : t('hero.specAuto'),
+                ],
+                [
+                  t('hero.specStitches'),
+                  estimate ? estimate.stitches.toLocaleString() : '12,450',
+                ],
               ].map(([labelText, value]) => (
                 <div
                   key={labelText}
@@ -2072,18 +2126,18 @@ export default function Home() {
               }}
             >
               <Stat
-                label="Finish"
-                value="Ready for production"
+                label={t('designer.finishLabel')}
+                value={t('designer.finishValue')}
               />
 
               <Stat
-                label="Pricing"
-                value="Clear Price"
+                label={t('designer.pricingLabel')}
+                value={t('designer.pricingValue')}
               />
 
               <Stat
-                label="Preview"
-                value="Live Mockup"
+                label={t('designer.previewLabel')}
+                value={t('designer.previewValue')}
               />
             </div>
 
@@ -2094,7 +2148,7 @@ export default function Home() {
               }}
             >
               <label style={label}>
-                Choose placement
+                {t('designer.choosePlacement')}
               </label>
 
               <select
@@ -2110,16 +2164,16 @@ export default function Home() {
                 style={input}
               >
                 <option value="left">
-                  Left chest
+                  {t('placement.left')}
                 </option>
 
                 <option value="center">
-                  Center front
+                  {t('placement.center')}
                 </option>
               </select>
 
               <label style={label}>
-                Choose shirt color
+                {t('designer.chooseShirtColor')}
               </label>
 
               <div
@@ -2180,8 +2234,8 @@ export default function Home() {
                           }}
                         />
                         {color === 'black'
-                          ? 'Black tee'
-                          : 'White tee'}
+                          ? t('designer.blackTee')
+                          : t('designer.whiteTee')}
                       </button>
                     );
                   }
@@ -2189,7 +2243,7 @@ export default function Home() {
               </div>
 
               <label style={label}>
-                Upload your logo
+                {t('designer.uploadLogo')}
               </label>
 
               <input
@@ -2203,7 +2257,7 @@ export default function Home() {
               />
 
               <label style={label}>
-                Describe your idea
+                {t('designer.describeIdea')}
               </label>
 
               <div
@@ -2220,8 +2274,8 @@ export default function Home() {
                     setLogoPrompt(e.target.value);
                     setDesignPreparation(null);
                   }}
-                  aria-label="Logo idea prompt"
-                  placeholder="giraffe riding a car through space"
+                  aria-label={t('designer.promptAria')}
+                  placeholder={t('designer.promptPlaceholder')}
                   style={{
                     ...input,
                     flex: 1,
@@ -2240,8 +2294,8 @@ export default function Home() {
                   }}
                 >
                   {isGenerating
-                    ? 'Preparing...'
-                    : 'Generate'}
+                    ? t('designer.generating')
+                    : t('designer.generate')}
                 </button>
               </div>
 
@@ -2278,18 +2332,18 @@ export default function Home() {
                             : '#ffe083',
                       }}
                     >
-                      Embroidery-ready score{' '}
+                      {t('designer.score')}{' '}
                       {
                         designPreparation.machine_ready_score
                       }
                       /100
                     </strong>
                     <span>
-                      {designPreparation.max_colors} color
+                      {designPreparation.max_colors}{' '}
                       {designPreparation.max_colors === 1
-                        ? ''
-                        : 's'}{' '}
-                      target
+                        ? t('designer.colorSingular')
+                        : t('designer.colorPlural')}{' '}
+                      {t('designer.target')}
                     </span>
                   </div>
 
@@ -2299,7 +2353,7 @@ export default function Home() {
                         color: '#f5f7f8',
                       }}
                     >
-                      Simplified idea:
+                      {t('designer.simplifiedIdea')}
                     </strong>{' '}
                     {
                       designPreparation.simplified_description
@@ -2313,7 +2367,7 @@ export default function Home() {
                           color: '#ffe083',
                         }}
                       >
-                        Watch:
+                        {t('designer.watch')}
                       </strong>{' '}
                       {designPreparation.warnings
                         .slice(0, 2)
@@ -2327,7 +2381,7 @@ export default function Home() {
                         color: '#9dffc4',
                       }}
                     >
-                      Recommendation:
+                      {t('designer.recommendation')}
                     </strong>{' '}
                     {designPreparation.recommendations
                       .slice(0, 2)
@@ -2347,10 +2401,10 @@ export default function Home() {
                 }}
               >
                 {isAnalyzing
-                  ? 'Preparing logo...'
+                  ? t('designer.prepareLogo')
                   : isEstimating
-                    ? 'Calculating...'
-                    : 'Get clear price'}
+                    ? t('designer.calculating')
+                    : t('designer.getClearPrice')}
               </button>
 
               {(status || error) && (
@@ -2401,14 +2455,17 @@ export default function Home() {
                     >
                       {logoAnalysis.colors_count <=
                       PRACTICAL_THREAD_COLOR_LIMIT
-                        ? 'Ready for embroidery'
-                        : 'Needs review'}
+                        ? t('designer.readyForEmbroidery')
+                        : t('designer.needsReview')}
                     </strong>
                     <span>
-                      {logoAnalysis.colors_count} colors
+                      {logoAnalysis.colors_count}{' '}
+                      {logoAnalysis.colors_count === 1
+                        ? t('designer.colorSingular')
+                        : t('designer.colorPlural')}
                     </span>
                     <span>
-                      Contrast {logoAnalysis.contrast_score}
+                      {t('designer.contrast')} {logoAnalysis.contrast_score}
                       /100
                     </span>
                   </div>
@@ -2418,9 +2475,7 @@ export default function Home() {
                       fontSize: 12,
                     }}
                   >
-                    Embroidery designs work best with a clear
-                    color palette. Up to 15 thread colors can be
-                    used depending on the artwork.
+                    {t('designer.paletteHelp')}
                   </div>
 
                   {logoAnalysis.warnings.length > 0 && (
@@ -2445,22 +2500,22 @@ export default function Home() {
                     }}
                   >
                     <Metric
-                      label="Stitches"
+                      label={t('designer.stitches')}
                       value={publicQuote.stitches.toLocaleString()}
                     />
 
                     <Metric
-                      label="Colors"
+                      label={t('designer.colors')}
                       value={publicQuote.colors}
                       helper={
                         publicQuote.colors > 6
-                          ? 'Best result: 4–6 colors'
-                          : 'Best price'
+                          ? t('designer.bestResult')
+                          : t('designer.bestPrice')
                       }
                     />
 
                     <Metric
-                      label="Coverage"
+                      label={t('designer.coverage')}
                       value={`${(
                         publicQuote.coverage *
                         100
@@ -2468,10 +2523,10 @@ export default function Home() {
                     />
 
                     <Metric
-                      label="Price"
+                      label={t('designer.price')}
                       value={
                         publicQuote.manual_quote
-                          ? 'Manual quote'
+                          ? t('hero.manualQuote')
                           : `€${publicQuote.price_eur}`
                       }
                     />
@@ -2500,19 +2555,19 @@ export default function Home() {
                         }}
                       >
                         {publicQuote.manual_quote
-                          ? 'Manual quote needed'
-                          : 'Clear price'}
+                          ? t('designer.manualQuoteNeeded')
+                          : t('designer.clearPrice')}
                       </strong>
                       <span>
-                        {formatPricingTier(publicQuote.pricing_tier)}
+                        {formatPricingTier(publicQuote.pricing_tier, t)}
                       </span>
                     </div>
 
                     <div>
                       {publicQuote.manual_quote
-                        ? 'This design is large or very detailed. We will review it before production.'
+                        ? t('designer.manualQuoteText')
                         : publicQuote.customer_warnings[0] ??
-                          'Your design is ready for embroidery.'}
+                          t('designer.readyText')}
                     </div>
 
                     {publicQuote.customer_warnings.length > 1 && (
@@ -2552,7 +2607,7 @@ export default function Home() {
                       marginTop: 12,
                     }}
                   >
-                    Request order
+                    {t('designer.requestOrder')}
                   </button>
 
                   {orderOpen && (
@@ -2570,7 +2625,7 @@ export default function Home() {
                           color: '#f5f7f8',
                         }}
                       >
-                        Send your order request
+                        {t('designer.sendOrderRequest')}
                       </strong>
 
                       <div
@@ -2590,8 +2645,8 @@ export default function Home() {
                                 event.target.value
                               )
                             }
-                            placeholder="Your name"
-                            aria-label="Your name"
+                            placeholder={t('designer.yourName')}
+                            aria-label={t('designer.yourName')}
                             aria-invalid={Boolean(
                               orderFieldErrors.name
                             )}
@@ -2617,8 +2672,8 @@ export default function Home() {
                                 event.target.value
                               )
                             }
-                            placeholder="Email"
-                            aria-label="Email"
+                            placeholder={t('designer.email')}
+                            aria-label={t('designer.email')}
                             aria-invalid={Boolean(
                               orderFieldErrors.email
                             )}
@@ -2646,8 +2701,8 @@ export default function Home() {
                                 event.target.value
                               )
                             }
-                            placeholder="Phone (optional)"
-                            aria-label="Phone"
+                            placeholder={t('designer.phone')}
+                            aria-label={t('designer.phone')}
                             aria-invalid={Boolean(
                               orderFieldErrors.phone
                             )}
@@ -2673,8 +2728,8 @@ export default function Home() {
                                 event.target.value
                               )
                             }
-                            placeholder="Quantity"
-                            aria-label="Quantity"
+                            placeholder={t('designer.quantity')}
+                            aria-label={t('designer.quantity')}
                             aria-invalid={Boolean(
                               orderFieldErrors.quantity
                             )}
@@ -2704,8 +2759,8 @@ export default function Home() {
                             event.target.value
                           )
                         }
-                        placeholder="Note for the studio (optional)"
-                        aria-label="Order note"
+                        placeholder={t('designer.studioNote')}
+                        aria-label={t('designer.orderNoteAria')}
                         rows={3}
                         style={{
                           ...input,
@@ -2725,8 +2780,8 @@ export default function Home() {
                         }}
                       >
                         {isRequestingOrder
-                          ? 'Sending...'
-                          : 'Send request'}
+                          ? t('designer.sending')
+                          : t('designer.sendRequest')}
                       </button>
                       {orderError && (
                         <div style={formError}>{orderError}</div>
@@ -2753,6 +2808,13 @@ export default function Home() {
           <DesignerPreview
             preview={preview}
             preset={preset}
+            placementLabel={
+              placement === 'left'
+                ? t('placement.left')
+                : t('placement.center')
+            }
+            previewTopLabel={t('designer.previewTopLabel')}
+            logoLabel={t('designer.logo')}
             teeColor={teeColor}
           />
         </div>
@@ -2760,9 +2822,9 @@ export default function Home() {
 
       <section id="how" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Simple process"
-          title="From idea to finished piece"
-          text="A calm flow for creators, students, clubs and small brands. Start with an idea, preview the shirt and get a clear quote before checkout."
+          eyebrow={t('sections.processEyebrow')}
+          title={t('sections.processTitle')}
+          text={t('sections.processText')}
         />
 
         <div style={fourGrid}>
@@ -2781,9 +2843,9 @@ export default function Home() {
 
       <section id="features" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Studio tools"
-          title="Everything feels ready to produce"
-          text="AI design, logo cleanup, shirt preview and pricing in one premium embroidery workspace."
+          eyebrow={t('sections.featuresEyebrow')}
+          title={t('sections.featuresTitle')}
+          text={t('sections.featuresText')}
         />
 
         <div style={fourGrid}>
@@ -2804,15 +2866,15 @@ export default function Home() {
         <div className="production-layout">
           <div className="craft-copy-panel">
             <div style={sectionEyebrow}>
-              Craft quality
+              {t('sections.craftEyebrow')}
             </div>
 
             <h2 style={sectionTitle}>
-              A premium stitched finish, shown in close detail
+              {t('sections.craftTitle')}
             </h2>
 
             <p style={sectionText}>
-              Stitchra keeps the customer focused on the final result: embroidery detail, fabric texture, thread detail and a clear price before stitching. The visual system is built for confident artwork preview and ready for production decisions.
+              {t('sections.craftText')}
             </p>
 
             <div className="production-stat-grid">
@@ -2844,8 +2906,8 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-photo-badge">
-                <strong>Premium stitched finish</strong>
-                <span>Close detail, clean embroidery result</span>
+                <strong>{t('craft.mainTitle')}</strong>
+                <span>{t('craft.mainText')}</span>
               </div>
             </div>
 
@@ -2864,8 +2926,8 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-mini-copy">
-                <span>Thread detail</span>
-                <strong>Refined color and texture cues.</strong>
+                <span>{t('craft.threadTitle')}</span>
+                <strong>{t('craft.threadText')}</strong>
               </div>
             </div>
 
@@ -2884,8 +2946,8 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-mini-copy">
-                <span>Artwork preview</span>
-                <strong>Ready for production with a clear price before stitching.</strong>
+                <span>{t('craft.artworkTitle')}</span>
+                <strong>{t('craft.artworkText')}</strong>
               </div>
             </div>
 
@@ -2904,8 +2966,8 @@ export default function Home() {
               />
               <div className="production-photo-overlay" />
               <div className="production-mini-copy">
-                <span>Fashion-tech workflow</span>
-                <strong>Upload, preview and quote in one calm flow.</strong>
+                <span>{t('craft.workflowTitle')}</span>
+                <strong>{t('craft.workflowText')}</strong>
               </div>
             </div>
           </div>
@@ -2914,9 +2976,9 @@ export default function Home() {
 
       <section id="gallery" style={sectionStyle}>
         <SectionHeader
-          eyebrow="VISUAL DIRECTIONS"
-          title="Streetwear-ready embroidery"
-          text="Clean directions for chest logos, team drops, patches and minimal creator merch."
+          eyebrow={t('sections.galleryEyebrow')}
+          title={t('sections.galleryTitle')}
+          text={t('sections.galleryText')}
         />
 
         <div style={galleryGrid}>
@@ -2934,9 +2996,9 @@ export default function Home() {
 
       <section id="pricing" style={sectionStyle}>
         <SectionHeader
-          eyebrow="Clear pricing"
-          title="Know the cost before stitching"
-          text="No surprise messages. The estimate is based on artwork detail, colors and coverage."
+          eyebrow={t('sections.pricingEyebrow')}
+          title={t('sections.pricingTitle')}
+          text={t('sections.pricingText')}
         />
 
         <div
@@ -2944,23 +3006,23 @@ export default function Home() {
           style={pricingPanel}
         >
           <div style={priceGrid}>
-            <PriceBlock label="Left chest" value="From €9" />
-            <PriceBlock label="Badge detail" value="Calculated after upload" />
-            <PriceBlock label="Front design" value="From €13" />
-            <PriceBlock label="Manual quote" value="Studio review" highlight />
+            <PriceBlock label={t('pricing.leftChest')} value={t('pricing.from9')} />
+            <PriceBlock label={t('pricing.badgeDetail')} value={t('pricing.calculatedAfterUpload')} />
+            <PriceBlock label={t('pricing.frontDesign')} value={t('pricing.from13')} />
+            <PriceBlock label={t('pricing.manualQuote')} value={t('pricing.studioReview')} highlight />
           </div>
 
           <div className="pricing-example">
             <div>
-              <strong>Example quote</strong>
-              <span>Small chest logo, clean detail, 3 colors</span>
+              <strong>{t('pricing.exampleQuote')}</strong>
+              <span>{t('pricing.exampleText')}</span>
             </div>
             <strong>
               {publicQuote
                 ? publicQuote.manual_quote
-                  ? 'Manual quote'
+                  ? t('hero.manualQuote')
                   : `€${publicQuote.price_eur}`
-                : 'Upload your design for a clear quote'}
+                : t('pricing.uploadForQuote')}
             </strong>
           </div>
 
@@ -2969,16 +3031,16 @@ export default function Home() {
             className="lux-button"
             style={wideButton}
           >
-            Get clear price →
+            {t('pricing.getClearPrice')}
           </a>
         </div>
       </section>
 
       <section id="faq" style={sectionStyle}>
         <SectionHeader
-          eyebrow="FAQ"
-          title="Simple answers before checkout"
-          text="Clear for international creators and small teams before they place an order."
+          eyebrow={t('sections.faqEyebrow')}
+          title={t('sections.faqTitle')}
+          text={t('sections.faqText')}
         />
 
         <div className="faq-grid">
@@ -2999,15 +3061,15 @@ export default function Home() {
           className="glow-card final-cta-card"
         >
           <div style={sectionEyebrow}>
-            Ready
+            {t('sections.ready')}
           </div>
 
           <h2 style={ctaTitle}>
-            Ready to create your first stitched piece?
+            {t('sections.ctaTitle')}
           </h2>
 
           <p style={ctaText}>
-            Upload a logo or write an idea. See it on fabric and get a clear price before you order.
+            {t('sections.ctaText')}
           </p>
 
           <a
@@ -3015,7 +3077,7 @@ export default function Home() {
             className="lux-button"
             style={primaryButton}
           >
-            Start Designing →
+            {t('nav.start')}
           </a>
         </div>
       </section>
@@ -3038,18 +3100,18 @@ export default function Home() {
               width={34}
               height={34}
             />
-            <span><strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · AI embroidery studio</span>
+            <span><strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · {t('footer.tagline')}</span>
           </a>
 
           <div style={footerLinks}>
-            <a href="#how" style={footerLink}>How it works</a>
-            <a href="#features" style={footerLink}>Features</a>
-            <a href="#pricing" style={footerLink}>Pricing</a>
-            <a href="#faq" style={footerLink}>FAQ</a>
-            <a href="https://stitchra.com/impressum" style={footerLink}>Impressum</a>
-            <a href="https://stitchra.com/privacy" style={footerLink}>Privacy</a>
-            <a href="https://stitchra.com/contact" style={footerLink}>Contact</a>
-            <a href="https://stitchra.com/terms" style={footerLink}>Terms</a>
+            <a href="#how" style={footerLink}>{t('footer.how')}</a>
+            <a href="#features" style={footerLink}>{t('footer.features')}</a>
+            <a href="#pricing" style={footerLink}>{t('footer.pricing')}</a>
+            <a href="#faq" style={footerLink}>{t('footer.faq')}</a>
+            <a href="https://stitchra.com/impressum" style={footerLink}>{t('footer.impressum')}</a>
+            <a href="https://stitchra.com/privacy" style={footerLink}>{t('footer.privacy')}</a>
+            <a href="https://stitchra.com/contact" style={footerLink}>{t('footer.contact')}</a>
+            <a href="https://stitchra.com/terms" style={footerLink}>{t('footer.terms')}</a>
             <span>© 2026 Stitchra</span>
           </div>
         </div>
@@ -3058,7 +3120,15 @@ export default function Home() {
   );
 }
 
-function Header() {
+function Header({
+  locale,
+  t,
+}: {
+  locale: Locale;
+  t: Translator;
+}) {
+  const navItems = getNavItems(t);
+
   return (
     <header
       style={{
@@ -3149,12 +3219,14 @@ function Header() {
             </a>
           ))}
 
+          <LanguageSwitcher locale={locale} t={t} />
+
           <a
             href="#designer"
             className="lux-button"
             style={primaryButton}
           >
-            Start Designing →
+            {t('nav.start')}
           </a>
         </div>
       </nav>
@@ -3162,9 +3234,87 @@ function Header() {
   );
 }
 
+function LanguageSwitcher({
+  locale,
+  t,
+}: {
+  locale: Locale;
+  t: Translator;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const switchLocale = (nextLocale: Locale) => {
+    const currentPath = window.location.pathname;
+    const hash = window.location.hash;
+    const segments = currentPath.split('/').filter(Boolean);
+    const rest =
+      segments[0] && locales.includes(segments[0] as Locale)
+        ? segments.slice(1)
+        : [];
+    const nextPath = `/${nextLocale}${rest.length ? `/${rest.join('/')}` : ''}`;
+
+    setOpen(false);
+    window.location.assign(`${nextPath}${hash}`);
+  };
+
+  return (
+    <div style={languageSwitcher}>
+      <button
+        type="button"
+        aria-label={t('nav.language')}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        style={languageButton}
+      >
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="9"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          />
+        </svg>
+        <span>{localeLabels[locale].code}</span>
+      </button>
+
+      {open && (
+        <div style={languageMenu}>
+          {locales.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => switchLocale(item)}
+              style={languageOption(item === locale)}
+            >
+              <span>{localeLabels[item].name}</span>
+              <strong>{localeLabels[item].code}</strong>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MannequinPreview({
   preview,
   preset,
+  placementLabel,
+  previewTopLabel,
+  logoLabel,
   teeColor,
 }: {
   preview: string | null;
@@ -3172,6 +3322,9 @@ function MannequinPreview({
     label: string;
     size: string;
   };
+  placementLabel: string;
+  previewTopLabel: string;
+  logoLabel: string;
   teeColor: TeeColor;
 }) {
   const [mouse, setMouse] = useState({
@@ -3331,7 +3484,7 @@ function MannequinPreview({
             '0 18px 45px rgba(0,0,0,0.32)',
         }}
       >
-        T-shirt chest · {preset.label} · {preset.size}
+        {previewTopLabel} · {placementLabel} · {preset.size}
       </div>
 
       <div
@@ -3594,7 +3747,7 @@ function MannequinPreview({
                     zIndex: 1,
                   }}
                 >
-                  Logo
+                  {logoLabel}
                 </span>
               )}
             </div>
@@ -3625,6 +3778,9 @@ function MannequinPreview({
 function DesignerPreview({
   preview,
   preset,
+  placementLabel,
+  previewTopLabel,
+  logoLabel,
   teeColor,
 }: {
   preview: string | null;
@@ -3632,12 +3788,18 @@ function DesignerPreview({
     label: string;
     size: string;
   };
+  placementLabel: string;
+  previewTopLabel: string;
+  logoLabel: string;
   teeColor: TeeColor;
 }) {
   return (
     <MannequinPreview
       preview={preview}
       preset={preset}
+      placementLabel={placementLabel}
+      previewTopLabel={previewTopLabel}
+      logoLabel={logoLabel}
       teeColor={teeColor}
     />
   );
@@ -4822,143 +4984,99 @@ const accentStyles: Record<
   },
 };
 
-const navItems = [
-  { label: 'How It Works', href: '#how' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Gallery', href: '#gallery' },
-  { label: 'Features', href: '#features' },
-  { label: 'FAQ', href: '#faq' },
-];
+function getNavItems(t: Translator) {
+  return [
+    { label: t('nav.how'), href: '#how' },
+    { label: t('nav.pricing'), href: '#pricing' },
+    { label: t('nav.gallery'), href: '#gallery' },
+    { label: t('nav.features'), href: '#features' },
+    { label: t('nav.faq'), href: '#faq' },
+  ];
+}
 
-const processSteps: Array<{
+function getProcessSteps(locale: Locale): Array<{
   number: string;
   icon: string;
   title: string;
   text: string;
   accent: Accent;
-}> = [
-  {
-    number: '01',
-    icon: 'TEE',
-    title: 'Choose the garment',
-    text: 'Start with a dark or light tee and choose the placement that fits the brand.',
-    accent: 'green',
-  },
-  {
-    number: '02',
-    icon: 'AI',
-    title: 'Shape the artwork',
-    text: 'Write a simple idea or upload a customer logo and prepare it for embroidery.',
-    accent: 'cyan',
-  },
-  {
-    number: '03',
-    icon: '3D',
-    title: 'See it on fabric',
-    text: 'Check the logo on the chest with fabric texture, shadow and real placement size.',
-    accent: 'purple',
-  },
-  {
-    number: '04',
-    icon: '€',
-    title: 'Quote with confidence',
-    text: 'Show artwork detail, colors and cost before the first sample is made.',
-    accent: 'pink',
-  },
-];
+}> {
+  const copy = getLocalizedArray<{
+    title: string;
+    text: string;
+  }>(locale, 'process');
+  const meta = [
+    { number: '01', icon: 'TEE', accent: 'green' as const },
+    { number: '02', icon: 'AI', accent: 'cyan' as const },
+    { number: '03', icon: '3D', accent: 'purple' as const },
+    { number: '04', icon: '€', accent: 'pink' as const },
+  ];
 
-const features = [
-  {
-    icon: 'AI',
-    title: 'AI logo direction',
-    text: 'Type a short idea and create a clean first concept for embroidery.',
-    footer: 'Fast idea',
-    accent: 'green' as const,
-  },
-  {
-    icon: 'FAB',
-    title: 'Fabric-aware preview',
-    text: 'Blend the logo into the shirt with texture, shadow and natural contrast.',
-    footer: 'Natural look',
-    accent: 'cyan' as const,
-  },
-  {
-    icon: 'PNG',
-    title: 'Logo cleanup',
-    text: 'Remove simple backgrounds and crop extra space for a cleaner preview.',
-    footer: 'Cleaner file',
-    accent: 'purple' as const,
-  },
-  {
-    icon: '€',
-    title: 'Clear price before stitching',
-    text: 'Preview cost from artwork detail, color count and logo coverage.',
-    footer: 'Clear cost',
-    accent: 'pink' as const,
-  },
-];
+  return meta.map((item, index) => ({
+    ...item,
+    title: copy[index]?.title ?? '',
+    text: copy[index]?.text ?? '',
+  }));
+}
 
-const galleryItems: Array<{
+function getFeatures(locale: Locale) {
+  const copy = getLocalizedArray<{
+    title: string;
+    text: string;
+    footer: string;
+  }>(locale, 'features');
+  const meta = [
+    { icon: 'AI', accent: 'green' as const },
+    { icon: 'FAB', accent: 'cyan' as const },
+    { icon: 'PNG', accent: 'purple' as const },
+    { icon: '€', accent: 'pink' as const },
+  ];
+
+  return meta.map((item, index) => ({
+    ...item,
+    title: copy[index]?.title ?? '',
+    text: copy[index]?.text ?? '',
+    footer: copy[index]?.footer ?? '',
+  }));
+}
+
+function getGalleryItems(locale: Locale): Array<{
   title: string;
   text: string;
   accent: Accent;
   image: string;
-}> = [
-  {
-    title: 'Quiet monograms',
-    text: 'Clean initials for small chest branding, student clubs and makers.',
-    accent: 'green',
-    image: homepageImages.quietMonogram,
-  },
-  {
-    title: 'Streetwear marks',
-    text: 'Bold symbols for creator drops, local labels and launch pieces.',
-    accent: 'cyan',
-    image: homepageImages.streetwearMark,
-  },
-  {
-    title: 'Patch badges',
-    text: 'Badge-style artwork that stays readable when stitched.',
-    accent: 'purple',
-    image: homepageImages.patchBadge,
-  },
-  {
-    title: 'Minimal graphics',
-    text: 'Low-detail artwork with a premium, quiet fashion look.',
-    accent: 'pink',
-    image: homepageImages.minimalGraphic,
-  },
-];
+}> {
+  const copy = getLocalizedArray<{
+    title: string;
+    text: string;
+  }>(locale, 'gallery');
+  const meta = [
+    { accent: 'green' as const, image: homepageImages.quietMonogram },
+    { accent: 'cyan' as const, image: homepageImages.streetwearMark },
+    { accent: 'purple' as const, image: homepageImages.patchBadge },
+    { accent: 'pink' as const, image: homepageImages.minimalGraphic },
+  ];
 
-const craftStats = [
-  { value: '60s', label: 'First concept direction' },
-  { value: '500+', label: 'Thread color possibilities' },
-  { value: '3-5 days', label: 'Typical order window' },
-  { value: '100%', label: 'Preview before checkout' },
-];
+  return meta.map((item, index) => ({
+    ...item,
+    title: copy[index]?.title ?? '',
+    text: copy[index]?.text ?? '',
+  }));
+}
 
-const faqItems = [
-  {
-    question: 'Can I upload my own logo?',
-    answer:
-      'Yes. Upload a logo, remove simple backgrounds, preview it on the shirt and get a clear price.',
-  },
-  {
-    question: 'Can AI create a logo idea?',
-    answer:
-      'Yes. Write a simple prompt like “minimal green logo for a coffee brand” and generate a first concept.',
-  },
-  {
-    question: 'Is the price final?',
-    answer:
-      'It is a clear estimate based on artwork detail, colors and coverage. Final details can be confirmed before payment.',
-  },
-  {
-    question: 'Who is this for?',
-    answer:
-      'Small brands, students, creators, teams and shops that need fast custom T-shirt quotes.',
-  },
-];
+function getCraftStats(locale: Locale) {
+  return getLocalizedArray<{ value: string; label: string }>(
+    locale,
+    'craft.stats'
+  );
+}
+
+function getFaqItems(locale: Locale) {
+  return getLocalizedArray<{ question: string; answer: string }>(
+    locale,
+    'faq'
+  );
+}
 
 const heroCard: CSSProperties = {
   padding: 48,
@@ -5207,6 +5325,57 @@ const navLink: CSSProperties = {
   textDecoration: 'none',
   fontWeight: 650,
 };
+
+const languageSwitcher: CSSProperties = {
+  position: 'relative',
+  display: 'inline-flex',
+};
+
+const languageButton: CSSProperties = {
+  minHeight: 44,
+  border: '1px solid rgba(255,255,255,0.14)',
+  borderRadius: 14,
+  padding: '0 12px',
+  background: 'rgba(255,255,255,0.055)',
+  color: '#f5f7f8',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  fontWeight: 850,
+};
+
+const languageMenu: CSSProperties = {
+  position: 'absolute',
+  top: 'calc(100% + 10px)',
+  insetInlineEnd: 0,
+  minWidth: 190,
+  padding: 8,
+  borderRadius: 18,
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(5,8,7,0.96)',
+  backdropFilter: 'blur(18px)',
+  boxShadow: '0 24px 70px rgba(0,0,0,0.42)',
+  zIndex: 70,
+};
+
+function languageOption(active: boolean): CSSProperties {
+  return {
+    width: '100%',
+    minHeight: 42,
+    border: 0,
+    borderRadius: 12,
+    padding: '0 10px',
+    background: active
+      ? 'linear-gradient(135deg, rgba(0,255,136,0.18), rgba(0,200,255,0.12))'
+      : 'transparent',
+    color: active ? '#9dffc4' : 'rgba(245,247,248,0.78)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    fontWeight: 780,
+  };
+}
 
 const footerLink: CSSProperties = {
   color: 'rgba(245,247,248,0.66)',

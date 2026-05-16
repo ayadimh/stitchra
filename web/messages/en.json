@@ -1,0 +1,286 @@
+{
+  "meta": {
+    "title": "Stitchra | AI Embroidery Platform",
+    "description": "Design, preview and request custom embroidered T-shirts with transparent pricing."
+  },
+  "nav": {
+    "how": "How It Works",
+    "pricing": "Pricing",
+    "gallery": "Gallery",
+    "features": "Features",
+    "faq": "FAQ",
+    "start": "Start Designing →",
+    "language": "Language"
+  },
+  "hero": {
+    "kicker": "AI embroidery atelier",
+    "title1": "Design.",
+    "title2": "Preview.",
+    "title3": "Stitch",
+    "title4": "it right.",
+    "subtitle": "Turn a logo idea into a premium embroidered T-shirt. See the fabric, placement and price before the first stitch is made.",
+    "secondaryCta": "See Craft Quality",
+    "proofStudioLabel": "Studio",
+    "proofStudioValue": "Premium finish",
+    "proofArtworkLabel": "Artwork",
+    "proofArtworkReady": "Logo ready",
+    "proofArtworkDefault": "AI or upload",
+    "proofQuoteLabel": "Quote",
+    "proofQuoteValue": "Clear before checkout",
+    "toolbar": "Embroidery detail",
+    "badgeTitle": "Artwork ready",
+    "badgeText": "Artwork preview ready",
+    "mainImageAlt": "Cinematic close-up of embroidery texture and fabric",
+    "logoAlt": "Current logo preview",
+    "photoCaptionLabel": "Fabric and thread detail",
+    "photoCaptionText": "Premium artwork prepared for a stitched finish.",
+    "stitchFinishLabel": "Stitch finish",
+    "stitchFinishText": "Clean edges and readable details.",
+    "threadLabel": "Stitches",
+    "threadText": "Curated tones for a premium stitched finish.",
+    "workflowLabel": "Fashion-tech workflow",
+    "workflowText": "Create the idea, check the chest placement and quote with confidence.",
+    "previewTitle": "Artwork preview",
+    "productionReady": "ready for production",
+    "priceLabel": "Clear price before stitching",
+    "fromPrice": "From €9",
+    "manualQuote": "Manual quote",
+    "specArtwork": "Artwork",
+    "specLogoLoaded": "Logo loaded",
+    "specAiReady": "AI-ready",
+    "specColors": "Colors",
+    "specAuto": "Auto",
+    "specStitches": "Stitches"
+  },
+  "designer": {
+    "finishLabel": "Finish",
+    "finishValue": "Ready for production",
+    "pricingLabel": "Pricing",
+    "pricingValue": "Clear Price",
+    "previewLabel": "Preview",
+    "previewValue": "Live Mockup",
+    "choosePlacement": "Choose placement",
+    "chooseShirtColor": "Choose shirt color",
+    "blackTee": "Black tee",
+    "whiteTee": "White tee",
+    "uploadLogo": "Upload your logo",
+    "describeIdea": "Describe your idea",
+    "promptAria": "Logo idea prompt",
+    "promptPlaceholder": "giraffe riding a car through space",
+    "generate": "Generate",
+    "generating": "Preparing...",
+    "prepareLogo": "Preparing logo...",
+    "calculating": "Calculating...",
+    "getClearPrice": "Get clear price",
+    "score": "Embroidery-ready score",
+    "colorSingular": "color",
+    "colorPlural": "colors",
+    "target": "target",
+    "simplifiedIdea": "Simplified idea:",
+    "watch": "Watch:",
+    "recommendation": "Recommendation:",
+    "readyForEmbroidery": "Ready for embroidery",
+    "needsReview": "Needs review",
+    "contrast": "Contrast",
+    "paletteHelp": "Embroidery designs work best with a clear color palette. Up to 15 thread colors can be used depending on the artwork.",
+    "bestResult": "Best result: 4–6 colors",
+    "bestPrice": "Best price",
+    "stitches": "Stitches",
+    "colors": "Colors",
+    "coverage": "Coverage",
+    "price": "Price",
+    "manualQuoteNeeded": "Manual quote needed",
+    "clearPrice": "Clear price",
+    "manualQuoteText": "This design is large or very detailed. We will review it before production.",
+    "readyText": "Your design is ready for embroidery.",
+    "requestOrder": "Request order",
+    "sendOrderRequest": "Send your order request",
+    "yourName": "Your name",
+    "email": "Email",
+    "phone": "Phone (optional)",
+    "quantity": "Quantity",
+    "studioNote": "Note for the studio (optional)",
+    "orderNoteAria": "Order note",
+    "sending": "Sending...",
+    "sendRequest": "Send request",
+    "logo": "Logo",
+    "previewTopLabel": "T-shirt chest"
+  },
+  "status": {
+    "analyzingLogo": "Analyzing logo...",
+    "cleanupUnavailable": "Logo uploaded — automatic cleanup unavailable.",
+    "logoReady": "Logo cleaned and ready for embroidery.",
+    "manualColorReview": "Logo cleaned — manual color review may be needed.",
+    "describeLogoFirst": "Describe your logo first.",
+    "designPreparationFailed": "Design preparation failed.",
+    "generatorFailed": "Generator failed.",
+    "generated": "Embroidery-ready design generated.",
+    "networkError": "Network error.",
+    "uploadLogoFirst": "Upload a logo first.",
+    "estimatorFailed": "Estimator failed.",
+    "manualQuoteNeeded": "Manual quote needed.",
+    "quoteReady": "Quote ready.",
+    "getQuoteBeforeOrder": "Get a quote before requesting an order.",
+    "fixFields": "Please fix the highlighted fields.",
+    "databaseNotConfigured": "Database not configured.",
+    "requestSent": "Request sent. We will review your design.",
+    "orderSendFailed": "Could not send this order request."
+  },
+  "validation": {
+    "nameRequired": "Name is required.",
+    "emailRequired": "Email is required.",
+    "emailInvalid": "Enter a valid email address.",
+    "phoneInvalid": "Use +, spaces, digits, brackets or dashes, with at least 7 digits.",
+    "quantityRequired": "Quantity is required.",
+    "quantityInvalid": "Quantity must be at least 1."
+  },
+  "placement": {
+    "left": "Left chest",
+    "center": "Center front"
+  },
+  "pricingTier": {
+    "review": "Studio review",
+    "left": "Left chest",
+    "center": "Center front"
+  },
+  "sections": {
+    "processEyebrow": "Simple process",
+    "processTitle": "From idea to finished piece",
+    "processText": "A calm flow for creators, students, clubs and small brands. Start with an idea, preview the shirt and get a clear quote before checkout.",
+    "featuresEyebrow": "Studio tools",
+    "featuresTitle": "Everything feels ready to produce",
+    "featuresText": "AI design, logo cleanup, shirt preview and pricing in one premium embroidery workspace.",
+    "craftEyebrow": "Craft quality",
+    "craftTitle": "A premium stitched finish, shown in close detail",
+    "craftText": "Stitchra keeps the customer focused on the final result: embroidery detail, fabric texture, thread detail and a clear price before stitching. The visual system is built for confident artwork preview and ready for production decisions.",
+    "galleryEyebrow": "VISUAL DIRECTIONS",
+    "galleryTitle": "Streetwear-ready embroidery",
+    "galleryText": "Clean directions for chest logos, team drops, patches and minimal creator merch.",
+    "pricingEyebrow": "Clear pricing",
+    "pricingTitle": "Know the cost before stitching",
+    "pricingText": "No surprise messages. The estimate is based on artwork detail, colors and coverage.",
+    "faqEyebrow": "FAQ",
+    "faqTitle": "Simple answers before checkout",
+    "faqText": "Clear for international creators and small teams before they place an order.",
+    "ready": "Ready",
+    "ctaTitle": "Ready to create your first stitched piece?",
+    "ctaText": "Upload a logo or write an idea. See it on fabric and get a clear price before you order."
+  },
+  "process": [
+    {
+      "title": "Choose the garment",
+      "text": "Start with a dark or light tee and choose the placement that fits the brand."
+    },
+    {
+      "title": "Shape the artwork",
+      "text": "Write a simple idea or upload a customer logo and prepare it for embroidery."
+    },
+    {
+      "title": "See it on fabric",
+      "text": "Check the logo on the chest with fabric texture, shadow and real placement size."
+    },
+    {
+      "title": "Quote with confidence",
+      "text": "Show artwork detail, colors and cost before the first sample is made."
+    }
+  ],
+  "features": [
+    {
+      "title": "AI logo direction",
+      "text": "Type a short idea and create a clean first concept for embroidery.",
+      "footer": "Fast idea"
+    },
+    {
+      "title": "Fabric-aware preview",
+      "text": "Blend the logo into the shirt with texture, shadow and natural contrast.",
+      "footer": "Natural look"
+    },
+    {
+      "title": "Logo cleanup",
+      "text": "Remove simple backgrounds and crop extra space for a cleaner preview.",
+      "footer": "Cleaner file"
+    },
+    {
+      "title": "Clear price before stitching",
+      "text": "Preview cost from artwork detail, color count and logo coverage.",
+      "footer": "Clear cost"
+    }
+  ],
+  "gallery": [
+    {
+      "title": "Quiet monograms",
+      "text": "Clean initials for small chest branding, student clubs and makers."
+    },
+    {
+      "title": "Streetwear marks",
+      "text": "Bold symbols for creator drops, local labels and launch pieces."
+    },
+    {
+      "title": "Patch badges",
+      "text": "Badge-style artwork that stays readable when stitched."
+    },
+    {
+      "title": "Minimal graphics",
+      "text": "Low-detail artwork with a premium, quiet fashion look."
+    }
+  ],
+  "craft": {
+    "mainTitle": "Premium stitched finish",
+    "mainText": "Close detail, clean embroidery result",
+    "threadTitle": "Thread detail",
+    "threadText": "Refined color and texture cues.",
+    "artworkTitle": "Artwork preview",
+    "artworkText": "Ready for production with a clear price before stitching.",
+    "workflowTitle": "Fashion-tech workflow",
+    "workflowText": "Upload, preview and quote in one calm flow.",
+    "stats": [
+      { "value": "60s", "label": "First concept direction" },
+      { "value": "500+", "label": "Thread color possibilities" },
+      { "value": "3-5 days", "label": "Typical order window" },
+      { "value": "100%", "label": "Preview before checkout" }
+    ]
+  },
+  "pricing": {
+    "leftChest": "Left chest",
+    "from9": "From €9",
+    "badgeDetail": "Badge detail",
+    "calculatedAfterUpload": "Calculated after upload",
+    "frontDesign": "Front design",
+    "from13": "From €13",
+    "manualQuote": "Manual quote",
+    "studioReview": "Studio review",
+    "exampleQuote": "Example quote",
+    "exampleText": "Small chest logo, clean detail, 3 colors",
+    "uploadForQuote": "Upload your design for a clear quote",
+    "getClearPrice": "Get clear price →"
+  },
+  "faq": [
+    {
+      "question": "Can I upload my own logo?",
+      "answer": "Yes. Upload a logo, remove simple backgrounds, preview it on the shirt and get a clear price."
+    },
+    {
+      "question": "Can AI create a logo idea?",
+      "answer": "Yes. Write a simple prompt like “minimal green logo for a coffee brand” and generate a first concept."
+    },
+    {
+      "question": "Is the price final?",
+      "answer": "It is a clear estimate based on artwork detail, colors and coverage. Final details can be confirmed before payment."
+    },
+    {
+      "question": "Who is this for?",
+      "answer": "Small brands, students, creators, teams and shops that need fast custom T-shirt quotes."
+    }
+  ],
+  "footer": {
+    "tagline": "AI embroidery studio",
+    "how": "How it works",
+    "features": "Features",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "impressum": "Impressum",
+    "privacy": "Privacy",
+    "contact": "Contact",
+    "terms": "Terms"
+  }
+}
