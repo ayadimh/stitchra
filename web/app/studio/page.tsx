@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   calculatePricing,
   costBreakdownLabels,
@@ -184,6 +184,7 @@ type StudioToast = {
   tone: 'success' | 'error';
   message: string;
 };
+type OfferKpiTone = 'neutral' | 'good' | 'warning' | 'danger';
 
 const placementSize = {
   left: { width: 90, height: 60, label: 'Left chest' },
@@ -1574,6 +1575,13 @@ export default function StudioPage() {
     await persistOrderDetails();
   };
 
+  const saveFinalPrice = async () => {
+    await persistOrderDetails({
+      successStatus: 'Final price saved.',
+      successToast: 'Final price saved.',
+    });
+  };
+
   const copyCustomerLink = async (order: OrderRecord) => {
     if (!order.public_token) {
       setCustomerLinkStatus('No customer link is available yet.');
@@ -1679,7 +1687,7 @@ export default function StudioPage() {
       setOfferEmailStatus(
         `Offer sent with final price ${finalPriceLabel}.`
       );
-      showToast(`Offer sent with final price ${finalPriceLabel}`);
+      showToast(`Offer sent with final price ${finalPriceLabel}.`);
     } catch (error) {
       const message = 'Could not send offer email.';
       setOfferEmailError(message);
@@ -1913,6 +1921,7 @@ export default function StudioPage() {
           onOrderEditChange={updateOrderEditField}
           onOrderCostBreakdownChange={updateOrderCostBreakdownField}
           onSaveOrderDetails={saveOrderDetails}
+          onSaveFinalPrice={saveFinalPrice}
           onResetOrderCalculator={resetOrderCalculator}
           onCopyCustomerLink={copyCustomerLink}
           onCopyPaymentLink={copyPaymentLink}
@@ -2134,6 +2143,25 @@ function Meta({
     <div style={metaCard}>
       <span>{label}: </span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function OfferKpiCard({
+  label,
+  value,
+  tone = 'neutral',
+  children,
+}: {
+  label: string;
+  value?: string | number;
+  tone?: OfferKpiTone;
+  children?: ReactNode;
+}) {
+  return (
+    <div style={offerKpiCard(tone)}>
+      <span style={offerKpiLabel}>{label}</span>
+      {children ?? <strong style={offerKpiValue}>{value}</strong>}
     </div>
   );
 }
@@ -2363,6 +2391,7 @@ function OrdersDashboard({
   onOrderEditChange,
   onOrderCostBreakdownChange,
   onSaveOrderDetails,
+  onSaveFinalPrice,
   onResetOrderCalculator,
   onCopyCustomerLink,
   onCopyPaymentLink,
@@ -2401,6 +2430,7 @@ function OrdersDashboard({
     value: string
   ) => void;
   onSaveOrderDetails: () => void;
+  onSaveFinalPrice: () => void;
   onResetOrderCalculator: () => void;
   onCopyCustomerLink: (order: OrderRecord) => void;
   onCopyPaymentLink: (order: OrderRecord) => void;
@@ -2454,6 +2484,14 @@ function OrdersDashboard({
       : selectedOrder
         ? getEffectiveCustomerPrice(selectedOrder, pricingSettings)
         : null;
+  const savedFinalPrice = selectedOrder
+    ? getEffectiveCustomerPrice(selectedOrder, pricingSettings)
+    : null;
+  const hasUnsavedPrice =
+    selectedOrder !== null &&
+    (parsedRevisedPrice === undefined
+      ? orderEditForm.revised_price_eur.trim().length > 0
+      : parsedRevisedPrice !== savedFinalPrice);
   const suggestedCustomerPrice =
     suggestedPricing?.suggested_customer_price_eur ?? null;
   const currentInternalCost =
@@ -2478,6 +2516,24 @@ function OrdersDashboard({
     finalOfferMargin !== null &&
     targetMargin !== null &&
     finalOfferMargin < targetMargin;
+  const isFinalPriceInvalid =
+    parsedRevisedPrice === undefined ||
+    parsedRevisedPrice === null ||
+    parsedRevisedPrice <= 0;
+  const offerCommandTone: OfferKpiTone = isFinalPriceInvalid
+    ? 'warning'
+    : isBelowCost
+      ? 'danger'
+      : isBelowTargetMargin
+        ? 'warning'
+        : 'good';
+  const offerPriceHelperText = isFinalPriceInvalid
+    ? selectedOrder?.manual_quote
+      ? 'Manual quote needs a final price before sending.'
+      : 'Enter a valid customer price before sending.'
+    : hasUnsavedPrice
+      ? 'Unsaved price. Save before sending.'
+      : 'Saved as the current final offer price.';
   const visibleOrders = getPipelineOrders(
     orders,
     pipelineStage,
@@ -2522,6 +2578,10 @@ function OrdersDashboard({
   const selectedOrderPipelineStage = selectedOrder
     ? getOrderPipelineStage(selectedOrder)
     : null;
+  const canSaveFinalPrice =
+    selectedOrder !== null &&
+    selectedOrderPipelineStage !== 'archive' &&
+    selectedOrder.status !== 'completed';
   const canSendOffer =
     (selectedOrder?.customer_decision === 'pending' ||
       selectedOrder?.customer_decision === 'change_requested') &&
@@ -2759,11 +2819,9 @@ function OrdersDashboard({
                     order.customer_price_eur ??
                     orderPricing.customer_price_eur;
                   const orderCustomerPriceLabel =
-                    order.manual_quote && order.revised_price_eur !== null
-                      ? `Final price: ${formatCustomerMoney(order.revised_price_eur)}`
-                      : order.manual_quote
-                        ? 'Manual quote'
-                        : formatCustomerMoney(orderCustomerPrice);
+                    order.manual_quote && order.revised_price_eur === null
+                      ? 'Manual quote'
+                      : formatCustomerMoney(orderCustomerPrice);
                   const declinedStatus = getDeclinedStatus(order);
                   const cancelledStatus = getCancelledStatus(order);
                   const archiveStatus =
@@ -2936,9 +2994,101 @@ function OrdersDashboard({
                     </div>
                   </div>
 
-                  <div style={actionGroupsShell}>
-                    <div style={actionGroup}>
+                  <div
+                    className="studio-offer-command-bar"
+                    style={offerCommandBar}
+                  >
+                    <label style={offerPriceCard(offerCommandTone)}>
+                      <span style={offerKpiLabel}>
+                        Final customer price EUR
+                      </span>
+                      <input
+                        value={orderEditForm.revised_price_eur}
+                        onChange={(event) =>
+                          onOrderEditChange(
+                            'revised_price_eur',
+                            event.target.value
+                          )
+                        }
+                        placeholder="Enter final price"
+                        inputMode="decimal"
+                        style={offerPriceInput}
+                      />
+                      <span style={offerPriceHelp(offerCommandTone)}>
+                        {offerPriceHelperText}
+                      </span>
+                    </label>
+
+                    <OfferKpiCard
+                      label="Suggested price"
+                      value={getSuggestedCustomerPriceLabel(
+                        suggestedCustomerPrice
+                      )}
+                    />
+                    <OfferKpiCard
+                      label="Internal cost"
+                      value={formatMoney(currentInternalCost)}
+                    />
+                    <OfferKpiCard
+                      label="Profit"
+                      value={formatMoney(finalOfferProfit)}
+                      tone={
+                        finalOfferProfit !== null && finalOfferProfit < 0
+                          ? 'danger'
+                          : 'neutral'
+                      }
+                    />
+                    <OfferKpiCard
+                      label="Margin"
+                      value={formatMargin(finalOfferMargin)}
+                      tone={offerCommandTone}
+                    />
+                    <OfferKpiCard label="Payment status">
+                      <span style={paymentBadge(selectedOrder.payment_status)}>
+                        {paymentStatusLabels[selectedOrder.payment_status]}
+                      </span>
+                    </OfferKpiCard>
+                  </div>
+
+                  <div style={offerWarningsRow}>
+                    {hasUnsavedPrice && (
+                      <span style={unsavedPriceBadge}>Unsaved price</span>
+                    )}
+                    {isBelowCost && (
+                      <span style={dangerInlineText}>
+                        This offer is below cost.
+                      </span>
+                    )}
+                    {!isBelowCost && isBelowTargetMargin && (
+                      <span style={warningInlineText}>
+                        Margin is below the target margin.
+                      </span>
+                    )}
+                  </div>
+
+                  <div
+                    className="studio-action-groups"
+                    style={actionGroupsShell}
+                  >
+                    <div className="studio-action-group" style={actionGroup}>
                       <span style={actionGroupLabel}>Primary</span>
+                      {canSaveFinalPrice && (
+                        <button
+                          type="button"
+                          onClick={onSaveFinalPrice}
+                          disabled={
+                            savingOrder ||
+                            sendingOfferId === selectedOrder.id
+                          }
+                          style={actionButtonStyle(
+                            'secondary',
+                            savingOrder ||
+                              sendingOfferId === selectedOrder.id
+                          )}
+                        >
+                          {savingOrder ? 'Saving...' : 'Save final price'}
+                        </button>
+                      )}
                       {canSendOffer && (
                         <button
                           type="button"
@@ -3010,7 +3160,7 @@ function OrdersDashboard({
                         )}
                     </div>
 
-                    <div style={actionGroup}>
+                    <div className="studio-action-group" style={actionGroup}>
                       <span style={actionGroupLabel}>Secondary</span>
                       {selectedOrder.public_token && (
                         <>
@@ -3053,7 +3203,7 @@ function OrdersDashboard({
                         'waiting_customer' ||
                       selectedOrderPipelineStage ===
                         'changes_requested') && (
-                      <div style={actionGroup}>
+                      <div className="studio-action-group" style={actionGroup}>
                         <span style={actionGroupLabel}>Danger</span>
                         {renderStatusButton(
                           selectedOrderPipelineStage ===
@@ -3663,6 +3813,22 @@ function OrdersDashboardStyles() {
         .studio-pipeline-tabs {
           flex-wrap: nowrap !important;
           padding-bottom: 8px;
+        }
+
+        .studio-offer-command-bar {
+          grid-template-columns: 1fr !important;
+        }
+
+        .studio-action-group {
+          align-items: stretch !important;
+        }
+
+        .studio-action-group button {
+          width: 100%;
+        }
+
+        .studio-action-group span:first-child {
+          width: 100%;
         }
 
         .studio-overview-grid,
@@ -4437,6 +4603,64 @@ const workflowStageBadge: CSSProperties = {
   ...compactBadge('#9ee8ff'),
 };
 
+const offerCommandBar: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit, minmax(min(210px, 100%), 1fr))',
+  gap: 12,
+  alignItems: 'stretch',
+  marginTop: 18,
+};
+
+const offerKpiLabel: CSSProperties = {
+  color: 'rgba(245,247,248,0.62)',
+  fontSize: 12,
+  fontWeight: 850,
+  textTransform: 'uppercase',
+  lineHeight: 1.25,
+};
+
+const offerKpiValue: CSSProperties = {
+  color: '#f5f7f8',
+  fontSize: 18,
+  lineHeight: 1.12,
+};
+
+const offerPriceInput: CSSProperties = {
+  ...inputStyle,
+  minHeight: 58,
+  border: '1px solid rgba(0,255,136,0.32)',
+  background:
+    'linear-gradient(135deg, rgba(0,255,136,0.13), rgba(0,200,255,0.08))',
+  color: '#f5f7f8',
+  padding: '14px 16px',
+  fontSize: 28,
+  fontWeight: 950,
+};
+
+const offerWarningsRow: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  marginTop: 10,
+};
+
+const unsavedPriceBadge: CSSProperties = {
+  ...compactBadge('#ffe083'),
+};
+
+const warningInlineText: CSSProperties = {
+  color: '#ffe083',
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const dangerInlineText: CSSProperties = {
+  color: '#ffb4b4',
+  fontSize: 13,
+  fontWeight: 800,
+};
+
 const actionGroupsShell: CSSProperties = {
   display: 'grid',
   gap: 12,
@@ -4796,6 +5020,62 @@ function actionButtonStyle(
   return {
     ...base,
     opacity: disabled ? 0.68 : 1,
+  };
+}
+
+function getOfferToneColor(tone: OfferKpiTone) {
+  if (tone === 'good') {
+    return '#9dffc4';
+  }
+
+  if (tone === 'warning') {
+    return '#ffe083';
+  }
+
+  if (tone === 'danger') {
+    return '#ffb4b4';
+  }
+
+  return '#9ee8ff';
+}
+
+function offerKpiCard(tone: OfferKpiTone): CSSProperties {
+  const color = getOfferToneColor(tone);
+
+  return {
+    border: `1px solid ${color}33`,
+    borderRadius: 18,
+    padding: 14,
+    background:
+      tone === 'neutral'
+        ? 'rgba(255,255,255,0.045)'
+        : `${color}12`,
+    display: 'grid',
+    gap: 10,
+    alignContent: 'space-between',
+    minHeight: 116,
+    boxShadow:
+      tone === 'good'
+        ? '0 16px 44px rgba(0,255,136,0.08)'
+        : tone === 'danger'
+          ? '0 16px 44px rgba(255,143,179,0.08)'
+          : 'none',
+  };
+}
+
+function offerPriceCard(tone: OfferKpiTone): CSSProperties {
+  return {
+    ...offerKpiCard(tone),
+    minHeight: 136,
+  };
+}
+
+function offerPriceHelp(tone: OfferKpiTone): CSSProperties {
+  return {
+    color: getOfferToneColor(tone),
+    fontSize: 12,
+    fontWeight: 820,
+    lineHeight: 1.35,
   };
 }
 
