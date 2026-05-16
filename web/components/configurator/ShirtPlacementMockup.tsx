@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
 import {
@@ -82,10 +81,6 @@ export default function ShirtPlacementMockup({
   const seamColor = isWhite
     ? 'rgba(35,31,26,0.14)'
     : 'rgba(255,255,255,0.10)';
-  const logoBlend: CSSProperties['mixBlendMode'] = isWhite
-    ? 'multiply'
-    : 'screen';
-
   const labelText = useMemo(
     () =>
       `T-shirt ${sideLabel} · ${zone.label} · ${zone.maxWidthMm} × ${zone.maxHeightMm} mm`,
@@ -273,21 +268,32 @@ export default function ShirtPlacementMockup({
                   top: `${logoTopPercent}%`,
                   width: `${logoWidthPercent}%`,
                   height: `${logoHeightPercent}%`,
+                  background: isWhite
+                    ? 'rgba(255,255,255,0.02)'
+                    : 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), rgba(255,255,255,0.07) 58%, rgba(124,240,212,0.08) 100%)',
+                  boxShadow: isWhite
+                    ? '0 1px 8px rgba(0,0,0,0.18)'
+                    : '0 0 0 1px rgba(255,255,255,0.18), 0 0 18px rgba(124,240,212,0.28)',
                 }}
               >
-                <Image
+                {/* Native img is intentional for immediate blob: upload previews. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={logoUrl}
                   alt="Uploaded embroidery logo"
-                  fill
-                  unoptimized
-                  sizes="220px"
+                  draggable={false}
                   style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'contain',
-                    mixBlendMode: logoBlend,
-                    opacity: isWhite ? 0.88 : 0.84,
+                    display: 'block',
+                    zIndex: 3,
+                    opacity: 0.98,
                     filter: isWhite
                       ? 'contrast(1.18) saturate(0.95) brightness(0.98) drop-shadow(0 1px 2px rgba(0,0,0,0.20))'
-                      : 'contrast(1.48) saturate(1.18) brightness(0.86) drop-shadow(0 0 10px rgba(124,240,212,0.30))',
+                      : 'contrast(1.2) saturate(1.06) brightness(1.08) drop-shadow(0 0 1px rgba(255,255,255,0.90)) drop-shadow(0 0 10px rgba(124,240,212,0.34))',
                   }}
                 />
               </div>
@@ -502,7 +508,7 @@ const logoFrame: CSSProperties = {
   borderRadius: 12,
   overflow: 'hidden',
   isolation: 'isolate',
-  zIndex: 1,
+  zIndex: 3,
 };
 
 const placeholderText: CSSProperties = {

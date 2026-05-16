@@ -90,9 +90,6 @@ export function OrderMannequinPreview({
   const seamColor = isWhite
     ? 'rgba(35,31,26,0.14)'
     : 'rgba(255,255,255,0.10)';
-  const logoBlend: CSSProperties['mixBlendMode'] = isWhite
-    ? 'multiply'
-    : 'screen';
 
   return (
     <div
@@ -212,7 +209,9 @@ export function OrderMannequinPreview({
                   ? '0 0 18px rgba(124,240,212,0.22), 0 0 58px rgba(0,200,255,0.10), inset 0 0 16px rgba(124,240,212,0.08)'
                   : '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)',
                 background: logoUrl
-                  ? 'transparent'
+                  ? isWhite
+                    ? 'rgba(255,255,255,0.02)'
+                    : 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), rgba(255,255,255,0.07) 58%, rgba(124,240,212,0.08) 100%)'
                   : 'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
                 animation: logoUrl
                   ? 'none'
@@ -237,11 +236,10 @@ export function OrderMannequinPreview({
                   style={{
                     ...logoOnShirt,
                     backgroundImage: `url(${logoUrl})`,
-                    mixBlendMode: logoBlend,
-                    opacity: isWhite ? 0.86 : 0.82,
+                    opacity: 0.98,
                     filter: isWhite
                       ? 'contrast(1.18) saturate(0.95) brightness(0.98) drop-shadow(0 1px 2px rgba(0,0,0,0.20))'
-                      : 'contrast(1.55) saturate(1.20) brightness(0.78) drop-shadow(0 0 10px rgba(124,240,212,0.36))',
+                      : 'contrast(1.2) saturate(1.06) brightness(1.08) drop-shadow(0 0 1px rgba(255,255,255,0.90)) drop-shadow(0 0 10px rgba(124,240,212,0.34))',
                   }}
                 />
               ) : (

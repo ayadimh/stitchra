@@ -6,7 +6,7 @@ import type {
   FormEvent,
   ReactNode,
 } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   clampLogoPlacementConfig,
   formatLogoSize,
@@ -300,6 +300,7 @@ export default function Home({ locale }: HomeProps = {}) {
   const [teeColor, setTeeColor] = useState<TeeColor>('black');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
   const [logoAspectRatio, setLogoAspectRatio] = useState(70 / 45);
   const [logoPlacementConfig, setLogoPlacementConfig] =
     useState<LogoPlacementConfig>(() =>
@@ -373,6 +374,16 @@ export default function Home({ locale }: HomeProps = {}) {
   const craftStats = getCraftStats(activeLocale);
   const faqItems = getFaqItems(activeLocale);
 
+  useEffect(
+    () => () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+    },
+    []
+  );
+
   const applyLogoPreview = async (src: string) => {
     setPreview(src);
     const aspectRatio = await getImageAspectRatio(src);
@@ -442,11 +453,30 @@ export default function Home({ locale }: HomeProps = {}) {
     setError('');
 
     if (!selectedFile) {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
       setPreview(null);
       return;
     }
 
-    await applyLogoPreview(await blobToDataUrl(selectedFile));
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+    }
+
+    const previewUrl = URL.createObjectURL(selectedFile);
+    previewObjectUrlRef.current = previewUrl;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[stitchra:logo-preview]', {
+        uploadedFilename: selectedFile.name,
+        previewUrlExists: Boolean(previewUrl),
+        selectedPlacement: placementZoneId,
+      });
+    }
+
+    await applyLogoPreview(previewUrl);
     setIsAnalyzing(true);
     setStatus(t('status.analyzingLogo'));
 
@@ -476,6 +506,10 @@ export default function Home({ locale }: HomeProps = {}) {
 
       setFile(processedFile);
       await applyLogoPreview(analysis.processed_png);
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
       setLogoAnalysis(analysis);
       setStatus(
         analysis.colors_count <= PRACTICAL_THREAD_COLOR_LIMIT
@@ -558,6 +592,10 @@ export default function Home({ locale }: HomeProps = {}) {
 
       setFile(generatedFile);
       await applyLogoPreview(previewDataUrl);
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
       setLogoAnalysis(null);
 
       setStatus(t('status.generated'));
