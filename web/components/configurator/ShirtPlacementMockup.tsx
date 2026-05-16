@@ -24,13 +24,13 @@ function clamp(value: number, min: number, max: number) {
 
 function getZoneLayout(zoneId: ShirtConfiguratorProps['placementZone']): ZoneLayout {
   const layouts: Record<ShirtConfiguratorProps['placementZone'], ZoneLayout> = {
-    left_chest: { left: 58, top: 37, width: 27, height: 14 },
-    right_chest: { left: 42, top: 37, width: 27, height: 14 },
-    center_chest: { left: 50, top: 39, width: 34, height: 18 },
-    center_front: { left: 50, top: 55, width: 48, height: 35 },
-    lower_front: { left: 50, top: 73, width: 36, height: 19 },
-    front_left_bottom: { left: 36, top: 76, width: 31, height: 18 },
-    front_right_bottom: { left: 64, top: 76, width: 31, height: 18 },
+    left_chest: { left: 64, top: 42, width: 22, height: 15 },
+    right_chest: { left: 36, top: 42, width: 22, height: 15 },
+    center_chest: { left: 50, top: 40, width: 34, height: 18 },
+    center_front: { left: 50, top: 54, width: 48, height: 35 },
+    lower_front: { left: 50, top: 68, width: 38, height: 21 },
+    front_left_bottom: { left: 38, top: 70, width: 31, height: 18 },
+    front_right_bottom: { left: 62, top: 70, width: 31, height: 18 },
     upper_back: { left: 50, top: 32, width: 42, height: 20 },
     center_back: { left: 50, top: 54, width: 52, height: 38 },
     lower_back: { left: 50, top: 73, width: 50, height: 32 },
@@ -55,6 +55,7 @@ export default function ShirtPlacementMockup({
 }: ShirtConfiguratorProps) {
   const zoneRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
   const [mouse, setMouse] = useState({
     x: 0,
     y: 0,
@@ -64,6 +65,7 @@ export default function ShirtPlacementMockup({
   const layout = getZoneLayout(placementZone);
   const sideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
+  const logoLoadFailed = Boolean(logoUrl && failedLogoUrl === logoUrl);
   const logoWidthPercent = (config.logo_width_mm / zone.maxWidthMm) * 100;
   const logoHeightPercent = (config.logo_height_mm / zone.maxHeightMm) * 100;
   const logoLeftPercent = config.logo_position_x * 100 - logoWidthPercent / 2;
@@ -131,13 +133,13 @@ export default function ShirtPlacementMockup({
       <style>
         {`
           @keyframes stitchraTorsoFloat {
-            0%, 100% { transform: translate3d(0, 0, 0); }
-            50% { transform: translate3d(0, -12px, 0); }
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            50% { transform: translate3d(0, -6px, 0) scale(1.01); }
           }
 
           @keyframes stitchraBreath {
             0%, 100% { transform: translateX(-50%) translateZ(58px) scale3d(1, 1, 1); filter: brightness(1); }
-            50% { transform: translateX(-50%) translateZ(58px) scale3d(1.012, 1.006, 1); filter: brightness(1.04); }
+            50% { transform: translateX(-50%) translateZ(58px) scale3d(1.004, 1.003, 1); filter: brightness(1.025); }
           }
 
           @keyframes stitchraGlow {
@@ -154,6 +156,16 @@ export default function ShirtPlacementMockup({
             0%, 100% { opacity: 0.27; transform: translateX(-10px); }
             50% { opacity: 0.38; transform: translateX(10px); }
           }
+
+          @media (prefers-reduced-motion: reduce) {
+            .shirt-placement-preview-card .shirt-preview-motion,
+            .shirt-placement-preview-card .shirt-preview-breath,
+            .shirt-placement-preview-card .shirt-preview-glow,
+            .shirt-placement-preview-card .shirt-preview-thread,
+            .shirt-placement-preview-card .shirt-preview-fabric {
+              animation: none !important;
+            }
+          }
         `}
       </style>
       <div
@@ -162,7 +174,7 @@ export default function ShirtPlacementMockup({
           transform: `translate3d(${mouse.x * -10}px, ${mouse.y * -10}px, 0)`,
         }}
       />
-      <div style={glowField} />
+      <div className="shirt-preview-glow" style={glowField} />
 
       <div className="designer-preview-label" style={previewLabel}>
         {labelText}
@@ -175,7 +187,7 @@ export default function ShirtPlacementMockup({
           transform: `translateX(-50%) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
         }}
       >
-        <div style={torsoFloat}>
+        <div className="shirt-preview-motion" style={torsoFloat}>
           <div style={shadow} />
           <div
             style={{
@@ -190,6 +202,7 @@ export default function ShirtPlacementMockup({
             }}
           />
           <div
+            className="shirt-preview-breath"
             style={{
               ...shirtBody,
               background: shirtSurface,
@@ -199,6 +212,7 @@ export default function ShirtPlacementMockup({
             }}
           >
             <div
+              className="shirt-preview-fabric"
               style={{
                 ...fabricTexture,
                 opacity: isWhite ? 0.44 : 0.3,
@@ -254,12 +268,13 @@ export default function ShirtPlacementMockup({
             }}
           >
             <div
+              className="shirt-preview-thread"
               style={{
                 ...threadGrid,
                 opacity: logoUrl ? (isWhite ? 0.1 : 0.13) : 0.32,
               }}
             />
-            {logoUrl ? (
+            {logoUrl && !logoLoadFailed ? (
               <div
                 aria-label="Design preview on shirt"
                 style={{
@@ -282,6 +297,7 @@ export default function ShirtPlacementMockup({
                   src={logoUrl}
                   alt="Uploaded embroidery logo"
                   draggable={false}
+                  onError={() => setFailedLogoUrl(logoUrl)}
                   style={{
                     position: 'absolute',
                     inset: 0,
@@ -291,6 +307,7 @@ export default function ShirtPlacementMockup({
                     display: 'block',
                     zIndex: 3,
                     opacity: 0.98,
+                    pointerEvents: 'none',
                     filter: isWhite
                       ? 'contrast(1.18) saturate(0.95) brightness(0.98) drop-shadow(0 1px 2px rgba(0,0,0,0.20))'
                       : 'contrast(1.2) saturate(1.06) brightness(1.08) drop-shadow(0 0 1px rgba(255,255,255,0.90)) drop-shadow(0 0 10px rgba(124,240,212,0.34))',
@@ -300,13 +317,13 @@ export default function ShirtPlacementMockup({
             ) : (
               <span
                 style={{
-                  ...placeholderText,
+                  ...(logoUrl ? previewUnavailableText : placeholderText),
                   color: isWhite
                     ? 'rgba(8,12,14,0.48)'
                     : 'rgba(224,255,244,0.74)',
                 }}
               >
-                Logo
+                {logoUrl ? 'Preview unavailable' : 'Logo'}
               </span>
             )}
           </div>
@@ -517,6 +534,14 @@ const placeholderText: CSSProperties = {
   letterSpacing: 0,
   textTransform: 'uppercase',
   zIndex: 1,
+};
+
+const previewUnavailableText: CSSProperties = {
+  ...placeholderText,
+  maxWidth: '80%',
+  textAlign: 'center',
+  textTransform: 'none',
+  lineHeight: 1.25,
 };
 
 const bottomGlow: CSSProperties = {

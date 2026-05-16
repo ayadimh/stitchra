@@ -499,17 +499,25 @@ export default function Home({ locale }: HomeProps = {}) {
 
       const analysis =
         (await response.json()) as LogoAnalysis;
-      const processedFile = await dataUrlToFile(
-        analysis.processed_png,
-        selectedFile.name
-      );
+      const hasProcessedPreview =
+        typeof analysis.processed_png === 'string' &&
+        analysis.processed_png.startsWith('data:');
 
-      setFile(processedFile);
-      await applyLogoPreview(analysis.processed_png);
-      if (previewObjectUrlRef.current) {
-        URL.revokeObjectURL(previewObjectUrlRef.current);
-        previewObjectUrlRef.current = null;
+      if (hasProcessedPreview) {
+        const processedFile = await dataUrlToFile(
+          analysis.processed_png,
+          selectedFile.name
+        );
+
+        setFile(processedFile);
+        await applyLogoPreview(analysis.processed_png);
+
+        if (previewObjectUrlRef.current) {
+          URL.revokeObjectURL(previewObjectUrlRef.current);
+          previewObjectUrlRef.current = null;
+        }
       }
+
       setLogoAnalysis(analysis);
       setStatus(
         analysis.colors_count <= PRACTICAL_THREAD_COLOR_LIMIT
