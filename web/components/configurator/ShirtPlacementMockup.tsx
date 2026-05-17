@@ -19,10 +19,49 @@ type ZoneLayout = {
   rotate?: number;
 };
 
+type StaticRenderSide = 'front' | 'back';
+
+type StaticPlacementLayout = {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+  rotate?: number;
+};
+
 const WHITE_SHIRT_RENDER_PATHS = {
   front: '/mockups/shirts/shirt-front-white.png',
   back: '/mockups/shirts/shirt-back-white.png',
 } as const;
+
+const STATIC_RENDER_SHIRT_BOUNDS: Record<StaticRenderSide, ZoneLayout> = {
+  front: { left: 26, top: 24, width: 48, height: 64 },
+  back: { left: 26, top: 24, width: 48, height: 64 },
+};
+
+const STATIC_RENDER_PLACEMENTS: Record<
+  StaticRenderSide,
+  Partial<Record<ShirtConfiguratorProps['placementZone'], StaticPlacementLayout>>
+> = {
+  front: {
+    left_chest: { centerX: 0.39, centerY: 0.34, width: 0.24, height: 0.15 },
+    right_chest: { centerX: 0.61, centerY: 0.34, width: 0.24, height: 0.15 },
+    center_chest: { centerX: 0.5, centerY: 0.35, width: 0.42, height: 0.18 },
+    center_front: { centerX: 0.5, centerY: 0.55, width: 0.44, height: 0.54 },
+    lower_front: { centerX: 0.5, centerY: 0.72, width: 0.42, height: 0.22 },
+    front_left_bottom: { centerX: 0.38, centerY: 0.72, width: 0.28, height: 0.19 },
+    front_right_bottom: { centerX: 0.62, centerY: 0.72, width: 0.28, height: 0.19 },
+  },
+  back: {
+    upper_back: { centerX: 0.5, centerY: 0.3, width: 0.42, height: 0.18 },
+    center_back: { centerX: 0.5, centerY: 0.55, width: 0.46, height: 0.54 },
+    lower_back: { centerX: 0.5, centerY: 0.72, width: 0.44, height: 0.26 },
+    back_left_shoulder: { centerX: 0.38, centerY: 0.3, width: 0.28, height: 0.17 },
+    back_right_shoulder: { centerX: 0.62, centerY: 0.3, width: 0.28, height: 0.17 },
+    back_left_bottom: { centerX: 0.38, centerY: 0.74, width: 0.28, height: 0.18 },
+    back_right_bottom: { centerX: 0.62, centerY: 0.74, width: 0.28, height: 0.18 },
+  },
+};
 
 // Raw FBX files are intentionally not loaded in production. The configurator uses static shirt render images for speed and stability.
 function getStaticShirtRenderPath(
@@ -66,6 +105,45 @@ function getZoneLayout(zoneId: ShirtConfiguratorProps['placementZone']): ZoneLay
   return layouts[zoneId];
 }
 
+function getStaticRenderSide(
+  side: ReturnType<typeof getPlacementSideLabel>
+): StaticRenderSide | null {
+  return side === 'front' || side === 'back' ? side : null;
+}
+
+function getStaticRenderZoneLayout(
+  zoneId: ShirtConfiguratorProps['placementZone'],
+  side: StaticRenderSide
+): ZoneLayout {
+  const bounds = STATIC_RENDER_SHIRT_BOUNDS[side];
+  const placement = STATIC_RENDER_PLACEMENTS[side][zoneId];
+
+  if (!placement) {
+    return getZoneLayout(zoneId);
+  }
+
+  const width = clamp(bounds.width * placement.width, 1, bounds.width);
+  const height = clamp(bounds.height * placement.height, 1, bounds.height);
+  const left = clamp(
+    bounds.left + bounds.width * placement.centerX,
+    bounds.left + width / 2,
+    bounds.left + bounds.width - width / 2
+  );
+  const top = clamp(
+    bounds.top + bounds.height * placement.centerY,
+    bounds.top + height / 2,
+    bounds.top + bounds.height - height / 2
+  );
+
+  return {
+    left: Number(left.toFixed(2)),
+    top: Number(top.toFixed(2)),
+    width: Number(width.toFixed(2)),
+    height: Number(height.toFixed(2)),
+    rotate: placement.rotate,
+  };
+}
+
 export default function ShirtPlacementMockup({
   logoUrl,
   shirtColor,
@@ -85,14 +163,18 @@ export default function ShirtPlacementMockup({
     active: false,
   });
   const zone = getEmbroideryZone(placementZone);
-  const layout = getZoneLayout(placementZone);
   const sideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
+  const staticRenderSide = getStaticRenderSide(sideLabel);
   const staticShirtRenderPath = getStaticShirtRenderPath(sideLabel);
   const useStaticShirtRender = Boolean(
     staticShirtRenderPath &&
       failedShirtRenderPath !== staticShirtRenderPath
   );
+  const layout =
+    useStaticShirtRender && staticRenderSide
+      ? getStaticRenderZoneLayout(placementZone, staticRenderSide)
+      : getZoneLayout(placementZone);
   const logoLoadFailed = Boolean(logoUrl && failedLogoUrl === logoUrl);
   const logoWidthPercent = (config.logo_width_mm / zone.maxWidthMm) * 100;
   const logoHeightPercent = (config.logo_height_mm / zone.maxHeightMm) * 100;
