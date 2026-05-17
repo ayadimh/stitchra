@@ -24,15 +24,10 @@ const WHITE_SHIRT_RENDER_PATHS = {
   back: '/mockups/shirts/shirt-back-white.png',
 } as const;
 
-// Raw FBX files are intentionally not loaded in production. The configurator uses static optimized shirt render images for speed and stability.
+// Raw FBX files are intentionally not loaded in production. The configurator uses static shirt render images for speed and stability.
 function getStaticShirtRenderPath(
-  shirtColor: ShirtConfiguratorProps['shirtColor'],
   side: ReturnType<typeof getPlacementSideLabel>
 ) {
-  if (shirtColor !== 'white') {
-    return null;
-  }
-
   if (side === 'front') {
     return WHITE_SHIRT_RENDER_PATHS.front;
   }
@@ -93,10 +88,7 @@ export default function ShirtPlacementMockup({
   const layout = getZoneLayout(placementZone);
   const sideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
-  const staticShirtRenderPath = getStaticShirtRenderPath(
-    shirtColor,
-    sideLabel
-  );
+  const staticShirtRenderPath = getStaticShirtRenderPath(sideLabel);
   const useStaticShirtRender = Boolean(
     staticShirtRenderPath &&
       failedShirtRenderPath !== staticShirtRenderPath
@@ -225,48 +217,52 @@ export default function ShirtPlacementMockup({
       >
         <div className="shirt-preview-motion" style={torsoFloat}>
           <div style={shadow} />
-          <div
-            style={{
-              ...leftSleeve,
-              background: sleeveSurface,
-            }}
-          />
-          <div
-            style={{
-              ...rightSleeve,
-              background: sleeveSurface,
-            }}
-          />
-          <div
-            className="shirt-preview-breath"
-            style={{
-              ...shirtBody,
-              background: shirtSurface,
-              boxShadow: isWhite
-                ? 'inset 24px 22px 38px rgba(255,255,255,0.70), inset -36px -42px 60px rgba(120,112,98,0.34), 0 56px 115px rgba(0,0,0,0.48), 0 0 74px rgba(124,240,212,0.13)'
-                : 'inset 24px 22px 42px rgba(255,255,255,0.07), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
-            }}
-          >
-            <div
-              className="shirt-preview-fabric"
-              style={{
-                ...fabricTexture,
-                opacity: isWhite ? 0.44 : 0.3,
-              }}
-            />
-            <div style={collar} />
-            <div
-              style={{
-                ...neckSeam,
-                background: seamColor,
-                boxShadow:
-                  sideLabel === 'back'
-                    ? `0 30px 0 ${seamColor}, 0 62px 0 ${seamColor}`
-                    : `0 22px 0 ${seamColor}`,
-              }}
-            />
-            {sideLabel === 'back' && <div style={backYoke} />}
-          </div>
+          {!useStaticShirtRender && (
+            <>
+              <div
+                style={{
+                  ...leftSleeve,
+                  background: sleeveSurface,
+                }}
+              />
+              <div
+                style={{
+                  ...rightSleeve,
+                  background: sleeveSurface,
+                }}
+              />
+              <div
+                className="shirt-preview-breath"
+                style={{
+                  ...shirtBody,
+                  background: shirtSurface,
+                  boxShadow: isWhite
+                    ? 'inset 24px 22px 38px rgba(255,255,255,0.70), inset -36px -42px 60px rgba(120,112,98,0.34), 0 56px 115px rgba(0,0,0,0.48), 0 0 74px rgba(124,240,212,0.13)'
+                    : 'inset 24px 22px 42px rgba(255,255,255,0.07), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
+                }}
+              >
+                <div
+                  className="shirt-preview-fabric"
+                  style={{
+                    ...fabricTexture,
+                    opacity: isWhite ? 0.44 : 0.3,
+                  }}
+                />
+                <div style={collar} />
+                <div
+                  style={{
+                    ...neckSeam,
+                    background: seamColor,
+                    boxShadow:
+                      sideLabel === 'back'
+                        ? `0 30px 0 ${seamColor}, 0 62px 0 ${seamColor}`
+                        : `0 22px 0 ${seamColor}`,
+                  }}
+                />
+                {sideLabel === 'back' && <div style={backYoke} />}
+              </div>
+            </>
+          )}
 
           {useStaticShirtRender && staticShirtRenderPath && (
             <div style={staticShirtRenderLayer} aria-hidden="true">
@@ -281,8 +277,9 @@ export default function ShirtPlacementMockup({
                 style={{
                   objectFit: 'contain',
                   objectPosition: 'center center',
-                  filter:
-                    'drop-shadow(0 42px 72px rgba(0,0,0,0.42)) drop-shadow(0 0 42px rgba(124,240,212,0.10))',
+                  filter: isWhite
+                    ? 'drop-shadow(0 42px 72px rgba(0,0,0,0.42)) drop-shadow(0 0 42px rgba(124,240,212,0.10))'
+                    : 'brightness(0.32) contrast(1.36) saturate(0.42) sepia(0.10) hue-rotate(130deg) drop-shadow(0 42px 72px rgba(0,0,0,0.68)) drop-shadow(0 0 52px rgba(124,240,212,0.16))',
                   pointerEvents: 'none',
                   userSelect: 'none',
                 }}
