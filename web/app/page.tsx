@@ -3165,6 +3165,7 @@ export default function Home({ locale }: HomeProps = {}) {
               icon={step.icon}
               title={step.title}
               text={step.text}
+              visual={step.visual}
               accent={step.accent}
             />
           ))}
@@ -3187,6 +3188,7 @@ export default function Home({ locale }: HomeProps = {}) {
               text={feature.text}
               accent={feature.accent}
               footer={feature.footer}
+              visual={feature.visual}
             />
           ))}
         </div>
@@ -4387,6 +4389,61 @@ function GlobalVisualStyles() {
           opacity: 0.24;
         }
 
+        @keyframes homepageVisualFloat {
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -5px, 0); }
+        }
+
+        @keyframes homepageVisualShimmer {
+          0% { transform: translateX(-38%) rotate(-8deg); opacity: 0; }
+          42% { opacity: 0.52; }
+          100% { transform: translateX(38%) rotate(-8deg); opacity: 0; }
+        }
+
+        .homepage-card-visual {
+          position: relative;
+          overflow: hidden;
+          color: var(--visual-main);
+          contain: paint;
+          animation: homepageVisualFloat 6.4s ease-in-out infinite;
+        }
+
+        .homepage-card-visual::before {
+          content: "";
+          position: absolute;
+          inset: -28px;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 34% 22%, var(--visual-glow), transparent 42%),
+            radial-gradient(circle at 82% 78%, rgba(0,215,255,0.18), transparent 42%);
+          filter: blur(18px);
+          opacity: 0.75;
+        }
+
+        .homepage-card-visual::after {
+          content: "";
+          position: absolute;
+          top: -24%;
+          bottom: -24%;
+          left: 22%;
+          width: 32px;
+          pointer-events: none;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.34), transparent);
+          animation: homepageVisualShimmer 7.2s ease-in-out infinite;
+        }
+
+        .homepage-card-visual svg {
+          position: relative;
+          z-index: 1;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .homepage-card-visual,
+          .homepage-card-visual::after {
+            animation: none !important;
+          }
+        }
+
         .glow-card > :not(img):not(.production-photo-overlay):not(.production-photo-badge):not(.production-mini-copy):not(.gallery-image) {
           position: relative;
           z-index: 1;
@@ -5182,12 +5239,14 @@ function StepCard({
   icon,
   title,
   text,
+  visual,
   accent = 'green',
 }: {
   number: string;
   icon: string;
   title: string;
   text: string;
+  visual: HomepageCardVisualKind;
   accent?: Accent;
 }) {
   const colors = accentStyles[accent];
@@ -5221,9 +5280,11 @@ function StepCard({
             color: colors.main,
           }}
         >
-          {icon}
-        </div>
+        {icon}
       </div>
+    </div>
+
+      <HomepageCardVisual kind={visual} accent={accent} />
 
       <h3 style={cardTitle}>
         {title}
@@ -5242,12 +5303,14 @@ function FeatureCard({
   text,
   accent,
   footer,
+  visual,
 }: {
   icon: string;
   title: string;
   text: string;
   accent: Accent;
   footer: string;
+  visual: HomepageCardVisualKind;
 }) {
   const colors = accentStyles[accent];
 
@@ -5274,6 +5337,8 @@ function FeatureCard({
         {icon}
       </div>
 
+      <HomepageCardVisual kind={visual} accent={accent} compact />
+
       <h3 style={cardTitle}>
         {title}
       </h3>
@@ -5294,6 +5359,200 @@ function FeatureCard({
       >
         {footer}
       </div>
+    </div>
+  );
+}
+
+function HomepageCardVisual({
+  kind,
+  accent,
+  compact = false,
+}: {
+  kind: HomepageCardVisualKind;
+  accent: Accent;
+  compact?: boolean;
+}) {
+  const colors = accentStyles[accent];
+  const gradientId = `visual-gradient-${kind}`;
+  const glowId = `visual-glow-${kind}`;
+
+  return (
+    <div
+      className="homepage-card-visual"
+      aria-hidden="true"
+      style={{
+        ...cardVisualShell,
+        minHeight: compact ? 104 : 126,
+        '--visual-main': colors.main,
+        '--visual-glow': colors.glow,
+        '--visual-soft': colors.soft,
+      } as CSSProperties}
+    >
+      <svg
+        viewBox="0 0 260 142"
+        role="presentation"
+        focusable="false"
+        style={cardVisualSvg}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor={colors.main} stopOpacity="0.96" />
+            <stop offset="58%" stopColor="#00d7ff" stopOpacity="0.66" />
+            <stop offset="100%" stopColor="#ff28d6" stopOpacity="0.54" />
+          </linearGradient>
+          <filter id={glowId} x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <pattern
+            id={`${kind}-fabric`}
+            width="12"
+            height="12"
+            patternUnits="userSpaceOnUse"
+          >
+            <path d="M0 6H12M6 0V12" stroke="currentColor" strokeOpacity="0.11" />
+          </pattern>
+          <pattern
+            id={`${kind}-checker`}
+            width="16"
+            height="16"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width="8" height="8" fill="rgba(255,255,255,0.10)" />
+            <rect x="8" y="8" width="8" height="8" fill="rgba(255,255,255,0.10)" />
+          </pattern>
+        </defs>
+
+        <rect
+          x="10"
+          y="10"
+          width="240"
+          height="122"
+          rx="28"
+          fill="rgba(255,255,255,0.035)"
+          stroke="currentColor"
+          strokeOpacity="0.10"
+        />
+        <circle cx="56" cy="44" r="42" fill={colors.main} opacity="0.08" />
+        <circle cx="204" cy="104" r="52" fill="#00d7ff" opacity="0.055" />
+
+        {kind === 'garment' && (
+          <>
+            <path
+              d="M99 39L117 31C124 43 136 43 143 31L161 39L183 55L172 76L160 70V113H100V70L88 76L77 55L99 39Z"
+              fill="rgba(255,255,255,0.09)"
+              stroke={`url(#${gradientId})`}
+              strokeWidth="2.2"
+              filter={`url(#${glowId})`}
+            />
+            <path
+              d="M118 37C123 45 137 45 142 37"
+              fill="none"
+              stroke="rgba(255,255,255,0.46)"
+              strokeWidth="2"
+            />
+            <circle cx="116" cy="62" r="4" fill={colors.main} />
+            <circle cx="130" cy="78" r="4" fill="#00d7ff" />
+            <circle cx="145" cy="62" r="4" fill="#ff28d6" />
+            <rect x="36" y="87" width="28" height="28" rx="10" fill="#050607" stroke="rgba(255,255,255,0.22)" />
+            <rect x="68" y="87" width="28" height="28" rx="10" fill="#f5f1e8" stroke="rgba(255,255,255,0.22)" />
+            <path d="M196 54H226M196 72H216M196 90H230" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.72" />
+          </>
+        )}
+
+        {kind === 'artwork' && (
+          <>
+            <rect x="42" y="39" width="64" height="70" rx="16" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.14)" />
+            <path d="M62 72C72 52 83 52 92 72C83 92 72 92 62 72Z" fill="none" stroke="rgba(255,255,255,0.42)" strokeWidth="2" />
+            <path d="M113 74H146" stroke={`url(#${gradientId})`} strokeWidth="4" strokeLinecap="round" />
+            <path d="M132 58L146 74L132 90" fill="none" stroke={colors.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <rect x="154" y="31" width="72" height="86" rx="18" fill="rgba(255,255,255,0.075)" stroke={`url(#${gradientId})`} strokeWidth="2" filter={`url(#${glowId})`} />
+            <path d="M177 83C188 56 204 56 216 83C203 103 189 104 177 83Z" fill="none" stroke={colors.main} strokeWidth="3" />
+            <circle cx="177" cy="83" r="4" fill="#00d7ff" />
+            <circle cx="216" cy="83" r="4" fill="#00d7ff" />
+            <circle cx="196" cy="59" r="4" fill="#ff28d6" />
+            <path d="M203 35L207 43L216 46L207 49L203 58L199 49L190 46L199 43Z" fill={colors.main} opacity="0.8" />
+          </>
+        )}
+
+        {kind === 'fabric' && (
+          <>
+            <rect x="42" y="32" width="176" height="88" rx="24" fill={`url(#${kind}-fabric)`} stroke="rgba(255,255,255,0.13)" />
+            <path
+              d="M100 46L116 39C122 49 138 49 144 39L160 46L177 59L168 76L160 71V109H100V71L92 76L83 59L100 46Z"
+              fill="rgba(255,255,255,0.075)"
+              stroke={`url(#${gradientId})`}
+              strokeWidth="2"
+            />
+            <rect x="116" y="65" width="42" height="28" rx="9" fill="rgba(0,0,0,0.28)" stroke={colors.main} strokeWidth="2" filter={`url(#${glowId})`} />
+            <path d="M118 66H155M118 74H155M118 82H155M118 90H155" stroke="rgba(255,255,255,0.13)" />
+            <path d="M192 50C209 64 211 84 196 100" fill="none" stroke={colors.main} strokeWidth="3" strokeLinecap="round" />
+            <path d="M196 50L192 50L194 56" fill="none" stroke={colors.main} strokeWidth="3" strokeLinecap="round" />
+          </>
+        )}
+
+        {kind === 'quote' && (
+          <>
+            <rect x="42" y="28" width="128" height="88" rx="18" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.13)" />
+            <path d="M62 54H96M62 73H124M62 92H108" stroke="rgba(255,255,255,0.34)" strokeWidth="4" strokeLinecap="round" />
+            <circle cx="143" cy="54" r="6" fill={colors.main} />
+            <circle cx="143" cy="73" r="6" fill="#00d7ff" />
+            <circle cx="143" cy="92" r="6" fill="#ff28d6" />
+            <circle cx="196" cy="74" r="34" fill={`url(#${gradientId})`} opacity="0.88" filter={`url(#${glowId})`} />
+            <text x="196" y="83" textAnchor="middle" fontSize="30" fontWeight="900" fill="#05100b">€</text>
+            <path d="M184 116H226" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+          </>
+        )}
+
+        {kind === 'aiLogo' && (
+          <>
+            <rect x="36" y="38" width="82" height="42" rx="16" fill="rgba(255,255,255,0.075)" stroke="rgba(255,255,255,0.13)" />
+            <path d="M56 59H98M70 74H106" stroke="rgba(255,255,255,0.32)" strokeWidth="4" strokeLinecap="round" />
+            <path d="M118 62C140 34 175 35 196 62C177 93 139 94 118 62Z" fill="none" stroke={`url(#${gradientId})`} strokeWidth="2.5" filter={`url(#${glowId})`} />
+            <path d="M151 75C160 54 174 54 184 75C174 90 160 91 151 75Z" fill="none" stroke={colors.main} strokeWidth="3" />
+            <circle cx="132" cy="47" r="4" fill={colors.main} />
+            <circle cx="204" cy="71" r="4" fill="#00d7ff" />
+            <circle cx="148" cy="102" r="4" fill="#ff28d6" />
+            <path d="M132 47L166 62L204 71M166 62L148 102" stroke="rgba(255,255,255,0.20)" />
+          </>
+        )}
+
+        {kind === 'fabricPreview' && (
+          <>
+            <rect x="38" y="30" width="184" height="92" rx="24" fill={`url(#${kind}-fabric)`} stroke="rgba(255,255,255,0.12)" />
+            <ellipse cx="130" cy="78" rx="66" ry="30" fill="rgba(0,0,0,0.22)" />
+            <rect x="101" y="55" width="58" height="42" rx="13" fill="rgba(255,255,255,0.08)" stroke={`url(#${gradientId})`} strokeWidth="2.4" filter={`url(#${glowId})`} />
+            <path d="M113 79C122 62 138 62 147 79C138 92 122 92 113 79Z" fill="none" stroke={colors.main} strokeWidth="3" />
+            <path d="M57 49H86M174 49H204M57 106H98M162 106H205" stroke="rgba(255,255,255,0.24)" strokeWidth="3" strokeLinecap="round" />
+          </>
+        )}
+
+        {kind === 'cleanup' && (
+          <>
+            <rect x="42" y="34" width="78" height="76" rx="18" fill={`url(#${kind}-checker)`} stroke="rgba(255,255,255,0.13)" />
+            <path d="M59 55H103M59 90H103M59 55V90M103 55V90" stroke="rgba(255,255,255,0.32)" strokeDasharray="5 6" />
+            <path d="M125 72H151" stroke={`url(#${gradientId})`} strokeWidth="4" strokeLinecap="round" />
+            <path d="M140 59L153 72L140 85" fill="none" stroke={colors.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <rect x="158" y="30" width="66" height="84" rx="18" fill="rgba(255,255,255,0.075)" stroke={`url(#${gradientId})`} strokeWidth="2" />
+            <path d="M177 83C187 58 205 58 215 83C204 100 188 101 177 83Z" fill="none" stroke={colors.main} strokeWidth="3" filter={`url(#${glowId})`} />
+            <path d="M171 46H212M171 105H212" stroke="rgba(255,255,255,0.25)" strokeWidth="3" strokeLinecap="round" />
+          </>
+        )}
+
+        {kind === 'price' && (
+          <>
+            <rect x="46" y="26" width="116" height="92" rx="18" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.14)" />
+            <path d="M66 52H98M66 72H121M66 92H108" stroke="rgba(255,255,255,0.31)" strokeWidth="4" strokeLinecap="round" />
+            <path d="M132 52H145M132 72H145M132 92H145" stroke={colors.main} strokeWidth="4" strokeLinecap="round" />
+            <rect x="178" y="46" width="52" height="52" rx="18" fill={`url(#${gradientId})`} filter={`url(#${glowId})`} />
+            <text x="204" y="78" textAnchor="middle" fontSize="28" fontWeight="900" fill="#05100b">€</text>
+            <path d="M181 113H229" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.72" />
+          </>
+        )}
+      </svg>
     </div>
   );
 }
@@ -5389,6 +5648,15 @@ function PriceBlock({
 }
 
 type Accent = 'green' | 'cyan' | 'purple' | 'pink';
+type HomepageCardVisualKind =
+  | 'garment'
+  | 'artwork'
+  | 'fabric'
+  | 'quote'
+  | 'aiLogo'
+  | 'fabricPreview'
+  | 'cleanup'
+  | 'price';
 
 const accentStyles: Record<
   Accent,
@@ -5455,16 +5723,17 @@ function getProcessSteps(locale: Locale): Array<{
   title: string;
   text: string;
   accent: Accent;
+  visual: HomepageCardVisualKind;
 }> {
   const copy = getLocalizedArray<{
     title: string;
     text: string;
   }>(locale, 'process');
   const meta = [
-    { number: '01', icon: 'TEE', accent: 'green' as const },
-    { number: '02', icon: 'AI', accent: 'cyan' as const },
-    { number: '03', icon: '3D', accent: 'purple' as const },
-    { number: '04', icon: '€', accent: 'pink' as const },
+    { number: '01', icon: 'TEE', accent: 'green' as const, visual: 'garment' as const },
+    { number: '02', icon: 'AI', accent: 'cyan' as const, visual: 'artwork' as const },
+    { number: '03', icon: '3D', accent: 'purple' as const, visual: 'fabric' as const },
+    { number: '04', icon: '€', accent: 'pink' as const, visual: 'quote' as const },
   ];
 
   return meta.map((item, index) => ({
@@ -5481,10 +5750,10 @@ function getFeatures(locale: Locale) {
     footer: string;
   }>(locale, 'features');
   const meta = [
-    { icon: 'AI', accent: 'green' as const },
-    { icon: 'FAB', accent: 'cyan' as const },
-    { icon: 'PNG', accent: 'purple' as const },
-    { icon: '€', accent: 'pink' as const },
+    { icon: 'AI', accent: 'green' as const, visual: 'aiLogo' as const },
+    { icon: 'FAB', accent: 'cyan' as const, visual: 'fabricPreview' as const },
+    { icon: 'PNG', accent: 'purple' as const, visual: 'cleanup' as const },
+    { icon: '€', accent: 'pink' as const, visual: 'price' as const },
   ];
 
   return meta.map((item, index) => ({
@@ -5607,12 +5876,29 @@ const galleryGrid: CSSProperties = {
 
 const featureCard: CSSProperties = {
   ...glassCard,
-  minHeight: 252,
+  minHeight: 382,
 };
 
 const stepCard: CSSProperties = {
   ...glassCard,
-  minHeight: 300,
+  minHeight: 406,
+};
+
+const cardVisualShell: CSSProperties = {
+  width: '100%',
+  margin: '0 0 24px',
+  borderRadius: 24,
+  border: '1px solid rgba(255,255,255,0.10)',
+  background:
+    'linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.02))',
+  boxShadow:
+    'inset 0 1px 0 rgba(255,255,255,0.08), 0 22px 60px rgba(0,0,0,0.22)',
+};
+
+const cardVisualSvg: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  height: '100%',
 };
 
 const stepTop: CSSProperties = {
