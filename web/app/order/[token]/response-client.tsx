@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { OrderMannequinPreview } from '@/components/OrderMannequinPreview';
+import StitchraLogo from '@/components/brand/StitchraLogo';
 import { formatPlacementLabel } from '@/lib/embroideryZones';
 import type {
   CustomerDecision,
@@ -256,8 +257,7 @@ export function OrderResponseClient({
 
       <section style={heroSection}>
         <Link href="/" style={brandLink}>
-          <span style={brandMark}>S</span>
-          <span>Stitchra</span>
+          <StitchraLogo compact showSubtitle={false} size={38} />
         </Link>
         <div style={heroCopy}>
           <p style={eyebrow}>Private studio offer</p>
@@ -782,17 +782,6 @@ const brandLink: CSSProperties = {
   color: '#f5f7f8',
   textDecoration: 'none',
   fontWeight: 900,
-};
-
-const brandMark: CSSProperties = {
-  width: 38,
-  height: 38,
-  borderRadius: 12,
-  display: 'grid',
-  placeItems: 'center',
-  background: 'linear-gradient(135deg, #00ff88, #00c8ff)',
-  color: '#03100d',
-  fontWeight: 950,
 };
 
 const heroCopy: CSSProperties = {

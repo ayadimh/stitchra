@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import type { CSSProperties, ReactNode } from 'react';
+import StitchraLogo from '@/components/brand/StitchraLogo';
 
 const SITE_URL = 'https://stitchra.com';
 
@@ -25,13 +25,7 @@ export function LegalPage({
     <main style={pageStyle}>
       <header style={headerStyle}>
         <a href={SITE_URL} style={brandLink}>
-          <Image
-            src="/stitchra-mark.svg"
-            alt=""
-            width={40}
-            height={40}
-          />
-          <span>Stitchra</span>
+          <StitchraLogo compact showSubtitle={false} size={40} />
         </a>
         <nav style={navStyle} aria-label="Trust pages">
           {trustLinks.map((link) => (

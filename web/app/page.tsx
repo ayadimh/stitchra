@@ -21,6 +21,7 @@ import {
   type LogoPlacementConfig,
 } from '@/lib/embroideryZones';
 import { evaluateMachineCapability } from '@/lib/machineLimits';
+import StitchraLogo from '@/components/brand/StitchraLogo';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
 import type { CustomLogoPlacement } from '@/components/configurator/types';
 import {
@@ -3172,25 +3173,27 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="features" style={sectionStyle}>
-        <SectionHeader
-          eyebrow={t('sections.featuresEyebrow')}
-          title={t('sections.featuresTitle')}
-          text={t('sections.featuresText')}
-        />
+      <section id="features" className="studio-tools-section" style={toolSectionStyle}>
+        <div style={toolSectionInner}>
+          <SectionHeader
+            eyebrow={t('sections.featuresEyebrow')}
+            title={t('sections.featuresTitle')}
+            text={t('sections.featuresText')}
+          />
 
-        <div style={fourGrid}>
-          {features.map((feature) => (
-            <FeatureCard
-              key={feature.title}
-              icon={feature.icon}
-              title={feature.title}
-              text={feature.text}
-              accent={feature.accent}
-              footer={feature.footer}
-              visual={feature.visual}
-            />
-          ))}
+          <div className="tool-card-grid" style={toolGrid}>
+            {features.map((feature) => (
+              <FeatureCard
+                key={feature.title}
+                icon={feature.icon}
+                title={feature.title}
+                text={feature.text}
+                accent={feature.accent}
+                footer={feature.footer}
+                visual={feature.visual}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -3426,12 +3429,7 @@ export default function Home({ locale }: HomeProps = {}) {
               textDecoration: 'none',
             }}
           >
-            <Image
-              src="/stitchra-mark.svg"
-              alt=""
-              width={34}
-              height={34}
-            />
+            <StitchraLogo compact markOnly size={34} />
             <span><strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · {t('footer.tagline')}</span>
           </a>
 
@@ -3499,38 +3497,7 @@ function Header({
             textDecoration: 'none',
           }}
         >
-          <Image
-            src="/stitchra-mark.svg"
-            alt="Stitchra"
-            className="header-mark"
-            width={58}
-            height={58}
-            style={{
-              width: 58,
-              height: 58,
-              borderRadius: 20,
-              boxShadow:
-                '0 0 45px rgba(0,255,136,0.35)',
-            }}
-            priority
-          />
-
-          <div className="header-wordmark">
-            <Image
-              src="/stitchra-wordmark.svg"
-              alt="Stitchra AI embroidery platform"
-              width={188}
-              height={50}
-              style={{
-                display: 'block',
-                width: 188,
-                height: 'auto',
-                filter:
-                  'drop-shadow(0 0 18px rgba(0,255,136,0.20))',
-              }}
-              priority
-            />
-          </div>
+          <StitchraLogo size={58} showSubtitle className="header-logo" />
         </a>
 
         <div
@@ -4389,6 +4356,39 @@ function GlobalVisualStyles() {
           opacity: 0.24;
         }
 
+        .studio-tools-section::before {
+          content: "";
+          position: absolute;
+          inset: 56px max(18px, calc((100vw - 1240px) / 2)) 48px;
+          pointer-events: none;
+          border-radius: 42px;
+          background:
+            radial-gradient(circle at 18% 18%, rgba(0,255,136,0.13), transparent 34%),
+            radial-gradient(circle at 82% 30%, rgba(0,215,255,0.12), transparent 35%),
+            linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+          border: 1px solid rgba(255,255,255,0.065);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 42px 130px rgba(0,0,0,0.26);
+        }
+
+        .tool-card-grid .tool-card {
+          position: relative;
+        }
+
+        .tool-card-grid .tool-card:nth-child(even) {
+          transform: translateY(28px);
+        }
+
+        .tool-card-grid .tool-card::after {
+          content: "";
+          position: absolute;
+          left: 30px;
+          right: 30px;
+          top: 26px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, var(--card-glow), transparent);
+          opacity: 0.9;
+        }
+
         @keyframes homepageVisualFloat {
           0%, 100% { transform: translate3d(0, 0, 0); }
           50% { transform: translate3d(0, -5px, 0); }
@@ -4417,7 +4417,7 @@ function GlobalVisualStyles() {
             radial-gradient(circle at 34% 22%, var(--visual-glow), transparent 42%),
             radial-gradient(circle at 82% 78%, rgba(0,215,255,0.18), transparent 42%);
           filter: blur(18px);
-          opacity: 0.75;
+          opacity: 0.56;
         }
 
         .homepage-card-visual::after {
@@ -4428,7 +4428,7 @@ function GlobalVisualStyles() {
           left: 22%;
           width: 32px;
           pointer-events: none;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.34), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.24), transparent);
           animation: homepageVisualShimmer 7.2s ease-in-out infinite;
         }
 
@@ -4849,6 +4849,10 @@ function GlobalVisualStyles() {
           .faq-grid {
             grid-template-columns: 1fr;
           }
+
+          .tool-card-grid .tool-card:nth-child(even) {
+            transform: none;
+          }
         }
 
         @media (max-width: 640px) {
@@ -4887,14 +4891,23 @@ function GlobalVisualStyles() {
             padding: 0 16px !important;
           }
 
-          .header-wordmark {
+          .header-logo .stitchra-logo-copy {
             display: none !important;
           }
 
-          .header-mark {
+          .header-logo {
+            gap: 0 !important;
+          }
+
+          .header-logo > span:first-child {
             width: 46px !important;
             height: 46px !important;
             border-radius: 16px !important;
+          }
+
+          .header-logo svg {
+            width: 46px !important;
+            height: 46px !important;
           }
 
           .header-links .lux-button {
@@ -5316,7 +5329,7 @@ function FeatureCard({
 
   return (
     <div
-      className="glow-card"
+      className="glow-card tool-card"
       style={{
         ...featureCard,
         '--card-glow': colors.glow,
@@ -5382,7 +5395,8 @@ function HomepageCardVisual({
       aria-hidden="true"
       style={{
         ...cardVisualShell,
-        minHeight: compact ? 104 : 126,
+        minHeight: compact ? 122 : 136,
+        margin: compact ? '20px 0 34px' : '4px 0 38px',
         '--visual-main': colors.main,
         '--visual-glow': colors.glow,
         '--visual-soft': colors.soft,
@@ -5864,6 +5878,29 @@ const fourGrid: CSSProperties = {
   gap: 18,
 };
 
+const toolSectionStyle: CSSProperties = {
+  ...sectionStyle,
+  padding: '124px 24px 144px',
+  overflow: 'hidden',
+};
+
+const toolSectionInner: CSSProperties = {
+  position: 'relative',
+  zIndex: 1,
+  maxWidth: 1240,
+  margin: '0 auto',
+};
+
+const toolGrid: CSSProperties = {
+  maxWidth: 1180,
+  margin: '54px auto 0',
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(auto-fit, minmax(235px, 1fr))',
+  gap: 20,
+  alignItems: 'stretch',
+};
+
 const galleryGrid: CSSProperties = {
   maxWidth: 1180,
   margin: '42px auto 0',
@@ -5876,17 +5913,18 @@ const galleryGrid: CSSProperties = {
 
 const featureCard: CSSProperties = {
   ...glassCard,
-  minHeight: 382,
+  minHeight: 438,
+  padding: 32,
 };
 
 const stepCard: CSSProperties = {
   ...glassCard,
-  minHeight: 406,
+  minHeight: 440,
+  padding: 32,
 };
 
 const cardVisualShell: CSSProperties = {
   width: '100%',
-  margin: '0 0 24px',
   borderRadius: 24,
   border: '1px solid rgba(255,255,255,0.10)',
   background:
@@ -5905,7 +5943,7 @@ const stepTop: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
-  marginBottom: 30,
+  marginBottom: 34,
 };
 
 const stepNumber: CSSProperties = {
@@ -5937,15 +5975,15 @@ const iconBox: CSSProperties = {
 };
 
 const cardTitle: CSSProperties = {
-  margin: '0 0 10px',
+  margin: '0 0 12px',
   fontSize: 20,
-  lineHeight: 1.2,
+  lineHeight: 1.24,
 };
 
 const cardText: CSSProperties = {
   margin: 0,
   color: 'rgba(245,247,248,0.62)',
-  lineHeight: 1.65,
+  lineHeight: 1.7,
 };
 
 const pricingPanel: CSSProperties = {

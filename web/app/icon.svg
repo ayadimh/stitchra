@@ -1,0 +1,24 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="86" y2="90">
+      <stop stop-color="#10201C"/>
+      <stop offset="0.48" stop-color="#06110F"/>
+      <stop offset="1" stop-color="#020606"/>
+    </linearGradient>
+    <linearGradient id="thread" x1="24" y1="19" x2="74" y2="78">
+      <stop stop-color="#F4FFF9"/>
+      <stop offset="0.42" stop-color="#7CF0D4"/>
+      <stop offset="1" stop-color="#00FF88"/>
+    </linearGradient>
+    <linearGradient id="needle" x1="68" y1="18" x2="30" y2="80">
+      <stop stop-color="#EAFFF7"/>
+      <stop offset="1" stop-color="#00D7FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="88" height="88" rx="27" fill="url(#bg)"/>
+  <rect x="5.5" y="5.5" width="85" height="85" rx="25.5" fill="none" stroke="#7CF0D4" stroke-opacity="0.22"/>
+  <path d="M65.5 22.5C59.4 17.2 47.7 16.4 38.9 20.9C29.4 25.7 28.4 36.1 38.3 41.4L55.7 50.8C66.3 56.5 64.7 68.5 53.4 73.4C44 77.5 32.7 75 27.6 68.4" fill="none" stroke="url(#thread)" stroke-width="7.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M70.5 21.5L31.2 76.5" stroke="url(#needle)" stroke-width="2.7" stroke-linecap="round"/>
+  <path d="M70.5 21.5C74 22.6 76.3 25.3 77 29.3C73.5 28.7 71.1 25.9 70.5 21.5Z" fill="none" stroke="#EAFFF7" stroke-width="2.1" stroke-linejoin="round"/>
+  <path d="M21 74C36.5 64.2 58.2 64.1 77 73.6" fill="none" stroke="#00D7FF" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 8" opacity="0.92"/>
+</svg>

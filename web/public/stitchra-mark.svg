@@ -1,35 +1,34 @@
 <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="mark-bg" x1="10" y1="8" x2="86" y2="90" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0E1917"/>
-      <stop offset="0.5" stop-color="#06100F"/>
+    <linearGradient id="stitchra-mark-bg" x1="12" y1="8" x2="86" y2="90">
+      <stop stop-color="#10201C"/>
+      <stop offset="0.48" stop-color="#06110F"/>
       <stop offset="1" stop-color="#020606"/>
     </linearGradient>
-    <linearGradient id="mark-stitch" x1="25" y1="18" x2="72" y2="78" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#EFFFF7"/>
-      <stop offset="0.46" stop-color="#7CF0D4"/>
+    <linearGradient id="stitchra-thread" x1="24" y1="19" x2="74" y2="78">
+      <stop stop-color="#F4FFF9"/>
+      <stop offset="0.42" stop-color="#7CF0D4"/>
       <stop offset="1" stop-color="#00FF88"/>
     </linearGradient>
-    <linearGradient id="mark-thread" x1="20" y1="75" x2="79" y2="26" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#00FF88"/>
+    <linearGradient id="stitchra-needle" x1="68" y1="18" x2="30" y2="80">
+      <stop stop-color="#EAFFF7"/>
       <stop offset="1" stop-color="#00D7FF"/>
     </linearGradient>
-    <filter id="mark-glow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="3.6" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0 0 0 0 0 0.95 0 0 0 0 0.63 0 0 0 0.45 0"/>
+    <filter id="stitchra-mark-glow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="3.2" result="blur"/>
       <feMerge>
-        <feMergeNode/>
+        <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
   </defs>
-  <rect x="3" y="3" width="90" height="90" rx="25" fill="url(#mark-bg)"/>
-  <rect x="4.5" y="4.5" width="87" height="87" rx="23.5" stroke="#7CF0D4" stroke-opacity="0.18"/>
-  <path d="M64.5 22.5C57 16.8 42.2 16.9 34.8 24C28.1 30.4 30.8 39.4 41 43.2L55.1 48.5C66.3 52.7 69.3 62.8 61.2 70C52.7 77.6 36.7 77.1 28.3 69.6" stroke="url(#mark-stitch)" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#mark-glow)"/>
-  <path d="M69 24L36.5 72.5" stroke="#EFFFF7" stroke-opacity="0.9" stroke-width="2.6" stroke-linecap="round"/>
-  <path d="M69 24C72.5 24.8 74.4 27.1 74.7 30.8C71.7 29.8 69.8 27.7 69 24Z" stroke="#EFFFF7" stroke-width="2.2" stroke-linejoin="round"/>
-  <path d="M20.5 73C34.5 64.7 54.1 65.2 75 73" stroke="url(#mark-thread)" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="1 8"/>
-  <circle cx="30" cy="31" r="2.1" fill="#7CF0D4"/>
-  <circle cx="39.5" cy="21.5" r="1.8" fill="#00FF88"/>
-  <circle cx="56" cy="74" r="1.9" fill="#00D7FF"/>
+  <rect x="4" y="4" width="88" height="88" rx="27" fill="url(#stitchra-mark-bg)"/>
+  <rect x="5.5" y="5.5" width="85" height="85" rx="25.5" fill="none" stroke="#7CF0D4" stroke-opacity="0.2"/>
+  <path d="M65.5 22.5C59.4 17.2 47.7 16.4 38.9 20.9C29.4 25.7 28.4 36.1 38.3 41.4L55.7 50.8C66.3 56.5 64.7 68.5 53.4 73.4C44 77.5 32.7 75 27.6 68.4" fill="none" stroke="url(#stitchra-thread)" stroke-width="7.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#stitchra-mark-glow)"/>
+  <path d="M70.5 21.5L31.2 76.5" stroke="url(#stitchra-needle)" stroke-width="2.7" stroke-linecap="round"/>
+  <path d="M70.5 21.5C74 22.6 76.3 25.3 77 29.3C73.5 28.7 71.1 25.9 70.5 21.5Z" fill="none" stroke="#EAFFF7" stroke-width="2.1" stroke-linejoin="round"/>
+  <path d="M21 74C36.5 64.2 58.2 64.1 77 73.6" fill="none" stroke="#00D7FF" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 8" opacity="0.92"/>
+  <circle cx="31" cy="31" r="2.2" fill="#7CF0D4"/>
+  <circle cx="42" cy="20.5" r="1.8" fill="#00FF88"/>
+  <circle cx="58.5" cy="74" r="1.9" fill="#00D7FF"/>
 </svg>

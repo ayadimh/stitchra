@@ -1,16 +1,16 @@
-<svg width="420" height="112" viewBox="0 0 420 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="430" height="112" viewBox="0 0 430 112" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="wordmark-text" x1="12" y1="18" x2="402" y2="90" gradientUnits="userSpaceOnUse">
+    <linearGradient id="stitchra-word-text" x1="12" y1="17" x2="414" y2="78">
       <stop stop-color="#FFFFFF"/>
-      <stop offset="0.48" stop-color="#D8FFF0"/>
+      <stop offset="0.52" stop-color="#E6FFF6"/>
       <stop offset="1" stop-color="#7CF0D4"/>
     </linearGradient>
-    <linearGradient id="wordmark-line" x1="19" y1="92" x2="376" y2="92" gradientUnits="userSpaceOnUse">
+    <linearGradient id="stitchra-word-line" x1="14" y1="91" x2="400" y2="91">
       <stop stop-color="#00FF88"/>
       <stop offset="1" stop-color="#00D7FF"/>
     </linearGradient>
   </defs>
-  <text x="10" y="66" fill="url(#wordmark-text)" font-family="Inter, Avenir Next, Arial, sans-serif" font-size="58" font-weight="900" letter-spacing="0">Stitchra</text>
-  <path d="M18 88C62 78 107 79 150 88C194 97 241 98 286 88C322 80 356 79 396 86" stroke="url(#wordmark-line)" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="1 10"/>
-  <text x="12" y="104" fill="#BDFBEA" fill-opacity="0.72" font-family="Inter, Avenir Next, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="3.4">AI EMBROIDERY PLATFORM</text>
+  <text x="8" y="66" fill="url(#stitchra-word-text)" font-family="Inter, Avenir Next, Arial, sans-serif" font-size="58" font-weight="950" letter-spacing="-2.2">Stitchra</text>
+  <path d="M18 89C62 79 106 81 150 89C195 98 239 98 284 88C326 79 362 80 407 87" stroke="url(#stitchra-word-line)" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="1 10"/>
+  <text x="10" y="105" fill="#BDFBEA" fill-opacity="0.78" font-family="Inter, Avenir Next, Arial, sans-serif" font-size="13" font-weight="900" letter-spacing="3.2">AI EMBROIDERY PLATFORM</text>
 </svg>
