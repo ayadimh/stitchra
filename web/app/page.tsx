@@ -431,6 +431,44 @@ export default function Home({ locale }: HomeProps = {}) {
   const galleryItems = getGalleryItems(activeLocale);
   const craftStats = getCraftStats(activeLocale);
   const faqItems = getFaqItems(activeLocale);
+  const pricingCards: PricingCardItem[] = [
+    {
+      label: t('pricing.smallLogo'),
+      value: t('pricing.from9'),
+      description: t('pricing.smallLogoText'),
+      visual: 'smallLogo',
+      accent: 'green',
+      recommended: true,
+    },
+    {
+      label: t('pricing.largeArtwork'),
+      value: t('pricing.from13'),
+      description: t('pricing.largeArtworkText'),
+      visual: 'largeArtwork',
+      accent: 'cyan',
+    },
+    {
+      label: t('pricing.uploadCheck'),
+      value: t('pricing.calculated'),
+      description: t('pricing.uploadCheckText'),
+      visual: 'uploadCheck',
+      accent: 'purple',
+    },
+    {
+      label: t('pricing.complexDesigns'),
+      value: t('pricing.studioReview'),
+      description: t('pricing.complexDesignsText'),
+      visual: 'studioReview',
+      accent: 'pink',
+    },
+  ];
+  const pricingFactors = [
+    t('pricing.factorPlacement'),
+    t('pricing.factorLogoSize'),
+    t('pricing.factorColors'),
+    t('pricing.factorStitchDetail'),
+    t('pricing.factorQuantity'),
+  ];
 
   useEffect(
     () => () => {
@@ -3395,37 +3433,89 @@ export default function Home({ locale }: HomeProps = {}) {
         />
 
         <div
-          className="glow-card"
+          className="glow-card pricing-confidence-panel"
           style={pricingPanel}
         >
-          <div style={priceGrid}>
-            <PriceBlock label={t('pricing.leftChest')} value={t('pricing.from9')} />
-            <PriceBlock label={t('pricing.badgeDetail')} value={t('pricing.calculatedAfterUpload')} />
-            <PriceBlock label={t('pricing.frontDesign')} value={t('pricing.from13')} />
-            <PriceBlock label={t('pricing.manualQuote')} value={t('pricing.studioReview')} highlight />
-          </div>
-
-          <div className="pricing-example">
+          <div className="pricing-confidence-header">
             <div>
-              <strong>{t('pricing.exampleQuote')}</strong>
-              <span>{t('pricing.exampleText')}</span>
+              <span>{t('pricing.confidenceLabel')}</span>
+              <strong>{t('pricing.finalOfferNote')}</strong>
             </div>
-            <strong>
-              {publicQuote
-                ? publicQuote.manual_quote
-                  ? t('hero.manualQuote')
-                  : `€${publicQuote.price_eur}`
-                : t('pricing.uploadForQuote')}
-            </strong>
+            <div className="pricing-euro-orbit" aria-hidden="true">
+              €
+            </div>
           </div>
 
-          <a
-            href="#designer"
-            className="lux-button"
-            style={wideButton}
+          <div
+            className="pricing-factor-row"
+            aria-label={t('pricing.factorsLabel')}
           >
-            {t('pricing.getClearPrice')}
-          </a>
+            {pricingFactors.map((factor) => (
+              <span key={factor}>{factor}</span>
+            ))}
+          </div>
+
+          <div className="pricing-card-grid">
+            {pricingCards.map((card) => (
+              <PricingCard key={card.label} card={card} />
+            ))}
+          </div>
+
+          <div className="pricing-receipt-grid">
+            <div className="pricing-receipt-card">
+              <div className="pricing-receipt-head">
+                <span>{t('pricing.exampleEstimate')}</span>
+                <strong>
+                  {publicQuote
+                    ? publicQuote.manual_quote
+                      ? t('hero.manualQuote')
+                      : `€${publicQuote.price_eur}`
+                    : t('pricing.from9')}
+                </strong>
+              </div>
+              <div className="pricing-receipt-lines">
+                <div>
+                  <span>{t('pricing.receiptPlacement')}</span>
+                  <strong>{t('pricing.leftChest')}</strong>
+                </div>
+                <div>
+                  <span>{t('pricing.receiptArtwork')}</span>
+                  <strong>{t('pricing.cleanLogo')}</strong>
+                </div>
+                <div>
+                  <span>{t('pricing.receiptColors')}</span>
+                  <strong>3</strong>
+                </div>
+                <div>
+                  <span>{t('pricing.receiptResult')}</span>
+                  <strong>{t('pricing.from9')}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="pricing-review-card">
+              <span>{t('pricing.reviewBadge')}</span>
+              <strong>{t('pricing.reviewTitle')}</strong>
+              <p>{t('pricing.reviewText')}</p>
+              <div aria-hidden="true" className="pricing-stitch-bars">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
+          </div>
+
+          <div className="pricing-cta-row">
+            <a
+              href="#designer"
+              className="lux-button pricing-cta-button"
+              style={wideButton}
+            >
+              {t('pricing.getClearPrice')}
+            </a>
+            <p>{t('pricing.ctaHelp')}</p>
+          </div>
         </div>
       </section>
 
@@ -4801,29 +4891,307 @@ function GlobalVisualStyles() {
           width: 100%;
         }
 
-        .pricing-example {
-          margin-top: 18px;
-          padding: 18px;
-          border-radius: 20px;
-          border: 1px solid rgba(255,255,255,0.09);
+        .pricing-confidence-panel {
+          overflow: hidden;
+          position: relative;
+        }
+
+        .pricing-confidence-panel::before {
+          content: "";
+          position: absolute;
+          inset: -1px;
           background:
-            linear-gradient(90deg, rgba(0,255,136,0.10), rgba(0,215,255,0.08), rgba(255,40,214,0.08));
+            radial-gradient(circle at 14% 2%, rgba(0,255,136,0.14), transparent 34%),
+            radial-gradient(circle at 85% 8%, rgba(0,215,255,0.12), transparent 32%);
+          pointer-events: none;
+        }
+
+        .pricing-confidence-panel > * {
+          position: relative;
+          z-index: 1;
+        }
+
+        .pricing-confidence-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          margin-bottom: 18px;
+        }
+
+        .pricing-confidence-header span,
+        .pricing-card-copy span,
+        .pricing-receipt-head span,
+        .pricing-review-card span {
+          color: rgba(245,247,248,0.58);
+          font-size: 12px;
+          font-weight: 850;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .pricing-confidence-header strong {
+          display: block;
+          max-width: 680px;
+          margin-top: 7px;
+          color: #f5f7f8;
+          font-size: clamp(20px, 2.5vw, 30px);
+          line-height: 1.18;
+        }
+
+        .pricing-euro-orbit {
+          width: 64px;
+          height: 64px;
+          flex: 0 0 auto;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(0,255,190,0.32);
+          border-radius: 22px;
+          color: #06100d;
+          background: linear-gradient(135deg, #00ff88, #00d7ff);
+          box-shadow: 0 0 54px rgba(0,215,255,0.22);
+          font-size: 28px;
+          font-weight: 950;
+        }
+
+        .pricing-factor-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 24px;
+        }
+
+        .pricing-factor-row span {
+          min-height: 34px;
+          display: inline-flex;
+          align-items: center;
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 999px;
+          color: rgba(245,247,248,0.74);
+          background: rgba(255,255,255,0.04);
+          padding: 8px 12px;
+          font-size: 13px;
+          font-weight: 750;
+        }
+
+        .pricing-card-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 16px;
+          align-items: stretch;
+        }
+
+        .pricing-card {
+          min-height: 350px;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          padding: 22px;
+          border: 1px solid var(--pricing-border);
+          border-radius: 28px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 20px 70px rgba(0,0,0,0.24);
+          transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .pricing-card:hover {
+          transform: translateY(-5px);
+          border-color: var(--pricing-main);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.10),
+            0 24px 78px rgba(0,0,0,0.34),
+            0 0 48px var(--pricing-glow);
+        }
+
+        .pricing-card-recommended {
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.10),
+            0 28px 90px rgba(0,0,0,0.26),
+            0 0 42px rgba(0,255,136,0.12);
+        }
+
+        .pricing-visual-shell {
+          min-height: 132px;
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 24px;
+          background:
+            linear-gradient(135deg, var(--pricing-soft), rgba(255,255,255,0.025));
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 18px 50px rgba(0,0,0,0.22);
+          overflow: hidden;
+        }
+
+        .pricing-visual-shell svg {
+          display: block;
+          width: 100%;
+          height: 132px;
+        }
+
+        .pricing-card-copy {
+          display: grid;
+          gap: 12px;
+        }
+
+        .pricing-card-copy strong {
+          color: var(--pricing-main);
+          font-size: clamp(26px, 3vw, 36px);
+          line-height: 1;
+        }
+
+        .pricing-card-copy p {
+          margin: 0;
+          color: rgba(245,247,248,0.66);
+          font-size: 14.5px;
+          line-height: 1.65;
+        }
+
+        .pricing-receipt-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
+          gap: 16px;
+          margin-top: 18px;
+        }
+
+        .pricing-receipt-card,
+        .pricing-review-card {
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 26px;
+          background: rgba(255,255,255,0.045);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+        }
+
+        .pricing-receipt-card {
+          padding: 20px;
+        }
+
+        .pricing-receipt-head {
           display: flex;
           justify-content: space-between;
-          gap: 18px;
           align-items: center;
+          gap: 18px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
-        .pricing-example strong {
-          color: #f5f7f8;
+        .pricing-receipt-head strong {
+          color: #06100d;
+          background: linear-gradient(135deg, #00ff88, #00d7ff);
+          border-radius: 999px;
+          padding: 10px 14px;
           font-size: 18px;
+          box-shadow: 0 0 34px rgba(0,215,255,0.20);
         }
 
-        .pricing-example span {
+        .pricing-receipt-lines {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+          padding-top: 14px;
+        }
+
+        .pricing-receipt-lines div {
+          min-width: 0;
+          border-radius: 18px;
+          background: rgba(0,0,0,0.20);
+          padding: 12px;
+        }
+
+        .pricing-receipt-lines span {
           display: block;
-          margin-top: 4px;
-          color: rgba(245,247,248,0.58);
-          font-size: 13px;
+          margin-bottom: 6px;
+          color: rgba(245,247,248,0.48);
+          font-size: 12px;
+        }
+
+        .pricing-receipt-lines strong {
+          color: #f5f7f8;
+          font-size: 15px;
+          line-height: 1.2;
+        }
+
+        .pricing-review-card {
+          position: relative;
+          overflow: hidden;
+          padding: 22px;
+          background:
+            radial-gradient(circle at 92% 0%, rgba(255,40,214,0.16), transparent 36%),
+            rgba(255,255,255,0.045);
+        }
+
+        .pricing-review-card strong {
+          display: block;
+          margin-top: 8px;
+          color: #f5f7f8;
+          font-size: 22px;
+          line-height: 1.2;
+        }
+
+        .pricing-review-card p {
+          max-width: 420px;
+          margin: 10px 0 0;
+          color: rgba(245,247,248,0.66);
+          font-size: 14.5px;
+          line-height: 1.65;
+        }
+
+        .pricing-stitch-bars {
+          display: flex;
+          align-items: flex-end;
+          gap: 8px;
+          height: 46px;
+          margin-top: 16px;
+        }
+
+        .pricing-stitch-bars i {
+          width: 34px;
+          border-radius: 999px 999px 8px 8px;
+          background: linear-gradient(180deg, rgba(255,40,214,0.82), rgba(0,215,255,0.48));
+          box-shadow: 0 0 24px rgba(255,40,214,0.18);
+        }
+
+        .pricing-stitch-bars i:nth-child(1) { height: 18px; }
+        .pricing-stitch-bars i:nth-child(2) { height: 30px; }
+        .pricing-stitch-bars i:nth-child(3) { height: 40px; }
+        .pricing-stitch-bars i:nth-child(4) { height: 25px; }
+
+        .pricing-cta-row {
+          display: grid;
+          gap: 12px;
+          margin-top: 18px;
+        }
+
+        .pricing-cta-row p {
+          margin: 0;
+          color: rgba(245,247,248,0.62);
+          font-size: 14px;
+          line-height: 1.5;
+          text-align: center;
+        }
+
+        .pricing-cta-button {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .pricing-cta-button::after {
+          content: "";
+          position: absolute;
+          inset: -40% auto -40% -25%;
+          width: 32%;
+          transform: rotate(18deg);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.36), transparent);
+          animation: pricingCtaShimmer 4.2s ease-in-out infinite;
+        }
+
+        @keyframes pricingCtaShimmer {
+          0%, 58% { transform: translateX(0) rotate(18deg); opacity: 0; }
+          68% { opacity: 0.65; }
+          100% { transform: translateX(420%) rotate(18deg); opacity: 0; }
         }
 
         .faq-grid {
@@ -5174,9 +5542,45 @@ function GlobalVisualStyles() {
             line-height: 1.55 !important;
           }
 
-          .pricing-example {
+          .pricing-confidence-header {
             align-items: flex-start;
             flex-direction: column;
+          }
+
+          .pricing-card-grid,
+          .pricing-receipt-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .pricing-card {
+            min-height: auto;
+          }
+
+          .pricing-receipt-lines {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .pricing-receipt-head {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+        }
+
+        @media (min-width: 720px) and (max-width: 1180px) {
+          .pricing-card-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .pricing-card,
+          .pricing-cta-button::after {
+            animation: none;
+            transition: none;
+          }
+
+          .pricing-card:hover {
+            transform: none;
           }
         }
       `}
@@ -5681,40 +6085,209 @@ function GalleryCard({
   );
 }
 
-function PriceBlock({
-  label,
-  value,
-  highlight = false,
-}: {
+type PricingVisualKind =
+  | 'smallLogo'
+  | 'largeArtwork'
+  | 'uploadCheck'
+  | 'studioReview';
+
+type PricingCardItem = {
   label: string;
   value: string;
-  highlight?: boolean;
-}) {
+  description: string;
+  visual: PricingVisualKind;
+  accent: Accent;
+  recommended?: boolean;
+};
+
+function PricingCard({ card }: { card: PricingCardItem }) {
+  const colors = accentStyles[card.accent];
+
   return (
     <div
-      className="glow-card"
+      className={`glow-card pricing-card ${
+        card.recommended ? 'pricing-card-recommended' : ''
+      }`}
       style={{
-        ...priceBlock,
-        border: highlight
-          ? '1px solid rgba(0,255,136,0.34)'
-          : priceBlock.border,
-        background: highlight
-          ? 'rgba(0,255,136,0.13)'
-          : priceBlock.background,
-      }}
+        '--pricing-main': colors.main,
+        '--pricing-border': colors.border,
+        '--pricing-glow': colors.glow,
+        '--pricing-soft': colors.soft,
+        background: colors.surface,
+      } as CSSProperties}
     >
-      <div style={priceLabel}>
-        {label}
-      </div>
+      <PricingVisual kind={card.visual} accent={card.accent} />
 
-      <div
-        style={{
-          ...priceValue,
-          color: highlight ? '#00ff88' : priceValue.color,
-        }}
-      >
-        {value}
+      <div className="pricing-card-copy">
+        <span>{card.label}</span>
+        <strong>{card.value}</strong>
+        <p>{card.description}</p>
       </div>
+    </div>
+  );
+}
+
+function PricingVisual({
+  kind,
+  accent,
+}: {
+  kind: PricingVisualKind;
+  accent: Accent;
+}) {
+  const colors = accentStyles[accent];
+  const commonProps = {
+    fill: "none",
+    stroke: colors.main,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  return (
+    <div className="pricing-visual-shell" aria-hidden="true">
+      <svg
+        viewBox="0 0 180 120"
+        role="img"
+        focusable="false"
+      >
+        <defs>
+          <linearGradient
+            id={`pricing-gradient-${kind}`}
+            x1="0"
+            x2="1"
+            y1="0"
+            y2="1"
+          >
+            <stop offset="0%" stopColor={colors.main} stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.14" />
+          </linearGradient>
+          <filter id={`pricing-glow-${kind}`} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3.5" result="blur" />
+            <feColorMatrix
+              in="blur"
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0.92  0 0 0 0 0.74  0 0 0 .7 0"
+            />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <rect
+          x="10"
+          y="18"
+          width="160"
+          height="84"
+          rx="24"
+          fill="rgba(255,255,255,0.04)"
+          stroke="rgba(255,255,255,0.12)"
+        />
+
+        {kind === 'smallLogo' ? (
+          <>
+            <path
+              d="M70 34 58 44v48h64V44l-12-10-12 12H82L70 34Z"
+              fill="rgba(255,255,255,0.06)"
+              stroke="rgba(255,255,255,0.28)"
+              strokeWidth="2"
+            />
+            <rect
+              x="78"
+              y="51"
+              width="22"
+              height="14"
+              rx="5"
+              fill={`url(#pricing-gradient-${kind})`}
+              filter={`url(#pricing-glow-${kind})`}
+            />
+            <circle cx="38" cy="48" r="7" fill={colors.main} opacity="0.75" />
+            <circle cx="38" cy="72" r="7" fill="#ffffff" opacity="0.34" />
+            <path {...commonProps} d="M132 44h20M132 58h13M132 72h22" strokeWidth="3" opacity="0.7" />
+          </>
+        ) : null}
+
+        {kind === 'largeArtwork' ? (
+          <>
+            <path
+              d="M64 32 50 44v50h80V44l-14-12-14 14H78L64 32Z"
+              fill="rgba(255,255,255,0.055)"
+              stroke="rgba(255,255,255,0.28)"
+              strokeWidth="2"
+            />
+            <rect
+              x="72"
+              y="53"
+              width="38"
+              height="30"
+              rx="10"
+              fill={`url(#pricing-gradient-${kind})`}
+              filter={`url(#pricing-glow-${kind})`}
+              opacity="0.92"
+            />
+            <path {...commonProps} d="M78 67h26M91 58v20" strokeWidth="3" />
+            <path {...commonProps} d="M134 42c10 8 13 21 8 34M145 34c17 14 22 39 10 58" strokeWidth="2" opacity="0.55" />
+          </>
+        ) : null}
+
+        {kind === 'uploadCheck' ? (
+          <>
+            <rect
+              x="39"
+              y="36"
+              width="54"
+              height="58"
+              rx="12"
+              fill="rgba(255,255,255,0.055)"
+              stroke="rgba(255,255,255,0.25)"
+              strokeWidth="2"
+            />
+            <path {...commonProps} d="M51 55h28M51 68h20M51 81h25" strokeWidth="3" opacity="0.75" />
+            <path
+              d="M104 61h30"
+              stroke={colors.main}
+              strokeWidth="3"
+              strokeDasharray="4 7"
+              strokeLinecap="round"
+            />
+            <circle
+              cx="143"
+              cy="61"
+              r="20"
+              fill={`url(#pricing-gradient-${kind})`}
+              filter={`url(#pricing-glow-${kind})`}
+            />
+            <path d="m134 61 6 7 13-15" stroke="#06100d" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        ) : null}
+
+        {kind === 'studioReview' ? (
+          <>
+            <rect
+              x="34"
+              y="36"
+              width="64"
+              height="52"
+              rx="16"
+              fill="rgba(255,255,255,0.055)"
+              stroke="rgba(255,255,255,0.24)"
+              strokeWidth="2"
+            />
+            <path
+              d="M48 51h36M48 63h27M48 75h33"
+              stroke="rgba(255,255,255,0.46)"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+            <path
+              d="M111 73c13-19 15-38 8-45 24 8 34 27 27 49-5 16-19 22-35 20 9-7 11-15 0-24Z"
+              fill={`url(#pricing-gradient-${kind})`}
+              filter={`url(#pricing-glow-${kind})`}
+            />
+            <path {...commonProps} d="M121 72h25M134 59v27" strokeWidth="3" />
+          </>
+        ) : null}
+      </svg>
     </div>
   );
 }
@@ -6046,36 +6619,8 @@ const cardText: CSSProperties = {
 
 const pricingPanel: CSSProperties = {
   ...glassCard,
-  maxWidth: 860,
+  maxWidth: 1180,
   margin: '40px auto 0',
-};
-
-const priceGrid: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns:
-    'repeat(auto-fit, minmax(160px, 1fr))',
-  gap: 14,
-};
-
-const priceBlock: CSSProperties = {
-  padding: 18,
-  borderRadius: 18,
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  textAlign: 'center',
-};
-
-const priceLabel: CSSProperties = {
-  color: 'rgba(245,247,248,0.58)',
-  fontSize: 13,
-  marginBottom: 6,
-};
-
-const priceValue: CSSProperties = {
-  fontSize: 'clamp(20px, 2.7vw, 28px)',
-  lineHeight: 1.12,
-  fontWeight: 900,
-  color: '#f5f7f8',
 };
 
 const ctaSection: CSSProperties = {
