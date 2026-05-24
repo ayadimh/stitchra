@@ -32,6 +32,7 @@ const PUBLIC_ROUTE_EXCLUSIONS = [
 
 const LOCALE_SEGMENTS = new Set(["en", "de", "fr", "ar", "es", "ru"]);
 const CLIENT_MAX_INPUT_CHARS = 1200;
+const CLIENT_MAX_MESSAGES = 6;
 const TEMPORARILY_UNAVAILABLE_MESSAGE =
   "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
 
@@ -130,7 +131,7 @@ export default function StitchraDesignAgent() {
     };
     const outboundMessages = [...messages, userMessage]
       .filter((message) => message.id !== "welcome")
-      .slice(-8);
+      .slice(-CLIENT_MAX_MESSAGES);
 
     setIsOpen(true);
     setInput("");

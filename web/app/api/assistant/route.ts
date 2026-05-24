@@ -9,13 +9,15 @@ const DEFAULT_MODEL = "openai/gpt-5.4-mini";
 const DEFAULT_MAX_INPUT_CHARS = 1200;
 const DEFAULT_RATE_LIMIT_PER_IP = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const MAX_MESSAGES = 8;
-const MAX_OUTPUT_TOKENS = 420;
+const MAX_MESSAGES = 6;
+const MAX_OUTPUT_TOKENS = 260;
 const DISABLED_MESSAGE = "Stitchra AI Design Agent is currently disabled.";
 const NOT_CONFIGURED_MESSAGE =
   "Stitchra AI Design Agent is not configured yet.";
 const TEMPORARILY_UNAVAILABLE_MESSAGE =
   "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
+const RATE_LIMIT_MESSAGE =
+  "You reached the assistant limit for now. You can still use the configurator and submit a quote request.";
 const SUGGESTED_MODEL = "openai/gpt-5.4";
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -51,7 +53,7 @@ Rules:
 - If user needs human support, mention orders@stitchra.com.
 - Pricing guidance: simple small left-chest designs can start around €9. Larger front designs can start around €13. Final price depends on placement, logo size, colors, stitch detail, quantity and studio review. The final customer offer is confirmed before production.
 - Placement guidance: left chest works well for small premium logos, clubs and clean brand marks. Center chest or center/front placements work better for larger artwork. Tiny text and highly detailed logos may need simplification or studio review.
-- Keep answers under 140 words unless the user asks for a checklist.
+- Keep answers under 90 words unless the user asks for a checklist.
 `.trim();
 
 type ClientMessage = {
@@ -247,10 +249,10 @@ export async function POST(request: Request) {
   const rateKey = getRateLimitKey(request);
 
   if (isRateLimited(rateKey, rateLimit)) {
-    return textResponse(
-      "Too many assistant requests. Please try again later.",
-      429,
-    );
+    logAssistantFailure("rate_limit_reached", config.model, {
+      limit: String(rateLimit),
+    });
+    return textResponse(RATE_LIMIT_MESSAGE, 429);
   }
 
   const maxInputChars = parsePositiveInteger(
@@ -327,5 +329,15 @@ export async function GET() {
     enabled: config.enabled,
     model: config.model,
     suggestedModel: SUGGESTED_MODEL,
+    maxInputChars: parsePositiveInteger(
+      process.env.ASSISTANT_MAX_INPUT_CHARS,
+      DEFAULT_MAX_INPUT_CHARS,
+    ),
+    maxMessages: MAX_MESSAGES,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    rateLimitPerHour: parsePositiveInteger(
+      process.env.ASSISTANT_RATE_LIMIT_PER_IP,
+      DEFAULT_RATE_LIMIT_PER_IP,
+    ),
   });
 }
