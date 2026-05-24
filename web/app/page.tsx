@@ -22,6 +22,7 @@ import {
 } from '@/lib/embroideryZones';
 import { evaluateMachineCapability } from '@/lib/machineLimits';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
+import type { CustomLogoPlacement } from '@/components/configurator/types';
 import {
   createTranslator,
   getLocaleDirection,
@@ -306,6 +307,8 @@ export default function Home({ locale }: HomeProps = {}) {
     useState<LogoPlacementConfig>(() =>
       getDefaultLogoPlacementConfig('left_chest', 'black')
     );
+  const [customLogoPlacement, setCustomLogoPlacement] =
+    useState<CustomLogoPlacement | null>(null);
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -407,6 +410,7 @@ export default function Home({ locale }: HomeProps = {}) {
     setEstimate(null);
     setStatus('');
     setError('');
+    setCustomLogoPlacement(null);
     setLogoPlacementConfig(
       getDefaultLogoPlacementConfig(
         nextPlacement,
@@ -435,6 +439,15 @@ export default function Home({ locale }: HomeProps = {}) {
         logoAspectRatio
       )
     );
+    setEstimate(null);
+    setOrderStatus('');
+    setOrderError('');
+  };
+
+  const updateCustomLogoPlacement = (
+    nextPlacement: CustomLogoPlacement | null
+  ) => {
+    setCustomLogoPlacement(nextPlacement);
     setEstimate(null);
     setOrderStatus('');
     setOrderError('');
@@ -830,6 +843,15 @@ export default function Home({ locale }: HomeProps = {}) {
               logoPlacementConfig.logo_offset_y.toFixed(2)
             ),
             shirt_color: teeColor,
+            custom_placement: Boolean(customLogoPlacement),
+            custom_placement_side: customLogoPlacement?.side,
+            custom_placement_frame: customLogoPlacement?.frame,
+            custom_placement_x: customLogoPlacement
+              ? Number(customLogoPlacement.x.toFixed(4))
+              : undefined,
+            custom_placement_y: customLogoPlacement
+              ? Number(customLogoPlacement.y.toFixed(4))
+              : undefined,
           },
           stitches: publicQuote.stitches,
           colors: publicQuote.colors,
@@ -3110,12 +3132,15 @@ export default function Home({ locale }: HomeProps = {}) {
           </HoverCard>
 
           <ShirtPlacementMockup
+            key={placementZoneId}
             logoUrl={preview}
             shirtColor={teeColor}
             placementZone={placementZoneId}
             config={logoPlacementConfig}
             logoAspectRatio={logoAspectRatio}
             onConfigChange={updateLogoPlacementConfig}
+            customPlacement={customLogoPlacement}
+            onCustomPlacementChange={updateCustomLogoPlacement}
           />
         </div>
       </section>
