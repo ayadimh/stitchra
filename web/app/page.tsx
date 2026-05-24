@@ -147,6 +147,60 @@ type OrderFormErrors = Partial<
 const emailPattern =
   /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const phonePattern = /^[+\d\s()-]+$/;
+const previewNotConfiguredMessage =
+  'This preview deployment is not fully configured. Please test the live site at stitchra.com.';
+
+type PublicApiErrorPayload = {
+  code?: string;
+  message?: string;
+  errors?: {
+    customer_name?: string;
+    customer_email?: string;
+    customer_phone?: string;
+    quantity?: string;
+  };
+};
+
+function isPreviewDeploymentHost() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const hostname = window.location.hostname.toLowerCase();
+  return (
+    hostname.endsWith('.vercel.app') &&
+    hostname !== 'stitchra.com' &&
+    hostname !== 'www.stitchra.com'
+  );
+}
+
+function getPreviewAwareErrorMessage(fallback: string) {
+  return isPreviewDeploymentHost()
+    ? previewNotConfiguredMessage
+    : fallback;
+}
+
+async function getSafeResponseErrorMessage(
+  response: Response,
+  fallback: string
+) {
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    const payload = (await response
+      .json()
+      .catch(() => ({}))) as PublicApiErrorPayload;
+
+    if (payload.code === 'PREVIEW_NOT_CONFIGURED') {
+      return previewNotConfiguredMessage;
+    }
+
+    return payload.message ?? fallback;
+  }
+
+  const text = await response.text().catch(() => '');
+  return text || fallback;
+}
 
 function validateOrderForm(
   form: OrderFormState,
@@ -674,7 +728,12 @@ export default function Home({ locale }: HomeProps = {}) {
       });
 
       if (!res.ok) {
-        setError(t('status.estimatorFailed'));
+        setError(
+          await getSafeResponseErrorMessage(
+            res,
+            t('status.estimatorFailed')
+          )
+        );
         return;
       }
 
@@ -767,7 +826,9 @@ export default function Home({ locale }: HomeProps = {}) {
           : t('status.quoteReady')
       );
     } catch {
-      setError(t('status.networkError'));
+      setError(
+        getPreviewAwareErrorMessage(t('status.networkError'))
+      );
     } finally {
       setIsEstimating(false);
     }
@@ -867,16 +928,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
       const payload = (await response
         .json()
-        .catch(() => ({}))) as {
-        message?: string;
-        details?: string;
-        errors?: {
-          customer_name?: string;
-          customer_email?: string;
-          customer_phone?: string;
-          quantity?: string;
-        };
-      };
+        .catch(() => ({}))) as PublicApiErrorPayload;
 
       if (!response.ok) {
         if (payload.errors) {
@@ -889,9 +941,10 @@ export default function Home({ locale }: HomeProps = {}) {
         }
 
         setOrderError(
-          payload.details ??
-            payload.message ??
-            t('status.databaseNotConfigured')
+          payload.code === 'PREVIEW_NOT_CONFIGURED'
+            ? previewNotConfiguredMessage
+            : payload.message ??
+                t('status.databaseNotConfigured')
         );
         return;
       }
@@ -900,8 +953,13 @@ export default function Home({ locale }: HomeProps = {}) {
       setOrderFieldErrors({});
       setOrderOpen(false);
     } catch (error) {
-      setOrderError(t('status.orderSendFailed'));
-      console.error(error);
+      setOrderError(
+        getPreviewAwareErrorMessage(t('status.orderSendFailed'))
+      );
+
+      if (process.env.NODE_ENV === 'development') {
+        console.error(error);
+      }
     } finally {
       setIsRequestingOrder(false);
     }

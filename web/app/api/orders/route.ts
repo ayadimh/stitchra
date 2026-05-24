@@ -13,6 +13,29 @@ import {
 export const runtime = 'nodejs';
 
 const databaseMessage = 'Database not configured.';
+const previewNotConfiguredMessage =
+  'This preview deployment is not fully configured. Please test the live site at stitchra.com.';
+const requiredDatabaseEnvVars = [
+  'NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+] as const;
+
+function isPreviewDeployment() {
+  return process.env.VERCEL_ENV === 'preview';
+}
+
+function getPublicDatabaseUnavailablePayload() {
+  return {
+    code: isPreviewDeployment()
+      ? 'PREVIEW_NOT_CONFIGURED'
+      : 'DATABASE_NOT_CONFIGURED',
+    databaseConfigured: false,
+    message: isPreviewDeployment()
+      ? previewNotConfiguredMessage
+      : databaseMessage,
+    requiredEnvironmentVariables: requiredDatabaseEnvVars,
+  };
+}
 
 function hasRequiredOrderFields(
   value: Partial<CreateOrderInput>
@@ -45,10 +68,7 @@ export async function POST(request: Request) {
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
-        {
-          databaseConfigured: false,
-          message: databaseMessage,
-        },
+        getPublicDatabaseUnavailablePayload(),
         { status: 503 }
       );
     }
@@ -88,10 +108,7 @@ export async function POST(request: Request) {
 
     if (!order) {
       return NextResponse.json(
-        {
-          databaseConfigured: false,
-          message: databaseMessage,
-        },
+        getPublicDatabaseUnavailablePayload(),
         { status: 503 }
       );
     }
@@ -108,10 +125,19 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error(
+      '[api/orders] Public order request failed:',
+      getOrderErrorMessage(error)
+    );
+
     return NextResponse.json(
       {
-        message: 'Order storage error.',
-        details: getOrderErrorMessage(error),
+        message: isPreviewDeployment()
+          ? previewNotConfiguredMessage
+          : 'Could not submit this quote request right now.',
+        code: isPreviewDeployment()
+          ? 'PREVIEW_NOT_CONFIGURED'
+          : 'ORDER_REQUEST_FAILED',
       },
       { status: 500 }
     );

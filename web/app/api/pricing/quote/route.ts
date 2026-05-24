@@ -48,10 +48,15 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    console.error(
+      '[api/pricing/quote] Public pricing quote failed:',
+      getOrderErrorMessage(error)
+    );
+
     return NextResponse.json(
       {
         message: 'Pricing error.',
-        details: getOrderErrorMessage(error),
+        code: 'PRICING_QUOTE_FAILED',
       },
       { status: 500 }
     );
