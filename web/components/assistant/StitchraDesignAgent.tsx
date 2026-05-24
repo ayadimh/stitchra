@@ -32,6 +32,8 @@ const PUBLIC_ROUTE_EXCLUSIONS = [
 
 const LOCALE_SEGMENTS = new Set(["en", "de", "fr", "ar", "es", "ru"]);
 const CLIENT_MAX_INPUT_CHARS = 1200;
+const TEMPORARILY_UNAVAILABLE_MESSAGE =
+  "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
@@ -223,7 +225,7 @@ export default function StitchraDesignAgent() {
             content:
               content.trim().length > 0
                 ? content
-                : "I can help with placement, logo files and the Stitchra quote flow.",
+                : TEMPORARILY_UNAVAILABLE_MESSAGE,
           };
         }),
       );
@@ -237,8 +239,7 @@ export default function StitchraDesignAgent() {
           message.id === assistantMessage.id
             ? {
                 ...message,
-                content:
-                  "The Stitchra Design Agent is not available right now. You can still start designing or contact orders@stitchra.com.",
+                content: TEMPORARILY_UNAVAILABLE_MESSAGE,
               }
             : message,
         ),

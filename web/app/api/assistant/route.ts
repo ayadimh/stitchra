@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { streamText } from "ai";
+import { generateText, gateway } from "ai";
 import type { ModelMessage } from "ai";
 
 export const runtime = "nodejs";
@@ -11,6 +11,12 @@ const DEFAULT_RATE_LIMIT_PER_IP = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const MAX_MESSAGES = 8;
 const MAX_OUTPUT_TOKENS = 420;
+const DISABLED_MESSAGE = "Stitchra AI Design Agent is currently disabled.";
+const NOT_CONFIGURED_MESSAGE =
+  "Stitchra AI Design Agent is not configured yet.";
+const TEMPORARILY_UNAVAILABLE_MESSAGE =
+  "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
+const SUGGESTED_MODEL = "openai/gpt-5.4";
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -43,6 +49,8 @@ Rules:
 - Do not give legal, tax or immigration advice.
 - If user wants to order, guide them to Start Designing and submit a quote request.
 - If user needs human support, mention orders@stitchra.com.
+- Pricing guidance: simple small left-chest designs can start around €9. Larger front designs can start around €13. Final price depends on placement, logo size, colors, stitch detail, quantity and studio review. The final customer offer is confirmed before production.
+- Placement guidance: left chest works well for small premium logos, clubs and clean brand marks. Center chest or center/front placements work better for larger artwork. Tiny text and highly detailed logos may need simplification or studio review.
 - Keep answers under 140 words unless the user asks for a checklist.
 `.trim();
 
@@ -65,6 +73,91 @@ function textResponse(message: string, status = 200) {
       "Cache-Control": "no-store",
       "Content-Type": "text/plain; charset=utf-8",
     },
+  });
+}
+
+function jsonResponse(payload: Record<string, unknown>, status = 200) {
+  return Response.json(payload, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+function getAssistantConfig() {
+  const enabledValue = process.env.STITCHRA_ASSISTANT_ENABLED ?? "true";
+  const model = process.env.STITCHRA_ASSISTANT_MODEL || DEFAULT_MODEL;
+
+  return {
+    enabled: enabledValue.toLowerCase() === "true",
+    gatewayKeyPresent: Boolean(process.env.AI_GATEWAY_API_KEY),
+    model,
+  };
+}
+
+function getSafeErrorDetails(error: unknown) {
+  if (!(error instanceof Error)) {
+    return {
+      name: "UnknownError",
+      message: "Unknown assistant route error",
+    };
+  }
+
+  return {
+    name: error.name,
+    message: error.message,
+  };
+}
+
+function classifyAssistantError(error: unknown) {
+  const { name, message } = getSafeErrorDetails(error);
+  const searchable = `${name} ${message}`.toLowerCase();
+
+  if (
+    searchable.includes("authentication") ||
+    searchable.includes("unauthorized") ||
+    searchable.includes("forbidden") ||
+    searchable.includes("invalid api") ||
+    searchable.includes("401") ||
+    searchable.includes("403")
+  ) {
+    return "gateway_authentication_failed";
+  }
+
+  if (
+    searchable.includes("model not found") ||
+    searchable.includes("model_not_found") ||
+    searchable.includes("no such model") ||
+    searchable.includes("404")
+  ) {
+    return "model_unavailable";
+  }
+
+  if (
+    searchable.includes("rate limit") ||
+    searchable.includes("ratelimit") ||
+    searchable.includes("429")
+  ) {
+    return "gateway_rate_limited";
+  }
+
+  if (searchable.includes("empty")) {
+    return "empty_gateway_response";
+  }
+
+  return "gateway_request_failed";
+}
+
+function logAssistantFailure(
+  reason: string,
+  model: string,
+  extra?: Record<string, string | boolean>
+) {
+  console.error("Assistant route failed", {
+    reason,
+    model,
+    ...extra,
   });
 }
 
@@ -135,14 +228,16 @@ function toModelMessages(messages: ClientMessage[], maxChars: number) {
 }
 
 export async function POST(request: Request) {
-  const enabled = process.env.STITCHRA_ASSISTANT_ENABLED ?? "true";
-  if (enabled.toLowerCase() === "false") {
-    return textResponse("Stitchra AI Design Agent is not configured yet.");
+  const config = getAssistantConfig();
+
+  if (!config.enabled) {
+    logAssistantFailure("assistant_disabled", config.model);
+    return textResponse(DISABLED_MESSAGE, 503);
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    console.warn("[assistant] AI_GATEWAY_API_KEY is missing.");
-    return textResponse("Stitchra AI Design Agent is not configured yet.");
+  if (!config.gatewayKeyPresent) {
+    logAssistantFailure("gateway_key_missing", config.model);
+    return textResponse(NOT_CONFIGURED_MESSAGE, 503);
   }
 
   const rateLimit = parsePositiveInteger(
@@ -181,32 +276,56 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = streamText({
-      model: process.env.STITCHRA_ASSISTANT_MODEL || DEFAULT_MODEL,
+    const result = await generateText({
+      model: gateway(config.model),
       system: STITCHRA_SYSTEM_PROMPT,
       messages,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       temperature: 0.35,
       maxRetries: 1,
-      onError: ({ error }) => {
-        const message =
-          error instanceof Error ? error.message : "Unknown assistant error";
-        console.error("[assistant] Gateway stream error:", message);
+      providerOptions: {
+        gateway: {
+          user: rateKey,
+          tags: ["stitchra-design-agent", "public-homepage"],
+          models:
+            config.model === SUGGESTED_MODEL
+              ? undefined
+              : [config.model, SUGGESTED_MODEL],
+        },
       },
     });
 
-    return result.toTextStreamResponse({
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    });
+    const answer = result.text.trim();
+
+    if (!answer) {
+      throw new Error("empty_gateway_response");
+    }
+
+    return textResponse(answer);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown assistant error";
-    console.error("[assistant] Gateway request failed:", message);
-    return textResponse(
-      "Stitchra AI Design Agent is not available right now. Please try again later.",
-      500,
-    );
+    const reason = classifyAssistantError(error);
+
+    logAssistantFailure(reason, config.model, {
+      gatewayKeyPresent: config.gatewayKeyPresent,
+      suggestedModel:
+        reason === "model_unavailable" ? SUGGESTED_MODEL : "",
+    });
+
+    if (reason === "gateway_authentication_failed") {
+      return textResponse(NOT_CONFIGURED_MESSAGE, 503);
+    }
+
+    return textResponse(TEMPORARILY_UNAVAILABLE_MESSAGE, 503);
   }
+}
+
+export async function GET() {
+  const config = getAssistantConfig();
+
+  return jsonResponse({
+    configured: config.gatewayKeyPresent,
+    enabled: config.enabled,
+    model: config.model,
+    suggestedModel: SUGGESTED_MODEL,
+  });
 }
