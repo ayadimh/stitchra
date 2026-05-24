@@ -29,14 +29,23 @@ type StaticPlacementLayout = {
   rotate?: number;
 };
 
-const WHITE_SHIRT_RENDER_PATHS = {
-  front: '/mockups/shirts/shirt-front-white.png',
-  back: '/mockups/shirts/shirt-back-white.png',
+const SHIRT_RENDER_PATHS: Record<
+  ShirtConfiguratorProps['shirtColor'],
+  Record<StaticRenderSide, string>
+> = {
+  white: {
+    front: '/mockups/shirts/shirt-front-white.png',
+    back: '/mockups/shirts/shirt-back-white.png',
+  },
+  black: {
+    front: '/mockups/shirts/shirt-front-black.png',
+    back: '/mockups/shirts/shirt-back-black.png',
+  },
 } as const;
 
 const STATIC_RENDER_SHIRT_BOUNDS: Record<StaticRenderSide, ZoneLayout> = {
-  front: { left: 26, top: 24, width: 48, height: 64 },
-  back: { left: 26, top: 24, width: 48, height: 64 },
+  front: { left: 31, top: 26, width: 38, height: 58 },
+  back: { left: 31, top: 26, width: 38, height: 58 },
 };
 
 const STATIC_RENDER_PLACEMENTS: Record<
@@ -44,35 +53,36 @@ const STATIC_RENDER_PLACEMENTS: Record<
   Partial<Record<ShirtConfiguratorProps['placementZone'], StaticPlacementLayout>>
 > = {
   front: {
-    left_chest: { centerX: 0.39, centerY: 0.34, width: 0.24, height: 0.15 },
-    right_chest: { centerX: 0.61, centerY: 0.34, width: 0.24, height: 0.15 },
-    center_chest: { centerX: 0.5, centerY: 0.35, width: 0.42, height: 0.18 },
-    center_front: { centerX: 0.5, centerY: 0.55, width: 0.44, height: 0.54 },
-    lower_front: { centerX: 0.5, centerY: 0.72, width: 0.42, height: 0.22 },
-    front_left_bottom: { centerX: 0.38, centerY: 0.72, width: 0.28, height: 0.19 },
-    front_right_bottom: { centerX: 0.62, centerY: 0.72, width: 0.28, height: 0.19 },
+    left_chest: { centerX: 0.38, centerY: 0.32, width: 0.24, height: 0.15 },
+    right_chest: { centerX: 0.62, centerY: 0.32, width: 0.24, height: 0.15 },
+    center_chest: { centerX: 0.5, centerY: 0.33, width: 0.4, height: 0.17 },
+    center_front: { centerX: 0.5, centerY: 0.54, width: 0.44, height: 0.48 },
+    lower_front: { centerX: 0.5, centerY: 0.7, width: 0.4, height: 0.22 },
+    front_left_bottom: { centerX: 0.38, centerY: 0.7, width: 0.26, height: 0.19 },
+    front_right_bottom: { centerX: 0.62, centerY: 0.7, width: 0.26, height: 0.19 },
   },
   back: {
-    upper_back: { centerX: 0.5, centerY: 0.3, width: 0.42, height: 0.18 },
-    center_back: { centerX: 0.5, centerY: 0.55, width: 0.46, height: 0.54 },
-    lower_back: { centerX: 0.5, centerY: 0.72, width: 0.44, height: 0.26 },
-    back_left_shoulder: { centerX: 0.38, centerY: 0.3, width: 0.28, height: 0.17 },
-    back_right_shoulder: { centerX: 0.62, centerY: 0.3, width: 0.28, height: 0.17 },
-    back_left_bottom: { centerX: 0.38, centerY: 0.74, width: 0.28, height: 0.18 },
-    back_right_bottom: { centerX: 0.62, centerY: 0.74, width: 0.28, height: 0.18 },
+    upper_back: { centerX: 0.5, centerY: 0.3, width: 0.4, height: 0.17 },
+    center_back: { centerX: 0.5, centerY: 0.54, width: 0.44, height: 0.48 },
+    lower_back: { centerX: 0.5, centerY: 0.7, width: 0.4, height: 0.22 },
+    back_left_shoulder: { centerX: 0.38, centerY: 0.3, width: 0.26, height: 0.17 },
+    back_right_shoulder: { centerX: 0.62, centerY: 0.3, width: 0.26, height: 0.17 },
+    back_left_bottom: { centerX: 0.38, centerY: 0.7, width: 0.26, height: 0.19 },
+    back_right_bottom: { centerX: 0.62, centerY: 0.7, width: 0.26, height: 0.19 },
   },
 };
 
 // Raw FBX files are intentionally not loaded in production. The configurator uses static shirt render images for speed and stability.
 function getStaticShirtRenderPath(
+  shirtColor: ShirtConfiguratorProps['shirtColor'],
   side: ReturnType<typeof getPlacementSideLabel>
 ) {
   if (side === 'front') {
-    return WHITE_SHIRT_RENDER_PATHS.front;
+    return SHIRT_RENDER_PATHS[shirtColor].front;
   }
 
   if (side === 'back') {
-    return WHITE_SHIRT_RENDER_PATHS.back;
+    return SHIRT_RENDER_PATHS[shirtColor].back;
   }
 
   return null;
@@ -166,7 +176,10 @@ export default function ShirtPlacementMockup({
   const sideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
   const staticRenderSide = getStaticRenderSide(sideLabel);
-  const staticShirtRenderPath = getStaticShirtRenderPath(sideLabel);
+  const staticShirtRenderPath = getStaticShirtRenderPath(
+    shirtColor,
+    sideLabel
+  );
   const useStaticShirtRender = Boolean(
     staticShirtRenderPath &&
       failedShirtRenderPath !== staticShirtRenderPath
@@ -359,9 +372,8 @@ export default function ShirtPlacementMockup({
                 style={{
                   objectFit: 'contain',
                   objectPosition: 'center center',
-                  filter: isWhite
-                    ? 'drop-shadow(0 42px 72px rgba(0,0,0,0.42)) drop-shadow(0 0 42px rgba(124,240,212,0.10))'
-                    : 'brightness(0.32) contrast(1.36) saturate(0.42) sepia(0.10) hue-rotate(130deg) drop-shadow(0 42px 72px rgba(0,0,0,0.68)) drop-shadow(0 0 52px rgba(124,240,212,0.16))',
+                  filter:
+                    'drop-shadow(0 42px 72px rgba(0,0,0,0.48)) drop-shadow(0 0 42px rgba(124,240,212,0.10))',
                   pointerEvents: 'none',
                   userSelect: 'none',
                 }}
@@ -445,9 +457,6 @@ export default function ShirtPlacementMockup({
                     zIndex: 3,
                     opacity: 0.98,
                     pointerEvents: 'none',
-                    filter: isWhite
-                      ? 'contrast(1.18) saturate(0.95) brightness(0.98) drop-shadow(0 1px 2px rgba(0,0,0,0.20))'
-                      : 'contrast(1.2) saturate(1.06) brightness(1.08) drop-shadow(0 0 1px rgba(255,255,255,0.90)) drop-shadow(0 0 10px rgba(124,240,212,0.34))',
                   }}
                 />
               </div>

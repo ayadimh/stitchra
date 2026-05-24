@@ -1,22 +1,19 @@
 # Stitchra shirt mockups
 
-This folder is only for optimized public shirt mockup images used by the configurator.
+This folder contains public static shirt mockup images used by the Stitchra configurator.
 
-Do not place raw FBX files here.
-Do not place heavy 3D source files here.
+Do not place raw FBX or OBJ source files here.
+Do not load heavy 3D files in the website.
 
-Current required files:
+Required files:
 - shirt-front-white.png
 - shirt-back-white.png
-
-Future optional files:
 - shirt-front-black.png
 - shirt-back-black.png
-- shirt-front-white.webp
-- shirt-back-white.webp
-- shirt-front-black.webp
-- shirt-back-black.webp
 
-Raw source files belong outside public, for example:
-source-assets/fbx
-source-assets/render
+Source files belong outside public:
+- source-assets/fbx
+- source-assets/obj
+- source-assets/render
+
+The website must load static images, not raw 3D files.
