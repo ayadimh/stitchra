@@ -49,12 +49,6 @@ const SHIRT_RENDER_PATHS: Record<
 
 const FRAME_COUNT = 16;
 const ROTATE_FRAME_THRESHOLD = 26;
-const SHIRT_360_FRAME_PATHS = Array.from(
-  { length: FRAME_COUNT },
-  (_, index) =>
-    `/mockups/shirts/360/white/frame-${String(index).padStart(2, '0')}.png`
-);
-
 const STATIC_RENDER_SHIRT_BOUNDS: Record<StaticRenderSide, ZoneLayout> = {
   front: { left: 31, top: 26, width: 38, height: 58 },
   back: { left: 31, top: 26, width: 38, height: 58 },
@@ -127,6 +121,27 @@ function getDefaultFrameForSide(
   return 0;
 }
 
+function getDefaultFrameForGroup(
+  group: ShirtConfiguratorProps['viewerGroup']
+) {
+  if (group === 'back') {
+    return 8;
+  }
+
+  if (group === 'sleeves') {
+    return 4;
+  }
+
+  return 0;
+}
+
+function getFramePath(
+  shirtColor: ShirtConfiguratorProps['shirtColor'],
+  frame: number
+) {
+  return `/mockups/shirts/360/${shirtColor}/frame-${String(frame).padStart(2, '0')}.png`;
+}
+
 function getViewerSideFromFrame(frame: number): ShirtViewerSide {
   const normalized = normalizeFrame(frame);
 
@@ -154,6 +169,48 @@ function getSideLabelFromViewerSide(side: ShirtViewerSide) {
   }
 
   return 'front';
+}
+
+function getPlacementTargetFrame(
+  side: ShirtViewerSide,
+  zoneId: ShirtConfiguratorProps['placementZone'],
+  customPlacement?: CustomLogoPlacement | null
+) {
+  if (customPlacement) {
+    return customPlacement.frame;
+  }
+
+  if (side === 'back') {
+    return 8;
+  }
+
+  if (side === 'side') {
+    return zoneId === 'right_sleeve' ? 12 : 4;
+  }
+
+  return 0;
+}
+
+function getSignedFrameDistance(currentFrame: number, targetFrame: number) {
+  const raw = normalizeFrame(currentFrame - targetFrame);
+
+  return raw > FRAME_COUNT / 2 ? raw - FRAME_COUNT : raw;
+}
+
+function getProjectionStyle(
+  currentFrame: number,
+  targetFrame: number
+): Pick<CSSProperties, 'opacity' | 'transform'> {
+  const signedDistance = getSignedFrameDistance(currentFrame, targetFrame);
+  const distance = Math.abs(signedDistance);
+  const opacity = clamp(1 - Math.max(0, distance - 1) / 5.2, 0.12, 1);
+  const scaleX = clamp(1 - distance * 0.105, 0.28, 1);
+  const skew = clamp(signedDistance * -1.8, -13, 13);
+
+  return {
+    opacity,
+    transform: `translate(-50%, -50%) translateZ(96px) rotate(0deg) scaleX(${scaleX}) skewY(${skew}deg)`,
+  };
 }
 
 function getZoneLayout(zoneId: ShirtConfiguratorProps['placementZone']): ZoneLayout {
@@ -288,6 +345,7 @@ export default function ShirtPlacementMockup({
   onConfigChange,
   customPlacement,
   onCustomPlacementChange,
+  viewerGroup,
 }: ShirtConfiguratorProps) {
   const zoneRef = useRef<HTMLDivElement | null>(null);
   const torsoRef = useRef<HTMLDivElement | null>(null);
@@ -304,8 +362,11 @@ export default function ShirtPlacementMockup({
   const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
   const [failedShirtRenderPath, setFailedShirtRenderPath] =
     useState<string | null>(null);
-  const [failed360Frames, setFailed360Frames] = useState(false);
+  const [failed360FrameSets, setFailed360FrameSets] = useState<
+    Partial<Record<ShirtConfiguratorProps['shirtColor'], boolean>>
+  >({});
   const [currentFrame, setCurrentFrame] = useState(() =>
+    getDefaultFrameForGroup(viewerGroup) ??
     getDefaultFrameForSide(getPlacementSideLabel(placementZone))
   );
   const [zoom, setZoom] = useState(1);
@@ -316,43 +377,64 @@ export default function ShirtPlacementMockup({
     active: false,
   });
   const zone = getEmbroideryZone(placementZone);
-  const sideLabel = getPlacementSideLabel(placementZone);
+  const selectedPlacementSideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
-  const has360Viewer = !failed360Frames;
-  const current360FramePath = has360Viewer
-    ? SHIRT_360_FRAME_PATHS[currentFrame]
+  const preferred360FramePath = !failed360FrameSets[shirtColor]
+    ? getFramePath(shirtColor, currentFrame)
     : null;
-  const viewerSide = current360FramePath
+  const fallbackWhite360FramePath =
+    shirtColor !== 'white' && !failed360FrameSets.white
+      ? getFramePath('white', currentFrame)
+      : null;
+  const current360FramePath =
+    preferred360FramePath ?? fallbackWhite360FramePath;
+  const usesTintedWhite360 =
+    Boolean(fallbackWhite360FramePath) && !preferred360FramePath;
+  const has360Viewer = Boolean(current360FramePath);
+  const viewerFacingSide = current360FramePath
     ? getViewerSideFromFrame(currentFrame)
-    : getStaticRenderSide(sideLabel);
-  const viewerSideLabel = viewerSide
-    ? getSideLabelFromViewerSide(viewerSide)
-    : sideLabel;
-  const staticRenderSide = viewerSide;
-  const staticShirtRenderPath = getStaticShirtRenderPath(
-    shirtColor,
-    viewerSideLabel
-  );
+    : getStaticRenderSide(selectedPlacementSideLabel);
+  const viewerFacingSideLabel = viewerFacingSide
+    ? getSideLabelFromViewerSide(viewerFacingSide)
+    : selectedPlacementSideLabel;
+  const selectedPlacementRenderSide =
+    customPlacement?.side ?? getStaticRenderSide(selectedPlacementSideLabel);
+  const staticShirtRenderPath = !current360FramePath
+    ? getStaticShirtRenderPath(shirtColor, selectedPlacementSideLabel)
+    : null;
   const baseShirtImagePath = current360FramePath ?? staticShirtRenderPath;
   const useStaticShirtRender = Boolean(
     baseShirtImagePath && failedShirtRenderPath !== baseShirtImagePath
   );
   const activeCustomPlacement =
     useStaticShirtRender &&
-    staticRenderSide &&
-    customPlacement?.side === staticRenderSide
+    selectedPlacementRenderSide &&
+    customPlacement
       ? customPlacement
       : null;
+  const projectionTargetFrame = selectedPlacementRenderSide
+    ? getPlacementTargetFrame(
+        selectedPlacementRenderSide,
+        placementZone,
+        activeCustomPlacement
+      )
+    : 0;
+  const projectionStyle = current360FramePath
+    ? getProjectionStyle(currentFrame, projectionTargetFrame)
+    : {
+        opacity: 1,
+        transform: 'translate(-50%, -50%) translateZ(96px) rotate(0deg)',
+      };
   const layout =
-    useStaticShirtRender && staticRenderSide
+    useStaticShirtRender && selectedPlacementRenderSide
       ? activeCustomPlacement
         ? getCustomRenderZoneLayout(
             activeCustomPlacement,
-            staticRenderSide,
+            selectedPlacementRenderSide,
             placementZone,
             config
           )
-        : getStaticRenderZoneLayout(placementZone, staticRenderSide)
+        : getStaticRenderZoneLayout(placementZone, selectedPlacementRenderSide)
       : getZoneLayout(placementZone);
   const logoLoadFailed = Boolean(logoUrl && failedLogoUrl === logoUrl);
   const logoWidthPercent = activeCustomPlacement
@@ -383,9 +465,15 @@ export default function ShirtPlacementMockup({
   const labelText = useMemo(
     () =>
       activeCustomPlacement
-        ? `T-shirt ${viewerSideLabel} · Custom placement · ${formatLogoSize(config)} · frame ${String(currentFrame).padStart(2, '0')}`
-        : `T-shirt ${viewerSideLabel} · ${zone.label} · ${zone.maxWidthMm} × ${zone.maxHeightMm} mm`,
-    [activeCustomPlacement, config, currentFrame, viewerSideLabel, zone]
+        ? `View: ${viewerFacingSideLabel} frame ${String(currentFrame).padStart(2, '0')} · Placement: custom ${activeCustomPlacement.side} · ${formatLogoSize(config)}`
+        : `View: ${viewerFacingSideLabel} frame ${String(currentFrame).padStart(2, '0')} · Placement: ${zone.label} · ${zone.maxWidthMm} × ${zone.maxHeightMm} mm`,
+    [
+      activeCustomPlacement,
+      config,
+      currentFrame,
+      viewerFacingSideLabel,
+      zone,
+    ]
   );
 
   useEffect(() => {
@@ -401,19 +489,28 @@ export default function ShirtPlacementMockup({
 
     preloadIndexes.forEach((frameIndex) => {
       const image = new window.Image();
-      image.src = SHIRT_360_FRAME_PATHS[frameIndex];
+      image.src = getFramePath(
+        preferred360FramePath ? shirtColor : 'white',
+        frameIndex
+      );
     });
-  }, [current360FramePath, currentFrame]);
+  }, [current360FramePath, currentFrame, preferred360FramePath, shirtColor]);
 
   const updateCustomPlacementFromPointer = (
     event: PointerEvent<HTMLElement>
   ) => {
-    if (!staticRenderSide || !torsoRef.current || !onCustomPlacementChange) {
+    const pointerPlacementSide = activeCustomPlacement?.side ?? viewerFacingSide;
+
+    if (
+      !pointerPlacementSide ||
+      !torsoRef.current ||
+      !onCustomPlacementChange
+    ) {
       return false;
     }
 
     const rect = torsoRef.current.getBoundingClientRect();
-    const bounds = STATIC_RENDER_SHIRT_BOUNDS[staticRenderSide];
+    const bounds = STATIC_RENDER_SHIRT_BOUNDS[pointerPlacementSide];
     const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
     const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
 
@@ -427,7 +524,7 @@ export default function ShirtPlacementMockup({
     }
 
     onCustomPlacementChange({
-      side: staticRenderSide,
+      side: pointerPlacementSide,
       x: clamp((xPercent - bounds.left) / bounds.width, 0, 1),
       y: clamp((yPercent - bounds.top) / bounds.height, 0, 1),
       frame: currentFrame,
@@ -554,7 +651,7 @@ export default function ShirtPlacementMockup({
   };
 
   const resetViewer = () => {
-    setCurrentFrame(getDefaultFrameForSide(sideLabel));
+    setCurrentFrame(getDefaultFrameForGroup(viewerGroup));
     setZoom(1);
     setPan({ x: 0, y: 0 });
   };
@@ -679,12 +776,14 @@ export default function ShirtPlacementMockup({
                     ...neckSeam,
                     background: seamColor,
                     boxShadow:
-                      sideLabel === 'back'
+                      selectedPlacementSideLabel === 'back'
                         ? `0 30px 0 ${seamColor}, 0 62px 0 ${seamColor}`
                         : `0 22px 0 ${seamColor}`,
                   }}
                 />
-                {sideLabel === 'back' && <div style={backYoke} />}
+                {selectedPlacementSideLabel === 'back' && (
+                  <div style={backYoke} />
+                )}
               </div>
             </>
           )}
@@ -698,7 +797,10 @@ export default function ShirtPlacementMockup({
                 sizes="(max-width: 760px) 82vw, 420px"
                 onError={() => {
                   if (current360FramePath) {
-                    setFailed360Frames(true);
+                    setFailed360FrameSets((current) => ({
+                      ...current,
+                      [preferred360FramePath ? shirtColor : 'white']: true,
+                    }));
                     return;
                   }
 
@@ -708,7 +810,7 @@ export default function ShirtPlacementMockup({
                   objectFit: 'contain',
                   objectPosition: 'center center',
                   filter:
-                    current360FramePath && !isWhite
+                    current360FramePath && usesTintedWhite360
                       ? 'brightness(0.28) contrast(1.38) saturate(0.8) drop-shadow(0 42px 72px rgba(0,0,0,0.56)) drop-shadow(0 0 42px rgba(124,240,212,0.10))'
                       : 'drop-shadow(0 42px 72px rgba(0,0,0,0.48)) drop-shadow(0 0 42px rgba(124,240,212,0.10))',
                   pointerEvents: 'none',
@@ -747,7 +849,8 @@ export default function ShirtPlacementMockup({
               top: `${layout.top}%`,
               width: `${layout.width}%`,
               height: `${layout.height}%`,
-              transform: `translate(-50%, -50%) rotate(${layout.rotate ?? 0}deg)`,
+              opacity: projectionStyle.opacity,
+              transform: `${projectionStyle.transform} rotate(${layout.rotate ?? 0}deg)`,
               border: logoUrl
                 ? '1px solid rgba(124,240,212,0.34)'
                 : '1px solid rgba(124,240,212,0.86)',
@@ -797,8 +900,11 @@ export default function ShirtPlacementMockup({
                     height: '100%',
                     objectFit: 'contain',
                     display: 'block',
-                    zIndex: 3,
+                    zIndex: 4,
                     opacity: 0.98,
+                    filter: isWhite
+                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))'
+                      : 'drop-shadow(0 0 1px rgba(255,255,255,0.85)) drop-shadow(0 0 8px rgba(255,255,255,0.22))',
                     pointerEvents: 'none',
                   }}
                 />
@@ -962,7 +1068,7 @@ const staticShirtRenderLayer: CSSProperties = {
   transform: 'translateX(-50%) translateZ(66px)',
   width: 390,
   height: 520,
-  zIndex: 4,
+  zIndex: 1,
   pointerEvents: 'none',
 };
 
@@ -1010,7 +1116,7 @@ const backYoke: CSSProperties = {
 
 const placementBox: CSSProperties = {
   position: 'absolute',
-  zIndex: 6,
+  zIndex: 3,
   borderRadius: 18,
   display: 'grid',
   placeItems: 'center',
@@ -1028,7 +1134,7 @@ const threadGrid: CSSProperties = {
   backgroundSize: '18px 18px',
   animation: 'stitchraThread 7s linear infinite',
   pointerEvents: 'none',
-  zIndex: 0,
+  zIndex: 1,
 };
 
 const logoFrame: CSSProperties = {
@@ -1038,7 +1144,7 @@ const logoFrame: CSSProperties = {
   borderRadius: 12,
   overflow: 'hidden',
   isolation: 'isolate',
-  zIndex: 3,
+  zIndex: 4,
 };
 
 const placeholderText: CSSProperties = {
@@ -1046,7 +1152,7 @@ const placeholderText: CSSProperties = {
   fontWeight: 850,
   letterSpacing: 0,
   textTransform: 'uppercase',
-  zIndex: 1,
+  zIndex: 2,
 };
 
 const previewUnavailableText: CSSProperties = {

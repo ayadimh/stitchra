@@ -2331,26 +2331,29 @@ export default function Home({ locale }: HomeProps = {}) {
 
       <section
         id="designer"
-        className="designer-section"
+        className="designer-section showroom-section"
         style={{
-          padding: '96px 24px 128px',
+          padding: '112px 24px 128px',
           position: 'relative',
           zIndex: 1,
+          minHeight: '100vh',
         }}
       >
         <div
-          className="designer-grid"
+          className="designer-grid showroom-grid"
           style={{
-            maxWidth: 1280,
+            maxWidth: 1160,
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns:
-              'minmax(0,0.88fr) minmax(0,1.12fr)',
-            gap: 32,
-            alignItems: 'start',
+            gridTemplateColumns: '1fr',
+            gap: 22,
+            alignItems: 'stretch',
           }}
         >
-          <HoverCard style={glassCard} className="designer-controls-card">
+          <HoverCard
+            style={glassCard}
+            className="designer-controls-card showroom-controls-card"
+          >
             <div
               className="designer-stat-grid"
               style={{
@@ -2378,6 +2381,7 @@ export default function Home({ locale }: HomeProps = {}) {
             </div>
 
             <div
+              className="showroom-control-stack"
               style={{
                 display: 'grid',
                 gap: 16,
@@ -3132,7 +3136,7 @@ export default function Home({ locale }: HomeProps = {}) {
           </HoverCard>
 
           <ShirtPlacementMockup
-            key={placementZoneId}
+            key={`${placementZoneId}-${placementGroup}`}
             logoUrl={preview}
             shirtColor={teeColor}
             placementZone={placementZoneId}
@@ -3141,6 +3145,7 @@ export default function Home({ locale }: HomeProps = {}) {
             onConfigChange={updateLogoPlacementConfig}
             customPlacement={customLogoPlacement}
             onCustomPlacementChange={updateCustomLogoPlacement}
+            viewerGroup={placementGroup}
           />
         </div>
       </section>
@@ -4245,6 +4250,43 @@ function GlobalVisualStyles() {
 
         .designer-section {
           scroll-margin-top: 112px;
+        }
+
+        .showroom-section {
+          background:
+            radial-gradient(circle at 50% 18%, rgba(0,255,136,0.14), transparent 28%),
+            radial-gradient(circle at 78% 38%, rgba(0,200,255,0.13), transparent 24%),
+            linear-gradient(180deg, rgba(1,4,5,0.24), rgba(0,0,0,0.22));
+        }
+
+        .showroom-grid .shirt-placement-preview-card {
+          order: 1;
+          min-height: 720px;
+        }
+
+        .showroom-controls-card {
+          order: 2;
+          max-width: 1160px;
+          width: 100%;
+          margin: -28px auto 0;
+          z-index: 4;
+        }
+
+        .showroom-controls-card .designer-stat-grid {
+          display: none !important;
+        }
+
+        .showroom-control-stack {
+          grid-template-columns: minmax(0, 1fr);
+          align-items: start;
+        }
+
+        .showroom-control-stack > label,
+        .showroom-control-stack > .placement-mobile-select,
+        .showroom-control-stack > div,
+        .showroom-control-stack > button,
+        .showroom-control-stack > form {
+          min-width: 0;
         }
 
         .designer-grid,

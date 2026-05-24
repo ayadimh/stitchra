@@ -1,4 +1,5 @@
 import type {
+  EmbroideryPlacementGroup,
   EmbroideryZoneId,
   LogoPlacementConfig,
 } from '@/lib/embroideryZones';
@@ -22,4 +23,5 @@ export type ShirtConfiguratorProps = {
   onConfigChange: (config: LogoPlacementConfig) => void;
   customPlacement?: CustomLogoPlacement | null;
   onCustomPlacementChange?: (placement: CustomLogoPlacement | null) => void;
+  viewerGroup?: EmbroideryPlacementGroup;
 };
