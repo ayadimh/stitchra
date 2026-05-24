@@ -2,7 +2,7 @@
 
 import NextImage from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent, WheelEvent } from 'react';
+import type { CSSProperties, PointerEvent } from 'react';
 import {
   clampLogoPlacementConfig,
   formatLogoSize,
@@ -203,7 +203,7 @@ function getProjectionStyle(
 ): Pick<CSSProperties, 'opacity' | 'transform'> {
   const signedDistance = getSignedFrameDistance(currentFrame, targetFrame);
   const distance = Math.abs(signedDistance);
-  const opacity = clamp(1 - Math.max(0, distance - 1) / 5.2, 0.12, 1);
+  const opacity = clamp(1 - Math.max(0, distance - 1) / 5.2, 0, 1);
   const scaleX = clamp(1 - distance * 0.105, 0.28, 1);
   const skew = clamp(signedDistance * -1.8, -13, 13);
 
@@ -306,14 +306,15 @@ function getCustomRenderZoneLayout(
   config: ShirtConfiguratorProps['config']
 ): ZoneLayout {
   const bounds = STATIC_RENDER_SHIRT_BOUNDS[side];
+  const referenceZoneLayout = getStaticRenderZoneLayout(zoneId, side);
   const zone = getEmbroideryZone(zoneId);
   const width = clamp(
-    bounds.width * (config.logo_width_mm / zone.maxWidthMm),
+    referenceZoneLayout.width * (config.logo_width_mm / zone.maxWidthMm),
     4,
     bounds.width
   );
   const height = clamp(
-    bounds.height * (config.logo_height_mm / zone.maxHeightMm),
+    referenceZoneLayout.height * (config.logo_height_mm / zone.maxHeightMm),
     4,
     bounds.height
   );
@@ -336,6 +337,79 @@ function getCustomRenderZoneLayout(
   };
 }
 
+function clampLayoutToBounds(layout: ZoneLayout, bounds: ZoneLayout): ZoneLayout {
+  const width = clamp(layout.width, 2, bounds.width);
+  const height = clamp(layout.height, 2, bounds.height);
+  const left = clamp(
+    layout.left,
+    bounds.left + width / 2,
+    bounds.left + bounds.width - width / 2
+  );
+  const top = clamp(
+    layout.top,
+    bounds.top + height / 2,
+    bounds.top + bounds.height - height / 2
+  );
+
+  return {
+    left: Number(left.toFixed(2)),
+    top: Number(top.toFixed(2)),
+    width: Number(width.toFixed(2)),
+    height: Number(height.toFixed(2)),
+    rotate: layout.rotate,
+  };
+}
+
+function getLogoRenderLayout(
+  zoneLayout: ZoneLayout,
+  bounds: ZoneLayout,
+  zone: ReturnType<typeof getEmbroideryZone>,
+  config: ShirtConfiguratorProps['config']
+): ZoneLayout {
+  const width = clamp(
+    zoneLayout.width * (config.logo_width_mm / zone.maxWidthMm),
+    2,
+    Math.min(zoneLayout.width, bounds.width)
+  );
+  const height = clamp(
+    zoneLayout.height * (config.logo_height_mm / zone.maxHeightMm),
+    2,
+    Math.min(zoneLayout.height, bounds.height)
+  );
+  const zoneLeftEdge = zoneLayout.left - zoneLayout.width / 2;
+  const zoneTopEdge = zoneLayout.top - zoneLayout.height / 2;
+  const left = clamp(
+    zoneLeftEdge + zoneLayout.width * config.logo_position_x,
+    bounds.left + width / 2,
+    bounds.left + bounds.width - width / 2
+  );
+  const top = clamp(
+    zoneTopEdge + zoneLayout.height * config.logo_position_y,
+    bounds.top + height / 2,
+    bounds.top + bounds.height - height / 2
+  );
+
+  return {
+    left: Number(left.toFixed(2)),
+    top: Number(top.toFixed(2)),
+    width: Number(width.toFixed(2)),
+    height: Number(height.toFixed(2)),
+    rotate: zoneLayout.rotate,
+  };
+}
+
+function formatViewerSide(side: string | null | undefined) {
+  if (side === 'back') {
+    return 'Back';
+  }
+
+  if (side === 'sleeve' || side === 'side') {
+    return 'Sleeve';
+  }
+
+  return 'Front';
+}
+
 export default function ShirtPlacementMockup({
   logoUrl,
   shirtColor,
@@ -347,7 +421,6 @@ export default function ShirtPlacementMockup({
   onCustomPlacementChange,
   viewerGroup,
 }: ShirtConfiguratorProps) {
-  const zoneRef = useRef<HTMLDivElement | null>(null);
   const torsoRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [viewerDrag, setViewerDrag] = useState<{
@@ -355,10 +428,9 @@ export default function ShirtPlacementMockup({
     startX: number;
     startY: number;
     startFrame: number;
-    startPanX: number;
-    startPanY: number;
     moved: boolean;
   } | null>(null);
+  const [placementNotice, setPlacementNotice] = useState('');
   const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
   const [failedShirtRenderPath, setFailedShirtRenderPath] =
     useState<string | null>(null);
@@ -369,8 +441,6 @@ export default function ShirtPlacementMockup({
     getDefaultFrameForGroup(viewerGroup) ??
     getDefaultFrameForSide(getPlacementSideLabel(placementZone))
   );
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [mouse, setMouse] = useState({
     x: 0,
     y: 0,
@@ -437,18 +507,15 @@ export default function ShirtPlacementMockup({
         : getStaticRenderZoneLayout(placementZone, selectedPlacementRenderSide)
       : getZoneLayout(placementZone);
   const logoLoadFailed = Boolean(logoUrl && failedLogoUrl === logoUrl);
-  const logoWidthPercent = activeCustomPlacement
-    ? 100
-    : (config.logo_width_mm / zone.maxWidthMm) * 100;
-  const logoHeightPercent = activeCustomPlacement
-    ? 100
-    : (config.logo_height_mm / zone.maxHeightMm) * 100;
-  const logoLeftPercent = activeCustomPlacement
-    ? 0
-    : config.logo_position_x * 100 - logoWidthPercent / 2;
-  const logoTopPercent = activeCustomPlacement
-    ? 0
-    : config.logo_position_y * 100 - logoHeightPercent / 2;
+  const hasVisibleLogo = Boolean(logoUrl && !logoLoadFailed);
+  const activeShirtBounds =
+    useStaticShirtRender && selectedPlacementRenderSide
+      ? STATIC_RENDER_SHIRT_BOUNDS[selectedPlacementRenderSide]
+      : { left: 0, top: 0, width: 100, height: 100 };
+  const logoLayout =
+    activeCustomPlacement
+      ? clampLayoutToBounds(layout, activeShirtBounds)
+      : getLogoRenderLayout(layout, activeShirtBounds, zone, config);
   const rotateX = mouse.active ? mouse.y * -4 : 0;
   const rotateY = mouse.active ? mouse.x * 6 : 0;
   const lightX = mouse.active ? 50 + mouse.x * 18 : 50;
@@ -463,14 +530,19 @@ export default function ShirtPlacementMockup({
     ? 'rgba(35,31,26,0.14)'
     : 'rgba(255,255,255,0.10)';
   const labelText = useMemo(
-    () =>
-      activeCustomPlacement
-        ? `View: ${viewerFacingSideLabel} frame ${String(currentFrame).padStart(2, '0')} · Placement: custom ${activeCustomPlacement.side} · ${formatLogoSize(config)}`
-        : `View: ${viewerFacingSideLabel} frame ${String(currentFrame).padStart(2, '0')} · Placement: ${zone.label} · ${zone.maxWidthMm} × ${zone.maxHeightMm} mm`,
+    () => {
+      const placementLabel = activeCustomPlacement
+        ? `Custom ${formatViewerSide(activeCustomPlacement.side).toLowerCase()} placement`
+        : zone.label;
+      const sizeLabel = activeCustomPlacement
+        ? formatLogoSize(config)
+        : `${zone.maxWidthMm} × ${zone.maxHeightMm} mm`;
+
+      return `View: ${formatViewerSide(viewerFacingSideLabel)} • Placement: ${placementLabel} • ${sizeLabel}`;
+    },
     [
       activeCustomPlacement,
       config,
-      currentFrame,
       viewerFacingSideLabel,
       zone,
     ]
@@ -496,10 +568,21 @@ export default function ShirtPlacementMockup({
     });
   }, [current360FramePath, currentFrame, preferred360FramePath, shirtColor]);
 
+  useEffect(() => {
+    if (!placementNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setPlacementNotice(''), 1700);
+
+    return () => window.clearTimeout(timeout);
+  }, [placementNotice]);
+
   const updateCustomPlacementFromPointer = (
     event: PointerEvent<HTMLElement>
   ) => {
-    const pointerPlacementSide = activeCustomPlacement?.side ?? viewerFacingSide;
+    const pointerPlacementSide =
+      activeCustomPlacement?.side ?? selectedPlacementRenderSide ?? viewerFacingSide;
 
     if (
       !pointerPlacementSide ||
@@ -523,6 +606,12 @@ export default function ShirtPlacementMockup({
       return false;
     }
 
+    if (!hasVisibleLogo) {
+      setPlacementNotice('Upload a logo first');
+      return false;
+    }
+
+    setPlacementNotice('');
     onCustomPlacementChange({
       side: pointerPlacementSide,
       x: clamp((xPercent - bounds.left) / bounds.width, 0, 1),
@@ -546,34 +635,6 @@ export default function ShirtPlacementMockup({
     return true;
   };
 
-  const updateFromPointer = (event: PointerEvent<HTMLElement>) => {
-    if (activeCustomPlacement && updateCustomPlacementFromPointer(event)) {
-      return;
-    }
-
-    const rect = zoneRef.current?.getBoundingClientRect();
-
-    if (!rect) {
-      return;
-    }
-
-    const nextX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const nextY = clamp((event.clientY - rect.top) / rect.height, 0, 1);
-
-    onConfigChange(
-      clampLogoPlacementConfig(
-        {
-          ...config,
-          placement_zone: placementZone,
-          shirt_color: shirtColor,
-          logo_position_x: nextX,
-          logo_position_y: nextY,
-        },
-        logoAspectRatio
-      )
-    );
-  };
-
   const handleViewerPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     setViewerDrag({
@@ -581,8 +642,6 @@ export default function ShirtPlacementMockup({
       startX: event.clientX,
       startY: event.clientY,
       startFrame: currentFrame,
-      startPanX: pan.x,
-      startPanY: pan.y,
       moved: false,
     });
   };
@@ -604,15 +663,6 @@ export default function ShirtPlacementMockup({
       );
     }
 
-    if (zoom > 1) {
-      const maxPan = 38 * (zoom - 1);
-
-      setPan({
-        x: clamp(viewerDrag.startPanX + deltaX * 0.12, -maxPan, maxPan),
-        y: clamp(viewerDrag.startPanY + deltaY * 0.12, -maxPan, maxPan),
-      });
-    }
-
     if (moved && !viewerDrag.moved) {
       setViewerDrag({ ...viewerDrag, moved: true });
     }
@@ -632,28 +682,8 @@ export default function ShirtPlacementMockup({
     }
   };
 
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-
-    setZoom((currentZoom) => {
-      const nextZoom = clamp(
-        currentZoom + (event.deltaY < 0 ? 0.12 : -0.12),
-        1,
-        2.2
-      );
-
-      if (nextZoom === 1) {
-        setPan({ x: 0, y: 0 });
-      }
-
-      return Number(nextZoom.toFixed(2));
-    });
-  };
-
   const resetViewer = () => {
     setCurrentFrame(getDefaultFrameForGroup(viewerGroup));
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
   };
 
   return (
@@ -663,7 +693,6 @@ export default function ShirtPlacementMockup({
       onPointerMove={handleViewerPointerMove}
       onPointerUp={handleViewerPointerUp}
       onPointerCancel={() => setViewerDrag(null)}
-      onWheel={handleWheel}
       onMouseMove={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = (event.clientX - rect.left) / rect.width - 0.5;
@@ -734,7 +763,7 @@ export default function ShirtPlacementMockup({
         className="designer-preview-torso"
         style={{
           ...torsoRig,
-          transform: `translateX(-50%) translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+          transform: `translateX(-50%) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
         }}
       >
         <div className="shirt-preview-motion" style={torsoFloat}>
@@ -820,74 +849,52 @@ export default function ShirtPlacementMockup({
             </div>
           )}
 
-          <div
-            ref={zoneRef}
-            onPointerDown={(event) => {
-              event.stopPropagation();
-              event.currentTarget.setPointerCapture(event.pointerId);
-              setDragging(true);
-              updateFromPointer(event);
-            }}
-            onPointerMove={(event) => {
-              event.stopPropagation();
-              if (dragging) {
-                updateFromPointer(event);
-              }
-            }}
-            onPointerUp={(event) => {
-              event.stopPropagation();
-              event.currentTarget.releasePointerCapture(event.pointerId);
-              setDragging(false);
-            }}
-            onPointerCancel={(event) => {
-              event.stopPropagation();
-              setDragging(false);
-            }}
-            style={{
-              ...placementBox,
-              left: `${layout.left}%`,
-              top: `${layout.top}%`,
-              width: `${layout.width}%`,
-              height: `${layout.height}%`,
-              opacity: projectionStyle.opacity,
-              transform: `${projectionStyle.transform} rotate(${layout.rotate ?? 0}deg)`,
-              border: logoUrl
-                ? '1px solid rgba(124,240,212,0.34)'
-                : '1px solid rgba(124,240,212,0.86)',
-              boxShadow: logoUrl
-                ? '0 0 18px rgba(124,240,212,0.22), 0 0 58px rgba(0,200,255,0.10), inset 0 0 16px rgba(124,240,212,0.08)'
-                : '0 0 28px rgba(124,240,212,0.58), 0 0 80px rgba(0,200,255,0.18), inset 0 0 26px rgba(124,240,212,0.14)',
-              animation: logoUrl
-                ? 'none'
-                : 'stitchraGlow 3.2s ease-in-out infinite',
-            }}
-          >
+          {logoUrl && (
             <div
-              className="shirt-preview-thread"
-              style={{
-                ...threadGrid,
-                opacity: logoUrl ? (isWhite ? 0.1 : 0.13) : 0.32,
+              aria-label="Design preview on shirt"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                setDragging(true);
+                updateCustomPlacementFromPointer(event);
               }}
-            />
-            {logoUrl && !logoLoadFailed ? (
-              <div
-                aria-label="Design preview on shirt"
-                style={{
-                  ...logoFrame,
-                  left: `${logoLeftPercent}%`,
-                  top: `${logoTopPercent}%`,
-                  width: `${logoWidthPercent}%`,
-                  height: `${logoHeightPercent}%`,
-                  background: isWhite
-                    ? 'rgba(255,255,255,0.02)'
-                    : 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), rgba(255,255,255,0.07) 58%, rgba(124,240,212,0.08) 100%)',
-                  boxShadow: isWhite
-                    ? '0 1px 8px rgba(0,0,0,0.18)'
-                    : '0 0 0 1px rgba(255,255,255,0.18), 0 0 18px rgba(124,240,212,0.28)',
-                }}
-              >
-                {/* Native img is intentional for immediate blob: upload previews. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+              onPointerMove={(event) => {
+                event.stopPropagation();
+                if (dragging) {
+                  updateCustomPlacementFromPointer(event);
+                }
+              }}
+              onPointerUp={(event) => {
+                event.stopPropagation();
+                event.currentTarget.releasePointerCapture(event.pointerId);
+                setDragging(false);
+              }}
+              onPointerCancel={(event) => {
+                event.stopPropagation();
+                setDragging(false);
+              }}
+              style={{
+                ...logoFrame,
+                left: `${logoLayout.left}%`,
+                top: `${logoLayout.top}%`,
+                width: `${logoLayout.width}%`,
+                height: `${logoLayout.height}%`,
+                opacity: projectionStyle.opacity,
+                transform: `${projectionStyle.transform} rotate(${logoLayout.rotate ?? 0}deg)`,
+                boxShadow: hasVisibleLogo
+                  ? '0 0 0 1px rgba(255,255,255,0.08), 0 0 18px rgba(124,240,212,0.20)'
+                  : 'none',
+                cursor: 'grab',
+                pointerEvents:
+                  typeof projectionStyle.opacity === 'number' &&
+                  projectionStyle.opacity < 0.18
+                    ? 'none'
+                    : 'auto',
+              }}
+            >
+              {hasVisibleLogo ? (
+                // Native img is intentional for immediate blob: upload previews.
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={logoUrl}
                   alt="Uploaded embroidery logo"
@@ -901,27 +908,27 @@ export default function ShirtPlacementMockup({
                     objectFit: 'contain',
                     display: 'block',
                     zIndex: 4,
-                    opacity: 0.98,
+                    opacity: 0.99,
                     filter: isWhite
-                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.24))'
-                      : 'drop-shadow(0 0 1px rgba(255,255,255,0.85)) drop-shadow(0 0 8px rgba(255,255,255,0.22))',
+                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.26)) drop-shadow(0 0 8px rgba(124,240,212,0.12))'
+                      : 'drop-shadow(0 0 1px rgba(255,255,255,0.85)) drop-shadow(0 0 8px rgba(255,255,255,0.22)) drop-shadow(0 0 12px rgba(124,240,212,0.18))',
                     pointerEvents: 'none',
                   }}
                 />
-              </div>
-            ) : (
-              <span
-                style={{
-                  ...(logoUrl ? previewUnavailableText : placeholderText),
-                  color: isWhite
-                    ? 'rgba(8,12,14,0.48)'
-                    : 'rgba(224,255,244,0.74)',
-                }}
-              >
-                {logoUrl ? 'Preview unavailable' : 'Logo'}
-              </span>
-            )}
-          </div>
+              ) : (
+                <span
+                  style={{
+                    ...previewUnavailableText,
+                    color: isWhite
+                      ? 'rgba(8,12,14,0.48)'
+                      : 'rgba(224,255,244,0.74)',
+                  }}
+                >
+                  Preview unavailable
+                </span>
+              )}
+            </div>
+          )}
 
           <div style={bottomGlow} />
         </div>
@@ -939,9 +946,16 @@ export default function ShirtPlacementMockup({
         Reset view
       </button>
 
+      {placementNotice && (
+        <div style={placementNoticeStyle}>
+          {placementNotice}
+        </div>
+      )}
+
       <div style={footerHint}>
-        Drag to rotate · Scroll to zoom · Click shirt to place logo · Logo size{' '}
-        {formatLogoSize(config)}
+        {hasVisibleLogo
+          ? `Drag to rotate • Click shirt to reposition logo • Logo size ${formatLogoSize(config)}`
+          : 'Upload a logo, then click the shirt to place it'}
       </div>
     </div>
   );
@@ -1114,29 +1128,6 @@ const backYoke: CSSProperties = {
     'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)',
 };
 
-const placementBox: CSSProperties = {
-  position: 'absolute',
-  zIndex: 3,
-  borderRadius: 18,
-  display: 'grid',
-  placeItems: 'center',
-  overflow: 'hidden',
-  background: 'linear-gradient(135deg, rgba(124,240,212,0.12), rgba(0,0,0,0.06))',
-  cursor: 'grab',
-  touchAction: 'none',
-};
-
-const threadGrid: CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  backgroundImage:
-    'linear-gradient(45deg, rgba(124,240,212,0.18) 25%, transparent 25%, transparent 50%, rgba(124,240,212,0.18) 50%, rgba(124,240,212,0.18) 75%, transparent 75%, transparent)',
-  backgroundSize: '18px 18px',
-  animation: 'stitchraThread 7s linear infinite',
-  pointerEvents: 'none',
-  zIndex: 1,
-};
-
 const logoFrame: CSSProperties = {
   position: 'absolute',
   minWidth: 20,
@@ -1145,18 +1136,14 @@ const logoFrame: CSSProperties = {
   overflow: 'hidden',
   isolation: 'isolate',
   zIndex: 4,
-};
-
-const placeholderText: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 850,
-  letterSpacing: 0,
-  textTransform: 'uppercase',
-  zIndex: 2,
+  touchAction: 'none',
 };
 
 const previewUnavailableText: CSSProperties = {
-  ...placeholderText,
+  fontSize: 11,
+  fontWeight: 850,
+  letterSpacing: 0,
+  zIndex: 2,
   maxWidth: '80%',
   textAlign: 'center',
   textTransform: 'none',
@@ -1191,6 +1178,23 @@ const resetButton: CSSProperties = {
   fontWeight: 800,
   cursor: 'pointer',
   boxShadow: '0 16px 40px rgba(0,0,0,0.26)',
+};
+
+const placementNoticeStyle: CSSProperties = {
+  position: 'absolute',
+  left: '50%',
+  bottom: 70,
+  transform: 'translateX(-50%)',
+  zIndex: 8,
+  padding: '8px 12px',
+  borderRadius: 999,
+  background: 'rgba(0,0,0,0.58)',
+  border: '1px solid rgba(124,240,212,0.22)',
+  color: 'rgba(224,255,244,0.88)',
+  fontSize: 12,
+  fontWeight: 850,
+  boxShadow: '0 16px 42px rgba(0,0,0,0.32)',
+  pointerEvents: 'none',
 };
 
 const footerHint: CSSProperties = {
