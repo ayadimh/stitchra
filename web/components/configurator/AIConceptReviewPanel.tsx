@@ -10,10 +10,20 @@ export type AIConcept = {
   source?: string;
 };
 
+export type AIConceptReadiness = {
+  score: number;
+  colorsTarget: number;
+  contrastNote: string;
+  detailNote: string;
+  recommendation: string;
+};
+
 type AIConceptReviewPanelProps = {
   concepts: AIConcept[];
   selectedConceptId: string | null;
   activeConceptId: string | null;
+  styleHints: string[];
+  readiness: AIConceptReadiness;
   isGenerating: boolean;
   onSelectConcept: (conceptId: string) => void;
   onUseConcept: (concept: AIConcept) => void;
@@ -26,6 +36,8 @@ export default function AIConceptReviewPanel({
   concepts,
   selectedConceptId,
   activeConceptId,
+  styleHints,
+  readiness,
   isGenerating,
   onSelectConcept,
   onUseConcept,
@@ -75,10 +87,42 @@ export default function AIConceptReviewPanel({
         <span>AI concept</span>
       </button>
 
+      <div className="ai-concept-brief">
+        <div>
+          <span>Original idea</span>
+          <p>{selectedConcept.prompt}</p>
+        </div>
+
+        {styleHints.length > 0 && (
+          <div>
+            <span>Style direction</span>
+            <div className="ai-concept-style-list">
+              {styleHints.map((styleHint) => (
+                <b key={styleHint}>{styleHint}</b>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <p className="ai-concept-note">
         The T-shirt preview shows placement and size. This concept preview shows the artwork clearly.
         Final stitch-ready artwork is reviewed by Stitchra before production.
       </p>
+
+      <div className="ai-readiness-box" aria-label="Embroidery readiness summary">
+        <div>
+          <span>Embroidery-ready score</span>
+          <strong>{readiness.score}/100</strong>
+        </div>
+        <div>
+          <span>Colors target</span>
+          <strong>{readiness.colorsTarget}</strong>
+        </div>
+        <p>{readiness.contrastNote}</p>
+        <p>{readiness.detailNote}</p>
+        <p>{readiness.recommendation}</p>
+      </div>
 
       <div className="ai-concept-action-row">
         <button
@@ -117,11 +161,11 @@ export default function AIConceptReviewPanel({
           <label htmlFor="ai-concept-change-request">Tell us what to change</label>
           <textarea
             id="ai-concept-change-request"
-          value={changeRequest}
-          onChange={(event) => setChangeRequest(event.target.value)}
+            value={changeRequest}
+            onChange={(event) => setChangeRequest(event.target.value)}
             placeholder="Example: make it more playful, fewer colors, bigger giraffe, remove text"
-          rows={3}
-        />
+            rows={3}
+          />
           <button
             type="button"
             className="ai-concept-primary"

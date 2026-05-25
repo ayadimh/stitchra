@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint app components lib next.config.ts eslint.config.mjs public/sw.js"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.193",
@@ -26,7 +26,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.5",
+    "eslint-config-next": "^16.2.4",
     "typescript": "^5"
   }
 }

@@ -11,7 +11,16 @@ type AICreatorPanelProps = {
   onSwitchToUpload: () => void;
 };
 
-const STYLE_HINTS = ['Kids', 'Club', 'Brand', 'Event', 'Minimal', 'Bold patch'];
+const STYLE_HINTS = [
+  'Badge',
+  'Minimal',
+  'Kids',
+  'Club',
+  'Event',
+  'Streetwear',
+  'Business',
+  'Vintage',
+];
 
 export default function AICreatorPanel({
   prompt,
@@ -24,7 +33,7 @@ export default function AICreatorPanel({
   onSwitchToUpload,
 }: AICreatorPanelProps) {
   return (
-    <section className="design-path-panel design-path-panel-ai">
+    <section className="design-path-panel design-path-panel-ai ai-concept-studio">
       <div className="design-path-header">
         <span>AI creator</span>
         <h3>Create with AI</h3>
@@ -39,7 +48,7 @@ export default function AICreatorPanel({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           aria-label="Describe the AI artwork idea"
-          placeholder="Example: a playful giraffe driving a tiny red car through space, clean patch logo, 4 colors"
+          placeholder="Example: playful giraffe driving a tiny red car through space, clean patch logo, 4 colors"
         />
 
         <button
@@ -49,30 +58,37 @@ export default function AICreatorPanel({
           disabled={isGenerating}
           className="lux-button"
         >
-          {isGenerating
-            ? 'Generating...'
-            : hasGeneratedConcept
-              ? 'Regenerate'
-              : 'Generate concept'}
+          {isGenerating ? 'Generating...' : 'Generate concept'}
         </button>
       </div>
 
-      <div className="ai-style-chip-row" aria-label="AI concept style hints">
-        {STYLE_HINTS.map((styleHint) => {
-          const active = selectedStyleHints.includes(styleHint);
+      <div className="ai-style-selector">
+        <div>
+          <span>Intent</span>
+          <p>
+            {selectedStyleHints.length > 0
+              ? `Direction: ${selectedStyleHints.join(', ')}`
+              : 'Choose a style direction before generating.'}
+          </p>
+        </div>
 
-          return (
-            <button
-              key={styleHint}
-              type="button"
-              className={active ? 'ai-style-chip-active' : ''}
-              onClick={() => onToggleStyleHint(styleHint)}
-              aria-pressed={active}
-            >
-              {styleHint}
-            </button>
-          );
-        })}
+        <div className="ai-style-chip-row" aria-label="AI concept style hints">
+          {STYLE_HINTS.map((styleHint) => {
+            const active = selectedStyleHints.includes(styleHint);
+
+            return (
+              <button
+                key={styleHint}
+                type="button"
+                className={active ? 'ai-style-chip-active' : ''}
+                onClick={() => onToggleStyleHint(styleHint)}
+                aria-pressed={active}
+              >
+                {styleHint}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <p className="design-path-helper">
