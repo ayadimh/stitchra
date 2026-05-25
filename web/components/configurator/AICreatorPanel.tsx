@@ -2,48 +2,35 @@
 
 type AICreatorPanelProps = {
   prompt: string;
+  selectedStyleHints: string[];
   isGenerating: boolean;
   hasGeneratedConcept: boolean;
   onPromptChange: (value: string) => void;
+  onToggleStyleHint: (value: string) => void;
   onGenerate: () => void;
   onSwitchToUpload: () => void;
 };
 
-const IDEA_SUGGESTIONS = [
-  'school Eid al-Adha badge with crescent and lantern',
-  'minimal green coffee brand logo',
-  'retro gaming club badge with lightning',
-  'cute giraffe driving a tiny red car through space',
-];
+const STYLE_HINTS = ['Kids', 'Club', 'Brand', 'Event', 'Minimal', 'Bold patch'];
 
 export default function AICreatorPanel({
   prompt,
+  selectedStyleHints,
   isGenerating,
   hasGeneratedConcept,
   onPromptChange,
+  onToggleStyleHint,
   onGenerate,
   onSwitchToUpload,
 }: AICreatorPanelProps) {
   return (
     <section className="design-path-panel design-path-panel-ai">
       <div className="design-path-header">
-        <span>Create with AI</span>
-        <h3>Need an idea?</h3>
+        <span>AI creator</span>
+        <h3>Create with AI</h3>
         <p>
-          Describe an original idea. We&apos;ll create an embroidery-friendly concept for preview.
+          Describe an original idea. Stitchra turns it into an embroidery-friendly concept for preview.
         </p>
-      </div>
-
-      <div className="ai-idea-chip-row" aria-label="Example AI artwork ideas">
-        {IDEA_SUGGESTIONS.map((suggestion) => (
-          <button
-            key={suggestion}
-            type="button"
-            onClick={() => onPromptChange(suggestion)}
-          >
-            {suggestion}
-          </button>
-        ))}
       </div>
 
       <div className="designer-prompt-row">
@@ -52,7 +39,7 @@ export default function AICreatorPanel({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           aria-label="Describe the AI artwork idea"
-          placeholder="Example: cute giraffe driving a tiny red car through space, patch logo for kids, 4 colors"
+          placeholder="Example: a playful giraffe driving a tiny red car through space, clean patch logo, 4 colors"
         />
 
         <button
@@ -68,6 +55,24 @@ export default function AICreatorPanel({
               ? 'Regenerate'
               : 'Generate concept'}
         </button>
+      </div>
+
+      <div className="ai-style-chip-row" aria-label="AI concept style hints">
+        {STYLE_HINTS.map((styleHint) => {
+          const active = selectedStyleHints.includes(styleHint);
+
+          return (
+            <button
+              key={styleHint}
+              type="button"
+              className={active ? 'ai-style-chip-active' : ''}
+              onClick={() => onToggleStyleHint(styleHint)}
+              aria-pressed={active}
+            >
+              {styleHint}
+            </button>
+          );
+        })}
       </div>
 
       <p className="design-path-helper">

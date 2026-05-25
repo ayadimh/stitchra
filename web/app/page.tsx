@@ -14,6 +14,7 @@ import {
   getEmbroideryZone,
   getMaxLogoWidthForAspect,
   getPlacementSideLabel,
+  isEmbroideryZoneId,
   placementGroups,
   type EmbroideryPlacementGroup,
   type EmbroideryZoneId,
@@ -28,9 +29,24 @@ import AIConceptReviewPanel, {
 import DesignStartOptions, {
   type DesignStartMode,
 } from '@/components/configurator/DesignStartOptions';
+import DraftRecoveryBanner from '@/components/configurator/DraftRecoveryBanner';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
 import UploadOwnDesignPanel from '@/components/configurator/UploadOwnDesignPanel';
 import type { CustomLogoPlacement } from '@/components/configurator/types';
+import {
+  DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY,
+  blobToDataUrl,
+  clearDesignDraft,
+  clearDraftImages,
+  dataUrlToBlob,
+  loadDesignDraft,
+  loadDraftImage,
+  saveDesignDraft,
+  saveDraftImage,
+  type DesignDraftEstimateSummary,
+  type DesignDraftLogoAnalysisSummary,
+  type SavedDesignDraft,
+} from '@/lib/designDraftStorage';
 import {
   createTranslator,
   getLocaleDirection,
@@ -337,6 +353,103 @@ function getPublicQuote(estimate: Estimate): PublicQuote {
   );
 }
 
+function summarizeLogoAnalysis(
+  analysis: LogoAnalysis | null
+): DesignDraftLogoAnalysisSummary | null {
+  if (!analysis) {
+    return null;
+  }
+
+  return {
+    colors_count: analysis.colors_count,
+    contrast_score: analysis.contrast_score,
+    embroidery_ready: analysis.embroidery_ready,
+    warnings: analysis.warnings,
+    recommendations: analysis.recommendations,
+    dominant_colors: analysis.dominant_colors.map((color) => ({
+      hex: color.hex,
+      percentage: color.percentage,
+    })),
+  };
+}
+
+function restoreLogoAnalysis(
+  summary: DesignDraftLogoAnalysisSummary | null
+): LogoAnalysis | null {
+  if (!summary) {
+    return null;
+  }
+
+  return {
+    processed_png: '',
+    colors_count: summary.colors_count,
+    dominant_colors:
+      summary.dominant_colors?.map((color) => ({
+        hex: color.hex,
+        rgb: [],
+        percentage: color.percentage,
+      })) ?? [],
+    contrast_score: summary.contrast_score,
+    embroidery_ready: summary.embroidery_ready,
+    warnings: summary.warnings,
+    recommendations: summary.recommendations,
+  };
+}
+
+function summarizeEstimate(
+  estimate: Estimate | null
+): DesignDraftEstimateSummary | null {
+  if (!estimate) {
+    return null;
+  }
+
+  const publicEstimate = getPublicQuote(estimate);
+
+  return {
+    stitches: publicEstimate.stitches,
+    colors: publicEstimate.colors,
+    coverage: publicEstimate.coverage,
+    price_eur: publicEstimate.price_eur,
+    manual_quote: publicEstimate.manual_quote,
+    pricing_tier: publicEstimate.pricing_tier,
+    warnings: publicEstimate.customer_warnings,
+    recommendations: publicEstimate.customer_recommendations,
+    width_mm: estimate.width_mm,
+    height_mm: estimate.height_mm,
+  };
+}
+
+function restoreEstimate(
+  summary: DesignDraftEstimateSummary | null
+): Estimate | null {
+  if (!summary) {
+    return null;
+  }
+
+  return {
+    stitches: summary.stitches,
+    colors: summary.colors,
+    coverage: summary.coverage,
+    price_eur: summary.price_eur,
+    manual_quote: summary.manual_quote,
+    pricing_tier: summary.pricing_tier,
+    warnings: summary.warnings,
+    recommendations: summary.recommendations,
+    public_quote: {
+      stitches: summary.stitches,
+      colors: summary.colors,
+      coverage: summary.coverage,
+      price_eur: summary.price_eur,
+      manual_quote: summary.manual_quote,
+      pricing_tier: summary.pricing_tier,
+      customer_warnings: summary.warnings,
+      customer_recommendations: summary.recommendations,
+    },
+    width_mm: summary.width_mm,
+    height_mm: summary.height_mm,
+  };
+}
+
 function formatPricingTier(value: string, t: Translator) {
   const normalized = value
     .toLowerCase()
@@ -417,6 +530,13 @@ export default function Home({ locale }: HomeProps = {}) {
     useState<string | null>(null);
   const [activeAiConceptId, setActiveAiConceptId] =
     useState<string | null>(null);
+  const [aiStyleHints, setAiStyleHints] = useState<string[]>([]);
+  const [draftSaveStatus, setDraftSaveStatus] = useState('');
+  const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [draftImageNeedsUpload, setDraftImageNeedsUpload] = useState(false);
+  const hasHydratedDraftRef = useRef(false);
+  const draftAutosaveTimeoutRef = useRef<number | null>(null);
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -536,6 +656,10 @@ export default function Home({ locale }: HomeProps = {}) {
       if (viewerHintTimeoutRef.current) {
         window.clearTimeout(viewerHintTimeoutRef.current);
       }
+
+      if (draftAutosaveTimeoutRef.current) {
+        window.clearTimeout(draftAutosaveTimeoutRef.current);
+      }
     },
     []
   );
@@ -642,6 +766,88 @@ export default function Home({ locale }: HomeProps = {}) {
     setLogoFocusPulseKey((current) => current + 1);
   }, []);
 
+  const resetDesignDraftState = useCallback(async () => {
+    const confirmed = window.confirm('This clears your current design draft.');
+
+    if (!confirmed) {
+      return;
+    }
+
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+
+    await clearDesignDraft();
+    await clearDraftImages();
+
+    setPlacement('left_chest');
+    setPlacementGroup('front');
+    setTeeColor('black');
+    setFile(null);
+    setPreview(null);
+    setLogoAspectRatio(70 / 45);
+    setLogoPlacementConfig(getDefaultLogoPlacementConfig('left_chest', 'black'));
+    setCustomLogoPlacement(null);
+    setPlacementMode('preset');
+    setViewerHint('');
+    setLogoFocusPulseKey((current) => current + 1);
+    setDesignStartMode('choice');
+    setHasGeneratedAiConcept(false);
+    setAiConcepts([]);
+    setSelectedAiConceptId(null);
+    setActiveAiConceptId(null);
+    setAiStyleHints([]);
+    setEstimate(null);
+    setLogoAnalysis(null);
+    setDesignPreparation(null);
+    setLogoPrompt('');
+    setStatus('');
+    setError('');
+    setOrderOpen(false);
+    setOrderStatus('');
+    setOrderError('');
+    setOrderFieldErrors({});
+    setShowDraftRecovery(false);
+    setDraftImageNeedsUpload(false);
+    setRestoredDraftAt(null);
+    setDraftSaveStatus('Draft cleared');
+  }, []);
+
+  const continueRestoredDraft = useCallback(() => {
+    setShowDraftRecovery(false);
+    focusShirtViewer(
+      preview
+        ? 'Restored design ready. Click the shirt to reposition it.'
+        : undefined
+    );
+  }, [focusShirtViewer, preview]);
+
+  const toggleAiStyleHint = (styleHint: string) => {
+    setAiStyleHints((current) =>
+      current.includes(styleHint)
+        ? current.filter((item) => item !== styleHint)
+        : [...current, styleHint]
+    );
+    setError('');
+    setStatus('');
+  };
+
+  const getPromptWithStyleHints = useCallback(
+    (prompt: string) => {
+      const normalizedPrompt = prompt.trim();
+
+      if (!normalizedPrompt || aiStyleHints.length === 0) {
+        return normalizedPrompt;
+      }
+
+      return `${normalizedPrompt}. Style direction: ${aiStyleHints.join(', ')}.`
+        .replace(/\s+/g, ' ')
+        .trim();
+    },
+    [aiStyleHints]
+  );
+
   useEffect(() => {
     const handleDesignAction = (event: Event) => {
       const detail = (event as CustomEvent<StitchraDesignActionDetail>).detail;
@@ -697,6 +903,255 @@ export default function Home({ locale }: HomeProps = {}) {
       window.removeEventListener('stitchra:design-action', handleDesignAction);
     };
   }, [focusShirtViewer, logoAspectRatio, teeColor, updatePlacement, updateShirtColor]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreDraft() {
+      const draft = await loadDesignDraft();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (!draft) {
+        hasHydratedDraftRef.current = true;
+        return;
+      }
+
+      const draftPlacement = isEmbroideryZoneId(draft.selectedPlacement)
+        ? draft.selectedPlacement
+        : 'left_chest';
+      const draftShirtColor =
+        draft.shirtColor === 'white' ? 'white' : 'black';
+      const draftAspectRatio =
+        Number.isFinite(draft.logoAspectRatio) && draft.logoAspectRatio > 0
+          ? draft.logoAspectRatio
+          : 70 / 45;
+      const draftConfigZone = isEmbroideryZoneId(
+        draft.logoPlacementConfig.placement_zone
+      )
+        ? draft.logoPlacementConfig.placement_zone
+        : draftPlacement;
+      const draftConfig: LogoPlacementConfig = {
+        ...draft.logoPlacementConfig,
+        placement_zone: draftConfigZone,
+        shirt_color: draftShirtColor,
+      };
+      const restoredConcepts = (
+        await Promise.all(
+          draft.generatedConcepts.slice(0, 4).map(async (concept): Promise<AIConcept | null> => {
+            const imageBlob = await loadDraftImage(concept.imageKey);
+
+            if (!imageBlob) {
+              return null;
+            }
+
+            const restoredConcept: AIConcept = {
+              id: concept.id,
+              filename: concept.filename,
+              prompt: concept.prompt,
+              imageDataUrl: await blobToDataUrl(imageBlob),
+            };
+
+            if (concept.source) {
+              restoredConcept.source = concept.source;
+            }
+
+            return restoredConcept;
+          })
+        )
+      ).filter((concept): concept is AIConcept => concept !== null);
+
+      const activeLogoBlob = draft.activeLogoImageKey
+        ? await loadDraftImage(draft.activeLogoImageKey)
+        : null;
+
+      if (cancelled) {
+        return;
+      }
+
+      setPlacement(draftPlacement);
+      setPlacementGroup(getEmbroideryZone(draftPlacement).group);
+      setTeeColor(draftShirtColor);
+      setLogoAspectRatio(draftAspectRatio);
+      setLogoPlacementConfig(
+        clampLogoPlacementConfig(draftConfig, draftAspectRatio)
+      );
+      setCustomLogoPlacement(draft.customPlacement);
+      setPlacementMode(draft.placementMode === 'custom' ? 'custom' : 'preset');
+      setDesignStartMode(draft.designStartMode ?? 'choice');
+      setLogoPrompt(draft.ideaPrompt);
+      setAiStyleHints(draft.aiStyleHints);
+      setAiConcepts(restoredConcepts);
+      setSelectedAiConceptId(
+        restoredConcepts.some((concept) => concept.id === draft.selectedAiConceptId)
+          ? draft.selectedAiConceptId
+          : restoredConcepts[0]?.id ?? null
+      );
+      setActiveAiConceptId(
+        restoredConcepts.some((concept) => concept.id === draft.activeAiConceptId)
+          ? draft.activeAiConceptId
+          : null
+      );
+      setHasGeneratedAiConcept(restoredConcepts.length > 0);
+      setLogoAnalysis(restoreLogoAnalysis(draft.logoAnalysisSummary));
+      setEstimate(restoreEstimate(draft.estimateSummary));
+      setDesignPreparation(draft.designPreparation);
+
+      if (activeLogoBlob) {
+        if (previewObjectUrlRef.current) {
+          URL.revokeObjectURL(previewObjectUrlRef.current);
+        }
+
+        const restoredUrl = URL.createObjectURL(activeLogoBlob);
+        previewObjectUrlRef.current = restoredUrl;
+        setPreview(restoredUrl);
+        setFile(
+          new File(
+            [activeLogoBlob],
+            draft.activeLogoFilename || 'stitchra-design-draft.png',
+            { type: activeLogoBlob.type || 'image/png' }
+          )
+        );
+      } else if (draft.activeLogoImageKey) {
+        setDraftImageNeedsUpload(true);
+      }
+
+      setRestoredDraftAt(draft.lastSavedAt);
+      setShowDraftRecovery(
+        Boolean(
+          draft.activeLogoImageKey ||
+            restoredConcepts.length > 0 ||
+            draft.ideaPrompt.trim() ||
+            draft.designStartMode ||
+            draft.estimateSummary
+        )
+      );
+      setDraftSaveStatus('Draft saved');
+      hasHydratedDraftRef.current = true;
+    }
+
+    void restoreDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedDraftRef.current) {
+      return;
+    }
+
+    const hasMeaningfulDraft =
+      Boolean(file) ||
+      Boolean(preview) ||
+      aiConcepts.length > 0 ||
+      Boolean(logoPrompt.trim()) ||
+      designStartMode !== 'choice' ||
+      placement !== 'left_chest' ||
+      teeColor !== 'black' ||
+      Boolean(estimate);
+
+    if (!hasMeaningfulDraft) {
+      return;
+    }
+
+    if (draftAutosaveTimeoutRef.current) {
+      window.clearTimeout(draftAutosaveTimeoutRef.current);
+    }
+
+    draftAutosaveTimeoutRef.current = window.setTimeout(() => {
+      const activeLogoSource = file
+        ? activeAiConceptId
+          ? 'aiGenerated'
+          : 'uploaded'
+        : null;
+      const draft: SavedDesignDraft = {
+        draftVersion: 1,
+        designStartMode:
+          designStartMode === 'choice' ? null : designStartMode,
+        shirtColor: teeColor,
+        selectedSide: placementGroup,
+        selectedPlacement: placement,
+        placementMode,
+        customPlacement: customLogoPlacement,
+        logoPlacementConfig,
+        logoAspectRatio,
+        ideaPrompt: logoPrompt,
+        aiStyleHints,
+        generatedConceptStatus: hasGeneratedAiConcept
+          ? 'AI concept generated. Final stitch-ready artwork is reviewed by Stitchra.'
+          : null,
+        generatedConcepts: aiConcepts.slice(0, 4).map((concept) => ({
+          id: concept.id,
+          filename: concept.filename,
+          prompt: concept.prompt,
+          source: concept.source,
+          imageKey: `concept-${concept.id}`,
+          createdAt: Date.now(),
+        })),
+        selectedAiConceptId,
+        activeAiConceptId,
+        activeLogoSource,
+        activeLogoFilename: file?.name ?? null,
+        activeLogoImageKey: file ? DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY : null,
+        logoAnalysisSummary: summarizeLogoAnalysis(logoAnalysis),
+        estimateSummary: summarizeEstimate(estimate),
+        designPreparation,
+        lastSavedAt: Date.now(),
+      };
+
+      async function persistDraft() {
+        setDraftSaveStatus('Saving draft...');
+
+        if (file) {
+          await saveDraftImage(DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY, file);
+        }
+
+        await Promise.all(
+          aiConcepts.slice(0, 4).map(async (concept) => {
+            await saveDraftImage(
+              `concept-${concept.id}`,
+              await dataUrlToBlob(concept.imageDataUrl)
+            );
+          })
+        );
+        await saveDesignDraft(draft);
+        setRestoredDraftAt(draft.lastSavedAt);
+        setDraftSaveStatus('Draft saved just now');
+      }
+
+      void persistDraft();
+    }, 500);
+
+    return () => {
+      if (draftAutosaveTimeoutRef.current) {
+        window.clearTimeout(draftAutosaveTimeoutRef.current);
+      }
+    };
+  }, [
+    activeAiConceptId,
+    aiConcepts,
+    aiStyleHints,
+    customLogoPlacement,
+    designPreparation,
+    designStartMode,
+    estimate,
+    file,
+    hasGeneratedAiConcept,
+    logoAnalysis,
+    logoAspectRatio,
+    logoPlacementConfig,
+    logoPrompt,
+    placement,
+    placementGroup,
+    placementMode,
+    preview,
+    selectedAiConceptId,
+    teeColor,
+  ]);
 
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -873,7 +1328,7 @@ export default function Home({ locale }: HomeProps = {}) {
   };
 
   const generateLogo = async () => {
-    await createAiConcept(logoPrompt);
+    await createAiConcept(getPromptWithStyleHints(logoPrompt));
   };
 
   const acceptAiConcept = async (concept: AIConcept) => {
@@ -2684,6 +3139,16 @@ export default function Home({ locale }: HomeProps = {}) {
                 gap: 16,
               }}
             >
+              {showDraftRecovery && (
+                <DraftRecoveryBanner
+                  lastSavedAt={restoredDraftAt}
+                  saveStatus={draftSaveStatus}
+                  imageNeedsUpload={draftImageNeedsUpload}
+                  onContinue={continueRestoredDraft}
+                  onStartNew={() => void resetDesignDraftState()}
+                />
+              )}
+
               <DesignStartOptions
                 selectedMode={designStartMode}
                 onSelectMode={(mode) => {
@@ -2712,6 +3177,7 @@ export default function Home({ locale }: HomeProps = {}) {
                 <>
                   <AICreatorPanel
                     prompt={logoPrompt}
+                    selectedStyleHints={aiStyleHints}
                     isGenerating={isGenerating}
                     hasGeneratedConcept={hasGeneratedAiConcept}
                     onPromptChange={(value) => {
@@ -2720,6 +3186,7 @@ export default function Home({ locale }: HomeProps = {}) {
                       setError('');
                       setStatus('');
                     }}
+                    onToggleStyleHint={toggleAiStyleHint}
                     onGenerate={generateLogo}
                     onSwitchToUpload={() => {
                       setDesignStartMode('upload');
@@ -3488,6 +3955,18 @@ export default function Home({ locale }: HomeProps = {}) {
                 </>
               )}
                 </>
+              )}
+              {designStartMode !== 'choice' && (
+                <div className="design-draft-footer">
+                  {draftSaveStatus && <span>{draftSaveStatus}</span>}
+                  <button
+                    type="button"
+                    className="design-reset-link"
+                    onClick={() => void resetDesignDraftState()}
+                  >
+                    Start new design
+                  </button>
+                </div>
               )}
             </div>
           </HoverCard>
@@ -4949,6 +5428,121 @@ function GlobalVisualStyles() {
             linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
         }
 
+        .draft-recovery-banner {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          align-items: center;
+          padding: 16px;
+          border-radius: 24px;
+          border: 1px solid rgba(24,255,154,0.22);
+          background:
+            radial-gradient(circle at 14% 18%, rgba(0,255,136,0.14), transparent 34%),
+            radial-gradient(circle at 88% 68%, rgba(0,215,255,0.10), transparent 34%),
+            rgba(255,255,255,0.045);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 20px 62px rgba(0,0,0,0.22);
+        }
+
+        .draft-recovery-banner div {
+          min-width: 0;
+        }
+
+        .draft-recovery-banner span {
+          display: block;
+          margin-bottom: 4px;
+          color: #00d7ff;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .draft-recovery-banner strong {
+          display: block;
+          color: #f6fff9;
+          font-size: 16px;
+          line-height: 1.2;
+        }
+
+        .draft-recovery-banner p {
+          margin: 6px 0 0;
+          color: rgba(245,247,248,0.62);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+
+        .draft-recovery-actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 9px;
+        }
+
+        .draft-recovery-actions small {
+          flex-basis: 100%;
+          color: rgba(157,255,196,0.76);
+          font-size: 11px;
+          font-weight: 850;
+          text-align: right;
+        }
+
+        .draft-recovery-actions button,
+        .design-reset-link {
+          min-height: 38px;
+          padding: 0 13px;
+          border-radius: 999px;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            color 160ms ease,
+            background 160ms ease;
+        }
+
+        .draft-recovery-actions button:first-of-type {
+          border: 0;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+        }
+
+        .draft-recovery-actions button:last-of-type,
+        .design-reset-link {
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(246,255,249,0.78);
+          background: rgba(255,255,255,0.045);
+        }
+
+        .draft-recovery-actions button:hover,
+        .design-reset-link:hover {
+          transform: translateY(-1px);
+          border-color: rgba(0,215,255,0.38);
+          color: #9dffc4;
+        }
+
+        .design-reset-link {
+          justify-self: start;
+        }
+
+        .design-draft-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .design-draft-footer span {
+          color: rgba(157,255,196,0.72);
+          font-size: 12px;
+          font-weight: 850;
+        }
+
         .design-path-panel .designer-prompt-row {
           display: grid !important;
           grid-template-columns: minmax(0, 1fr) minmax(150px, 188px);
@@ -4979,6 +5573,38 @@ function GlobalVisualStyles() {
           color: #06100a;
           background: linear-gradient(135deg, #18ff9a, #00c8ff);
           box-shadow: 0 16px 44px rgba(0,220,190,0.20);
+        }
+
+        .ai-style-chip-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .ai-style-chip-row button {
+          min-height: 34px;
+          border: 1px solid rgba(0,215,255,0.16);
+          border-radius: 999px;
+          color: rgba(246,255,249,0.78);
+          background: rgba(255,255,255,0.045);
+          padding: 0 12px;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 850;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            background 160ms ease,
+            color 160ms ease;
+        }
+
+        .ai-style-chip-row button:hover,
+        .ai-style-chip-row .ai-style-chip-active {
+          transform: translateY(-1px);
+          border-color: rgba(24,255,154,0.42);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.09);
         }
 
         .ai-idea-chip-row {
@@ -6433,6 +7059,23 @@ function GlobalVisualStyles() {
 
           .design-start-card {
             min-height: 190px;
+          }
+
+          .draft-recovery-banner {
+            display: grid;
+            gap: 14px;
+          }
+
+          .draft-recovery-actions {
+            justify-content: stretch;
+          }
+
+          .draft-recovery-actions small {
+            text-align: left;
+          }
+
+          .draft-recovery-actions button {
+            flex: 1 1 150px;
           }
 
           .design-path-panel .designer-prompt-row,

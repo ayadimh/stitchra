@@ -14,10 +14,10 @@ export default function UploadOwnDesignPanel({
   return (
     <section className="design-path-panel">
       <div className="design-path-header">
-        <span>Bring your own design</span>
-        <h3>Already have a logo?</h3>
+        <span>Upload path</span>
+        <h3>Bring your own design</h3>
         <p>
-          Upload PNG, JPG or SVG. We&apos;ll preview it on the shirt and check whether it is suitable for embroidery.
+          Upload your logo and see it live on the T-shirt before requesting a quote.
         </p>
       </div>
 

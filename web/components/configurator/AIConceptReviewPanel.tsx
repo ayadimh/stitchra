@@ -117,11 +117,11 @@ export default function AIConceptReviewPanel({
           <label htmlFor="ai-concept-change-request">Tell us what to change</label>
           <textarea
             id="ai-concept-change-request"
-            value={changeRequest}
-            onChange={(event) => setChangeRequest(event.target.value)}
-            placeholder="Example: make it more childish, use fewer colors, remove text, add stars, make the giraffe bigger"
-            rows={3}
-          />
+          value={changeRequest}
+          onChange={(event) => setChangeRequest(event.target.value)}
+            placeholder="Example: make it more playful, fewer colors, bigger giraffe, remove text"
+          rows={3}
+        />
           <button
             type="button"
             className="ai-concept-primary"
