@@ -23,6 +23,7 @@ html {
 }
 
 body {
+  min-height: 100dvh;
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
@@ -44,5 +45,12 @@ a {
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
+  }
+}
+
+@media (display-mode: standalone) {
+  body {
+    background: #050607;
+    overscroll-behavior-y: contain;
   }
 }
