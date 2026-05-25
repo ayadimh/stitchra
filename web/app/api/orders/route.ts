@@ -6,6 +6,7 @@ import {
   isOfferEmailConfigured,
   isStudioRequest,
   listOrders,
+  notifyTeamOfNewOrderRequest,
   validatePublicOrderFields,
   type CreateOrderInput,
 } from '@/lib/orders';
@@ -112,6 +113,8 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
+
+    await notifyTeamOfNewOrderRequest(order);
 
     return NextResponse.json(
       {

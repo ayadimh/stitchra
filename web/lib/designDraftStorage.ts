@@ -15,6 +15,8 @@ export type DesignDraftConcept = {
   prompt: string;
   source?: string;
   imageKey: string;
+  cleanedImageKey?: string;
+  cleanedAt?: number;
   createdAt: number;
 };
 

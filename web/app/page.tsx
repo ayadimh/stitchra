@@ -4,6 +4,7 @@ import Image from 'next/image';
 import type {
   CSSProperties,
   FormEvent,
+  MouseEvent,
   ReactNode,
 } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +28,7 @@ import AIConceptReviewPanel, {
   type AIConcept,
   type AIConceptReadiness,
 } from '@/components/configurator/AIConceptReviewPanel';
+import DesignAddedToast from '@/components/configurator/DesignAddedToast';
 import DesignStartOptions, {
   type DesignStartMode,
 } from '@/components/configurator/DesignStartOptions';
@@ -339,6 +341,54 @@ async function getImageAspectRatio(src: string) {
   });
 }
 
+function getStickyHeaderHeight() {
+  if (typeof document === 'undefined') {
+    return 86;
+  }
+
+  const header = document.querySelector('header');
+
+  return header?.getBoundingClientRect().height ?? 86;
+}
+
+function scrollElementToViewportCenter(element: HTMLElement) {
+  const headerOffset = getStickyHeaderHeight() + 24;
+  const rect = element.getBoundingClientRect();
+  const availableHeight = Math.max(320, window.innerHeight - headerOffset);
+  const targetTop =
+    window.scrollY +
+    rect.top -
+    headerOffset +
+    rect.height / 2 -
+    availableHeight / 2;
+
+  window.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior: 'smooth',
+  });
+}
+
+function getCleanedLogoFilename(filename: string) {
+  const baseName = filename.replace(/\.[^/.]+$/, '') || 'stitchra-logo';
+
+  return `${baseName}-transparent.png`;
+}
+
+function isSvgLogoFile(file: File | null) {
+  if (!file) {
+    return false;
+  }
+
+  return (
+    file.type === 'image/svg+xml' ||
+    file.name.toLowerCase().endsWith('.svg')
+  );
+}
+
+function getConceptDisplayImage(concept: AIConcept) {
+  return concept.cleanedImageDataUrl ?? concept.imageDataUrl;
+}
+
 function getPublicQuote(estimate: Estimate): PublicQuote {
   return (
     estimate.public_quote ?? {
@@ -510,6 +560,8 @@ export default function Home({ locale }: HomeProps = {}) {
   const [preview, setPreview] = useState<string | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
   const shirtViewerRef = useRef<HTMLDivElement | null>(null);
+  const placementControlsRef = useRef<HTMLDivElement | null>(null);
+  const priceActionRef = useRef<HTMLDivElement | null>(null);
   const viewerHintTimeoutRef = useRef<number | null>(null);
   const [logoAspectRatio, setLogoAspectRatio] = useState(70 / 45);
   const [logoPlacementConfig, setLogoPlacementConfig] =
@@ -538,6 +590,9 @@ export default function Home({ locale }: HomeProps = {}) {
   const [draftImageNeedsUpload, setDraftImageNeedsUpload] = useState(false);
   const hasHydratedDraftRef = useRef(false);
   const draftAutosaveTimeoutRef = useRef<number | null>(null);
+  const [isCleaningBackground, setIsCleaningBackground] = useState(false);
+  const [backgroundCleanupStatus, setBackgroundCleanupStatus] = useState('');
+  const [designAddedToastOpen, setDesignAddedToastOpen] = useState(false);
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -749,16 +804,18 @@ export default function Home({ locale }: HomeProps = {}) {
     setOrderError('');
   };
 
-  const focusShirtViewer = useCallback((hint?: string) => {
+  const focusShirtViewer = useCallback((hint?: string, force = false) => {
     const viewer = shirtViewerRef.current;
 
     if (viewer) {
       const rect = viewer.getBoundingClientRect();
+      const headerOffset = getStickyHeaderHeight() + 24;
       const isComfortablyVisible =
-        rect.top >= 72 && rect.bottom <= window.innerHeight - 48;
+        rect.top >= headerOffset &&
+        rect.bottom <= window.innerHeight - 48;
 
-      if (!isComfortablyVisible) {
-        viewer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (force || !isComfortablyVisible) {
+        scrollElementToViewportCenter(viewer);
       }
     }
 
@@ -777,6 +834,31 @@ export default function Home({ locale }: HomeProps = {}) {
 
     setLogoFocusPulseKey((current) => current + 1);
   }, []);
+
+  const scrollToPriceAction = useCallback(() => {
+    const target = priceActionRef.current;
+
+    if (target) {
+      scrollElementToViewportCenter(target);
+    }
+  }, []);
+
+  const scrollToPlacementControls = useCallback(() => {
+    const target = placementControlsRef.current;
+
+    if (target) {
+      scrollElementToViewportCenter(target);
+    }
+  }, []);
+
+  const handleStartDesigningClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      window.history.replaceState(null, '', '#designer');
+      focusShirtViewer(undefined, true);
+    },
+    [focusShirtViewer]
+  );
 
   const resetDesignDraftState = useCallback(async () => {
     const confirmed = window.confirm('This clears your current design draft.');
@@ -816,6 +898,8 @@ export default function Home({ locale }: HomeProps = {}) {
     setLogoPrompt('');
     setStatus('');
     setError('');
+    setBackgroundCleanupStatus('');
+    setDesignAddedToastOpen(false);
     setOrderOpen(false);
     setOrderStatus('');
     setOrderError('');
@@ -869,7 +953,7 @@ export default function Home({ locale }: HomeProps = {}) {
       }
 
       if (detail.action === 'scrollToViewer') {
-        focusShirtViewer();
+        focusShirtViewer(undefined, true);
       }
 
       if (detail.action === 'openAICreator') {
@@ -898,6 +982,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
       if (detail.action === 'openUploadOwnDesign') {
         setDesignStartMode('upload');
+        setBackgroundCleanupStatus('');
       }
 
       if (detail.action === 'setPlacement' && detail.placement) {
@@ -954,6 +1039,9 @@ export default function Home({ locale }: HomeProps = {}) {
         await Promise.all(
           draft.generatedConcepts.slice(0, 4).map(async (concept): Promise<AIConcept | null> => {
             const imageBlob = await loadDraftImage(concept.imageKey);
+            const cleanedImageBlob = concept.cleanedImageKey
+              ? await loadDraftImage(concept.cleanedImageKey)
+              : null;
 
             if (!imageBlob) {
               return null;
@@ -965,6 +1053,13 @@ export default function Home({ locale }: HomeProps = {}) {
               prompt: concept.prompt,
               imageDataUrl: await blobToDataUrl(imageBlob),
             };
+
+            if (cleanedImageBlob) {
+              restoredConcept.cleanedImageDataUrl = await blobToDataUrl(
+                cleanedImageBlob
+              );
+              restoredConcept.cleanedAt = concept.cleanedAt;
+            }
 
             if (concept.source) {
               restoredConcept.source = concept.source;
@@ -1102,6 +1197,10 @@ export default function Home({ locale }: HomeProps = {}) {
           prompt: concept.prompt,
           source: concept.source,
           imageKey: `concept-${concept.id}`,
+          cleanedImageKey: concept.cleanedImageDataUrl
+            ? `concept-${concept.id}-cleaned`
+            : undefined,
+          cleanedAt: concept.cleanedAt,
           createdAt: Date.now(),
         })),
         selectedAiConceptId,
@@ -1128,6 +1227,13 @@ export default function Home({ locale }: HomeProps = {}) {
               `concept-${concept.id}`,
               await dataUrlToBlob(concept.imageDataUrl)
             );
+
+            if (concept.cleanedImageDataUrl) {
+              await saveDraftImage(
+                `concept-${concept.id}-cleaned`,
+                await dataUrlToBlob(concept.cleanedImageDataUrl)
+              );
+            }
           })
         );
         await saveDesignDraft(draft);
@@ -1179,6 +1285,7 @@ export default function Home({ locale }: HomeProps = {}) {
     setDesignStartMode('upload');
     setStatus('');
     setError('');
+    setBackgroundCleanupStatus('');
 
     if (!selectedFile) {
       if (previewObjectUrlRef.current) {
@@ -1205,7 +1312,8 @@ export default function Home({ locale }: HomeProps = {}) {
     }
 
     await applyLogoPreview(previewUrl);
-    focusShirtViewer('Logo added. Click the shirt to reposition it.');
+    setDesignAddedToastOpen(true);
+    focusShirtViewer('Logo added. Click the shirt to reposition it.', true);
     setIsAnalyzing(true);
     setStatus(t('status.analyzingLogo'));
 
@@ -1265,6 +1373,7 @@ export default function Home({ locale }: HomeProps = {}) {
   const createAiConcept = async (prompt: string) => {
     setError('');
     setStatus('');
+    setBackgroundCleanupStatus('');
 
     const trimmedPrompt = prompt.trim();
 
@@ -1348,14 +1457,17 @@ export default function Home({ locale }: HomeProps = {}) {
     setStatus('');
 
     try {
+      const conceptImage = getConceptDisplayImage(concept);
       const generatedFile = await dataUrlToNamedFile(
-        concept.imageDataUrl,
-        concept.filename || 'stitchra-ai-concept.png'
+        conceptImage,
+        concept.cleanedImageDataUrl
+          ? getCleanedLogoFilename(concept.filename || 'stitchra-ai-concept.png')
+          : concept.filename || 'stitchra-ai-concept.png'
       );
 
       setFile(generatedFile);
       await saveDraftImage(DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY, generatedFile);
-      await applyLogoPreview(concept.imageDataUrl);
+      await applyLogoPreview(conceptImage);
       if (previewObjectUrlRef.current) {
         URL.revokeObjectURL(previewObjectUrlRef.current);
         previewObjectUrlRef.current = null;
@@ -1366,13 +1478,110 @@ export default function Home({ locale }: HomeProps = {}) {
       setOrderStatus('');
       setOrderError('');
       setDesignStartMode('ai');
-      focusShirtViewer('Design added. Click the shirt to reposition it.');
+      setDesignAddedToastOpen(true);
+      focusShirtViewer('Design added. Click the shirt to reposition it.', true);
       setStatus(
         'AI concept added. Final stitch-ready artwork is reviewed by Stitchra.'
       );
       setDraftSaveStatus('Draft saved just now');
     } catch {
       setError(t('status.generatorFailed'));
+    }
+  };
+
+  const cleanUploadedLogoBackground = async () => {
+    if (!file || isSvgLogoFile(file)) {
+      return;
+    }
+
+    setIsCleaningBackground(true);
+    setBackgroundCleanupStatus('');
+    setError('');
+
+    try {
+      const { removePlainImageBackground } = await import(
+        '@/lib/backgroundRemoval'
+      );
+      const result = await removePlainImageBackground(file);
+      const cleanedFile = new File(
+        [result.blob],
+        getCleanedLogoFilename(file.name),
+        { type: 'image/png' }
+      );
+
+      setFile(cleanedFile);
+      await saveDraftImage(DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY, cleanedFile);
+      await applyLogoPreview(result.dataUrl);
+
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+
+      setLogoAnalysis(null);
+      setEstimate(null);
+      setOrderStatus('');
+      setOrderError('');
+      setBackgroundCleanupStatus('Background cleaned. Preview updated.');
+      setDesignAddedToastOpen(true);
+      focusShirtViewer('Background cleaned. Click the shirt to reposition it.', true);
+    } catch {
+      setBackgroundCleanupStatus(
+        'Background cleanup failed. You can still use the original design.'
+      );
+    } finally {
+      setIsCleaningBackground(false);
+    }
+  };
+
+  const cleanAiConceptBackground = async (concept: AIConcept) => {
+    setIsCleaningBackground(true);
+    setBackgroundCleanupStatus('');
+    setError('');
+
+    try {
+      const { removePlainImageBackground } = await import(
+        '@/lib/backgroundRemoval'
+      );
+      const result = await removePlainImageBackground(
+        getConceptDisplayImage(concept)
+      );
+      const cleanedAt = Date.now();
+
+      setAiConcepts((currentConcepts) =>
+        currentConcepts.map((item) =>
+          item.id === concept.id
+            ? {
+                ...item,
+                cleanedImageDataUrl: result.dataUrl,
+                cleanedAt,
+              }
+            : item
+        )
+      );
+      await saveDraftImage(`concept-${concept.id}-cleaned`, result.blob);
+
+      if (activeAiConceptId === concept.id) {
+        const cleanedFile = new File(
+          [result.blob],
+          getCleanedLogoFilename(concept.filename || 'stitchra-ai-concept.png'),
+          { type: 'image/png' }
+        );
+
+        setFile(cleanedFile);
+        await saveDraftImage(DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY, cleanedFile);
+        await applyLogoPreview(result.dataUrl);
+        focusShirtViewer('Background cleaned. Click the shirt to reposition it.', true);
+      }
+
+      setBackgroundCleanupStatus('Background cleaned. Preview updated.');
+      setDraftSaveStatus('Draft saved just now');
+    } catch {
+      setBackgroundCleanupStatus(
+        'Background cleanup failed. You can still use the original design.'
+      );
+    } finally {
+      setIsCleaningBackground(false);
     }
   };
 
@@ -1705,7 +1914,23 @@ export default function Home({ locale }: HomeProps = {}) {
       <BackgroundEffects />
       <GlobalVisualStyles />
 
-      <Header locale={activeLocale} t={t} />
+      <Header
+        locale={activeLocale}
+        t={t}
+        onStartDesigning={handleStartDesigningClick}
+      />
+      <DesignAddedToast
+        open={designAddedToastOpen}
+        onViewOnShirt={() => {
+          setDesignAddedToastOpen(false);
+          focusShirtViewer(undefined, true);
+        }}
+        onCheckPrice={() => {
+          setDesignAddedToastOpen(false);
+          scrollToPriceAction();
+        }}
+        onKeepEditing={() => setDesignAddedToastOpen(false)}
+      />
 
       <section
         id="hero"
@@ -2863,6 +3088,7 @@ export default function Home({ locale }: HomeProps = {}) {
                 href="#designer"
                 className="lux-button"
                 style={primaryButton}
+                onClick={handleStartDesigningClick}
               >
                 {t('nav.start')}
               </a>
@@ -3169,6 +3395,7 @@ export default function Home({ locale }: HomeProps = {}) {
                   setDesignStartMode(mode);
                   setError('');
                   setStatus('');
+                  setBackgroundCleanupStatus('');
 
                   if (mode === 'ai') {
                     window.setTimeout(() => {
@@ -3183,7 +3410,11 @@ export default function Home({ locale }: HomeProps = {}) {
               {designStartMode === 'upload' && (
                 <UploadOwnDesignPanel
                   fileName={file?.name ?? null}
+                  canCleanBackground={Boolean(file) && !isSvgLogoFile(file)}
+                  isCleaningBackground={isCleaningBackground}
+                  cleanupStatus={backgroundCleanupStatus}
                   onFileChange={onFile}
+                  onCleanBackground={() => void cleanUploadedLogoBackground()}
                 />
               )}
 
@@ -3206,6 +3437,7 @@ export default function Home({ locale }: HomeProps = {}) {
                       setDesignStartMode('upload');
                       setError('');
                       setStatus('');
+                      setBackgroundCleanupStatus('');
                     }}
                   />
                   <AIConceptReviewPanel
@@ -3215,8 +3447,13 @@ export default function Home({ locale }: HomeProps = {}) {
                     styleHints={aiStyleHints}
                     readiness={aiConceptReadiness}
                     isGenerating={isGenerating}
+                    isCleaningBackground={isCleaningBackground}
+                    backgroundCleanupStatus={backgroundCleanupStatus}
                     onSelectConcept={setSelectedAiConceptId}
                     onUseConcept={(concept) => void acceptAiConcept(concept)}
+                    onCleanBackground={(concept) =>
+                      void cleanAiConceptBackground(concept)
+                    }
                     onGenerateAnother={generateLogo}
                     onApplyChanges={(changeRequest, concept) =>
                       void applyAiConceptChanges(changeRequest, concept)
@@ -3225,6 +3462,7 @@ export default function Home({ locale }: HomeProps = {}) {
                       setDesignStartMode('upload');
                       setError('');
                       setStatus('');
+                      setBackgroundCleanupStatus('');
                     }}
                   />
                 </>
@@ -3232,7 +3470,10 @@ export default function Home({ locale }: HomeProps = {}) {
 
               {designStartMode !== 'choice' && (
                 <>
-                  <div className="guided-placement-panel">
+                  <div
+                    ref={placementControlsRef}
+                    className="guided-placement-panel"
+                  >
                     <div className="guided-section-header">
                       <span>Placement</span>
                       <h3>Choose placement</h3>
@@ -3270,7 +3511,8 @@ export default function Home({ locale }: HomeProps = {}) {
                           focusShirtViewer(
                             preview
                               ? 'Click the shirt where you want the logo.'
-                              : 'Upload a logo first, then click the shirt.'
+                              : 'Upload a logo first, then click the shirt.',
+                            true
                           );
                         }}
                       >
@@ -3558,22 +3800,24 @@ export default function Home({ locale }: HomeProps = {}) {
                 </div>
               )}
 
-              <button
-                onClick={estimatePrice}
-                disabled={isEstimating || isAnalyzing}
-                className="lux-button"
-                style={{
-                  ...primaryButton,
-                  border: 'none',
-                  width: '100%',
-                }}
-              >
-                {isAnalyzing
-                  ? t('designer.prepareLogo')
-                  : isEstimating
-                    ? t('designer.calculating')
-                    : t('designer.getClearPrice')}
-              </button>
+              <div ref={priceActionRef} className="quote-action-anchor">
+                <button
+                  onClick={estimatePrice}
+                  disabled={isEstimating || isAnalyzing}
+                  className="lux-button"
+                  style={{
+                    ...primaryButton,
+                    border: 'none',
+                    width: '100%',
+                  }}
+                >
+                  {isAnalyzing
+                    ? t('designer.prepareLogo')
+                    : isEstimating
+                      ? t('designer.calculating')
+                      : t('designer.getClearPrice')}
+                </button>
+              </div>
 
               {(status || error) && (
                 <div
@@ -4009,6 +4253,35 @@ export default function Home({ locale }: HomeProps = {}) {
                   : undefined)
               }
             />
+            {preview && (
+              <div className="design-next-step-row" aria-label="Design next steps">
+                <span>Design is on your T-shirt</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlacementMode('custom');
+                    focusShirtViewer(
+                      'Click the shirt where you want the logo.',
+                      true
+                    );
+                  }}
+                >
+                  Move logo
+                </button>
+                <button type="button" onClick={scrollToPlacementControls}>
+                  Choose placement
+                </button>
+                <button type="button" onClick={scrollToPriceAction}>
+                  Check price
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void resetDesignDraftState()}
+                >
+                  Start new design
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -4277,6 +4550,7 @@ export default function Home({ locale }: HomeProps = {}) {
               href="#designer"
               className="lux-button pricing-cta-button"
               style={wideButton}
+              onClick={handleStartDesigningClick}
             >
               {t('pricing.getClearPrice')}
             </a>
@@ -4325,6 +4599,7 @@ export default function Home({ locale }: HomeProps = {}) {
             href="#designer"
             className="lux-button"
             style={primaryButton}
+            onClick={handleStartDesigningClick}
           >
             {t('nav.start')}
           </a>
@@ -4367,9 +4642,11 @@ export default function Home({ locale }: HomeProps = {}) {
 function Header({
   locale,
   t,
+  onStartDesigning,
 }: {
   locale: Locale;
   t: Translator;
+  onStartDesigning: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const navItems = getNavItems(t);
 
@@ -4438,6 +4715,7 @@ function Header({
             href="#designer"
             className="lux-button"
             style={primaryButton}
+            onClick={onStartDesigning}
           >
             {t('nav.start')}
           </a>
@@ -5198,6 +5476,49 @@ function GlobalVisualStyles() {
           font-weight: 850;
         }
 
+        .upload-ready-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .upload-clean-button {
+          min-height: 34px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(0,215,255,0.22);
+          color: #dffcff;
+          background: rgba(0,215,255,0.075);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 850;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            background 160ms ease;
+        }
+
+        .upload-clean-button:hover {
+          transform: translateY(-1px);
+          border-color: rgba(24,255,154,0.38);
+          background: rgba(24,255,154,0.09);
+        }
+
+        .upload-clean-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.58;
+          transform: none;
+        }
+
+        .upload-cleanup-status {
+          margin: 0;
+          color: rgba(157,255,196,0.78);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
         .design-start-panel,
         .design-path-panel {
           display: grid;
@@ -5921,6 +6242,54 @@ function GlobalVisualStyles() {
           text-transform: uppercase;
         }
 
+        .ai-concept-comparison {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .ai-concept-comparison figure {
+          margin: 0;
+          min-width: 0;
+          display: grid;
+          gap: 8px;
+          padding: 10px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background:
+            linear-gradient(45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+            rgba(255,255,255,0.035);
+          background-size: 20px 20px, 20px 20px, auto;
+        }
+
+        .ai-concept-comparison img {
+          width: 100%;
+          height: 150px;
+          object-fit: contain;
+          display: block;
+        }
+
+        .ai-concept-comparison figcaption {
+          color: rgba(246,255,249,0.70);
+          font-size: 11px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .ai-cleanup-status,
+        .ai-cleanup-status-success {
+          margin: 0;
+          color: rgba(245,247,248,0.68);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .ai-cleanup-status-success {
+          color: rgba(157,255,196,0.82);
+        }
+
         .ai-concept-action-row {
           display: flex;
           flex-wrap: wrap;
@@ -6116,6 +6485,12 @@ function GlobalVisualStyles() {
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
 
+        .quote-action-anchor,
+        .guided-placement-panel,
+        .showroom-viewer-anchor {
+          scroll-margin-top: 124px;
+        }
+
         .guided-section-header {
           display: grid;
           gap: 5px;
@@ -6179,6 +6554,128 @@ function GlobalVisualStyles() {
 
         .showroom-viewer-anchor .shirt-placement-preview-card {
           min-height: 720px;
+        }
+
+        .design-next-step-row {
+          margin-top: 14px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          justify-content: center;
+          padding: 14px;
+          border-radius: 24px;
+          border: 1px solid rgba(24,255,154,0.18);
+          background:
+            radial-gradient(circle at 20% 18%, rgba(0,255,136,0.10), transparent 34%),
+            rgba(3,8,9,0.62);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .design-next-step-row span {
+          color: rgba(246,255,249,0.72);
+          font-size: 12px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .design-next-step-row button {
+          min-height: 36px;
+          padding: 0 13px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(246,255,249,0.84);
+          background: rgba(255,255,255,0.050);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            color 160ms ease,
+            background 160ms ease;
+        }
+
+        .design-next-step-row button:hover {
+          transform: translateY(-1px);
+          border-color: rgba(24,255,154,0.38);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.08);
+        }
+
+        .design-added-toast {
+          position: fixed;
+          right: max(18px, env(safe-area-inset-right));
+          bottom: max(18px, env(safe-area-inset-bottom));
+          z-index: 140;
+          width: min(420px, calc(100vw - 32px));
+          display: grid;
+          gap: 14px;
+          padding: 18px;
+          border-radius: 26px;
+          border: 1px solid rgba(24,255,154,0.24);
+          background:
+            radial-gradient(circle at 18% 10%, rgba(0,255,136,0.16), transparent 38%),
+            radial-gradient(circle at 84% 80%, rgba(0,215,255,0.14), transparent 36%),
+            rgba(5,10,11,0.92);
+          backdrop-filter: blur(18px);
+          box-shadow:
+            0 28px 90px rgba(0,0,0,0.50),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .design-added-toast span {
+          display: block;
+          margin-bottom: 5px;
+          color: #00d7ff;
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+        }
+
+        .design-added-toast strong {
+          display: block;
+          color: #f6fff9;
+          font-size: 18px;
+          line-height: 1.2;
+        }
+
+        .design-added-toast p {
+          margin: 8px 0 0;
+          color: rgba(245,247,248,0.66);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .design-added-toast-actions {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .design-added-toast-actions button {
+          min-height: 40px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(246,255,249,0.84);
+          background: rgba(255,255,255,0.055);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .design-added-toast-actions button:first-child {
+          border: 0;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+        }
+
+        .design-added-toast-actions button:hover {
+          filter: brightness(1.08);
         }
 
         .design-path-link {
@@ -7232,7 +7729,8 @@ function GlobalVisualStyles() {
           }
 
           .ai-concept-brief,
-          .ai-readiness-box {
+          .ai-readiness-box,
+          .ai-concept-comparison {
             grid-template-columns: 1fr;
           }
 
@@ -7251,6 +7749,27 @@ function GlobalVisualStyles() {
             width: 100%;
             justify-content: center;
             text-align: center;
+          }
+
+          .design-added-toast {
+            left: 16px;
+            right: 16px;
+            bottom: max(14px, env(safe-area-inset-bottom));
+            width: auto;
+          }
+
+          .design-added-toast-actions,
+          .design-next-step-row {
+            grid-template-columns: 1fr;
+          }
+
+          .design-added-toast-actions {
+            display: grid;
+          }
+
+          .design-next-step-row {
+            display: grid;
+            justify-items: stretch;
           }
 
           .design-path-panel .designer-prompt-row,

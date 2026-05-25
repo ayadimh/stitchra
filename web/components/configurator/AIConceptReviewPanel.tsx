@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 export type AIConcept = {
   id: string;
   imageDataUrl: string;
+  cleanedImageDataUrl?: string;
+  cleanedAt?: number;
   filename: string;
   prompt: string;
   source?: string;
@@ -25,8 +27,11 @@ type AIConceptReviewPanelProps = {
   styleHints: string[];
   readiness: AIConceptReadiness;
   isGenerating: boolean;
+  isCleaningBackground: boolean;
+  backgroundCleanupStatus: string;
   onSelectConcept: (conceptId: string) => void;
   onUseConcept: (concept: AIConcept) => void;
+  onCleanBackground: (concept: AIConcept) => void;
   onGenerateAnother: () => void;
   onApplyChanges: (changeRequest: string, concept: AIConcept) => void;
   onSwitchToUpload: () => void;
@@ -39,8 +44,11 @@ export default function AIConceptReviewPanel({
   styleHints,
   readiness,
   isGenerating,
+  isCleaningBackground,
+  backgroundCleanupStatus,
   onSelectConcept,
   onUseConcept,
+  onCleanBackground,
   onGenerateAnother,
   onApplyChanges,
   onSwitchToUpload,
@@ -62,6 +70,9 @@ export default function AIConceptReviewPanel({
 
   const canApplyChanges = changeRequest.trim().length > 0 && !isGenerating;
   const isActiveConcept = activeConceptId === selectedConcept.id;
+  const displayImage =
+    selectedConcept.cleanedImageDataUrl ?? selectedConcept.imageDataUrl;
+  const hasCleanedImage = Boolean(selectedConcept.cleanedImageDataUrl);
 
   return (
     <section className="ai-concept-review" aria-labelledby="ai-concept-review-title">
@@ -80,12 +91,27 @@ export default function AIConceptReviewPanel({
         {/* Native img keeps generated data URLs lightweight and immediate. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={selectedConcept.imageDataUrl}
+          src={displayImage}
           alt="Generated AI embroidery concept"
           draggable={false}
         />
-        <span>AI concept</span>
+        <span>{hasCleanedImage ? 'Transparent PNG ready' : 'AI concept'}</span>
       </button>
+
+      {hasCleanedImage && (
+        <div className="ai-concept-comparison" aria-label="Background cleanup comparison">
+          <figure>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={selectedConcept.imageDataUrl} alt="" draggable={false} />
+            <figcaption>Original</figcaption>
+          </figure>
+          <figure>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={selectedConcept.cleanedImageDataUrl} alt="" draggable={false} />
+            <figcaption>Cleaned</figcaption>
+          </figure>
+        </div>
+      )}
 
       <div className="ai-concept-brief">
         <div>
@@ -135,6 +161,14 @@ export default function AIConceptReviewPanel({
         <button
           type="button"
           className="ai-concept-secondary"
+          onClick={() => onCleanBackground(selectedConcept)}
+          disabled={isCleaningBackground}
+        >
+          {isCleaningBackground ? 'Cleaning...' : 'Clean background'}
+        </button>
+        <button
+          type="button"
+          className="ai-concept-secondary"
           onClick={onGenerateAnother}
           disabled={isGenerating}
         >
@@ -155,6 +189,12 @@ export default function AIConceptReviewPanel({
           Upload my own logo instead
         </button>
       </div>
+
+      {backgroundCleanupStatus && (
+        <p className={hasCleanedImage ? 'ai-cleanup-status-success' : 'ai-cleanup-status'}>
+          {backgroundCleanupStatus}
+        </p>
+      )}
 
       {isSuggestingChanges && (
         <div className="ai-concept-change-box">
@@ -192,7 +232,11 @@ export default function AIConceptReviewPanel({
               onClick={() => onSelectConcept(concept.id)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={concept.imageDataUrl} alt="" draggable={false} />
+              <img
+                src={concept.cleanedImageDataUrl ?? concept.imageDataUrl}
+                alt=""
+                draggable={false}
+              />
               <span>Concept {index + 1}</span>
             </button>
           ))}
@@ -221,7 +265,7 @@ export default function AIConceptReviewPanel({
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={selectedConcept.imageDataUrl}
+              src={displayImage}
               alt="Generated AI embroidery concept large preview"
               draggable={false}
             />

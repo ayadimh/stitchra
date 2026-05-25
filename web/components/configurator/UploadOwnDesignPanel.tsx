@@ -4,12 +4,20 @@ import type { ChangeEvent } from 'react';
 
 type UploadOwnDesignPanelProps = {
   fileName: string | null;
+  canCleanBackground: boolean;
+  isCleaningBackground: boolean;
+  cleanupStatus: string;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCleanBackground: () => void;
 };
 
 export default function UploadOwnDesignPanel({
   fileName,
+  canCleanBackground,
+  isCleaningBackground,
+  cleanupStatus,
   onFileChange,
+  onCleanBackground,
 }: UploadOwnDesignPanelProps) {
   return (
     <section className="design-path-panel">
@@ -37,7 +45,23 @@ export default function UploadOwnDesignPanel({
       </label>
 
       {fileName && (
-        <p className="upload-ready-status">Logo ready for preview</p>
+        <div className="upload-ready-row">
+          <p className="upload-ready-status">Logo ready for preview</p>
+          {canCleanBackground && (
+            <button
+              type="button"
+              className="upload-clean-button"
+              onClick={onCleanBackground}
+              disabled={isCleaningBackground}
+            >
+              {isCleaningBackground ? 'Cleaning...' : 'Remove background'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {cleanupStatus && (
+        <p className="upload-cleanup-status">{cleanupStatus}</p>
       )}
     </section>
   );

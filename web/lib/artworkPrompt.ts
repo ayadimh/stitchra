@@ -1,10 +1,10 @@
 const blockedPattern =
-  /\b(nike|adidas|louis\s*vuitton|gucci|disney|marvel|anime\s+characters?|anime\s+character|celebrity|celebrities|copyrighted\s+characters?|trademarked\s+brand\s+logos?|counterfeit|designer\s+marks?|hate\s+symbol|hateful|illegal)\b/i;
+  /\b(nike|adidas|louis\s*vuitton|gucci|chanel|rolex|disney|marvel|dc|spider[-\s]?man|batman|mario|super\s+mario|nintendo|pok[eé]mon|pikachu|anime\s+characters?|anime\s+character|celebrity|celebrities|copyrighted\s+characters?|copyrighted|trademarked\s+brand\s+logos?|trademarked|brand\s+logos?|counterfeit|designer\s+marks?|hate\s+symbol|hateful|illegal)\b/i;
 const drugRelatedPattern =
   /\b(drugs?|smoking\s+a\s+joint|smoke\s+a\s+joint|joint|cannabis|weed|marijuana|blunt|bong|stoner|smoke\s+weed)\b/i;
 
 export const unsafeArtworkMessage =
-  'Please describe an original design idea. Stitchra cannot generate or reproduce copyrighted or trademarked brand artwork.';
+  'Please describe an original design idea. Stitchra cannot generate copyrighted characters, brand logos, or trademarked artwork.';
 export const unsafeDrugArtworkMessage =
   'Please describe a family-friendly original design idea. Stitchra cannot generate drug-related artwork for this concept.';
 

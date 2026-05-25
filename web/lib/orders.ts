@@ -1606,6 +1606,106 @@ async function recordTeamNotificationStatus(input: {
   }
 }
 
+function buildTeamOrderRequestText(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
+  return [
+    'New Stitchra quote request',
+    '',
+    `Order ID: ${order.id}`,
+    `Customer name: ${order.customer_name}`,
+    `Customer email: ${order.customer_email}`,
+    `Placement: ${formatPlacement(order.placement)}`,
+    `Shirt color: ${formatOrderValue(order.shirt_color)}`,
+    `Quantity: ${order.quantity ?? 1}`,
+    `Estimate: ${formatEmailPrice(getEffectiveOrderPrice(order, settings))}`,
+    `Quote type: ${order.manual_quote ? 'Studio review' : 'Clear starting price'}`,
+    '',
+    `Studio: ${publicSiteUrl}/studio`,
+  ].join('\n');
+}
+
+function buildTeamOrderRequestHtml(
+  order: OrderRecord,
+  settings: PricingSettings = defaultPricingSettings
+) {
+  const text = buildTeamOrderRequestText(order, settings)
+    .split('\n')
+    .map((line) => escapeHtml(line))
+    .join('<br />');
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.5;">
+      <p style="margin: 0 0 12px 0; font-weight: 700;">New Stitchra quote request</p>
+      <p style="margin: 0;">${text}</p>
+    </div>
+  `;
+}
+
+export async function notifyTeamOfNewOrderRequest(order: OrderRecord) {
+  const missing = [
+    getResendApiKey() ? '' : 'RESEND_API_KEY',
+    getFromEmail() ? '' : 'FROM_EMAIL',
+    getTeamEmail() ? '' : 'TEAM_EMAIL',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    const message = `Team notification skipped. Missing ${missing.join(', ')}.`;
+    console.warn('[orders] Team notification email skipped', {
+      orderId: order.id,
+      reason: message,
+    });
+    await recordTeamNotificationStatus({
+      id: order.id,
+      team_notified_at: null,
+      team_notification_error: message,
+    });
+    return {
+      ok: false,
+      message,
+    };
+  }
+
+  try {
+    const pricingSettings = await getPricingSettings();
+
+    await sendResendEmail({
+      to: getTeamEmail(),
+      subject: 'New Stitchra quote request',
+      text: buildTeamOrderRequestText(order, pricingSettings),
+      html: buildTeamOrderRequestHtml(order, pricingSettings),
+    });
+    await recordTeamNotificationStatus({
+      id: order.id,
+      team_notified_at: new Date().toISOString(),
+      team_notification_error: null,
+    });
+
+    return {
+      ok: true,
+      message: null,
+    };
+  } catch (error) {
+    const message = getOrderErrorMessage(error);
+
+    console.error('Team notification email failed', {
+      orderId: order.id,
+      reason: message,
+    });
+    await recordTeamNotificationStatus({
+      id: order.id,
+      team_notified_at: null,
+      team_notification_error: message,
+    });
+
+    return {
+      ok: false,
+      message,
+    };
+  }
+}
+
 async function notifyTeamOfCustomerDecision(order: OrderRecord) {
   const missing = [
     getResendApiKey() ? '' : 'RESEND_API_KEY',
@@ -1640,6 +1740,10 @@ async function notifyTeamOfCustomerDecision(order: OrderRecord) {
     });
   } catch (error) {
     const message = getOrderErrorMessage(error);
+    console.error('Team notification email failed', {
+      orderId: order.id,
+      reason: message,
+    });
     console.warn(
       `[orders] Team notification failed for order ${order.id}: ${message}`
     );
