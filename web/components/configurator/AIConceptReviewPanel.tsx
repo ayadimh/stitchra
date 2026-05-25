@@ -136,6 +136,17 @@ export default function AIConceptReviewPanel({
         Final stitch-ready artwork is reviewed by Stitchra before production.
       </p>
 
+      <p className="ai-provider-credit">
+        AI concept generation powered by{' '}
+        <a
+          href="https://pollinations.ai"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          pollinations.ai
+        </a>
+      </p>
+
       <div className="ai-readiness-box" aria-label="Embroidery readiness summary">
         <div>
           <span>Embroidery-ready score</span>

@@ -5569,6 +5569,27 @@ function GlobalVisualStyles() {
           line-height: 1.58;
         }
 
+        .ai-provider-credit {
+          margin: -4px 0 0;
+          width: fit-content;
+          color: rgba(245,247,248,0.46);
+          font-size: 11px;
+          line-height: 1.5;
+          font-weight: 760;
+          letter-spacing: 0.01em;
+        }
+
+        .ai-provider-credit a {
+          color: rgba(0,215,255,0.72);
+          text-decoration: none;
+          text-underline-offset: 3px;
+        }
+
+        .ai-provider-credit a:hover {
+          color: #9dffc4;
+          text-decoration: underline;
+        }
+
         .design-start-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
