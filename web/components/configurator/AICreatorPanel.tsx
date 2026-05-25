@@ -103,6 +103,7 @@ export default function AICreatorPanel({
           href="https://pollinations.ai"
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="Open pollinations.ai in a new tab"
         >
           pollinations.ai
         </a>
