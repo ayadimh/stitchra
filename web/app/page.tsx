@@ -22,6 +22,9 @@ import {
 import { evaluateMachineCapability } from '@/lib/machineLimits';
 import StitchraLogo from '@/components/brand/StitchraLogo';
 import AICreatorPanel from '@/components/configurator/AICreatorPanel';
+import AIConceptReviewPanel, {
+  type AIConcept,
+} from '@/components/configurator/AIConceptReviewPanel';
 import DesignStartOptions, {
   type DesignStartMode,
 } from '@/components/configurator/DesignStartOptions';
@@ -142,6 +145,14 @@ type ArtworkGenerateResponse = {
   filename?: string;
   message?: string;
 };
+
+function createClientId(prefix: string) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 type StitchraDesignActionDetail = {
   action?:
@@ -401,6 +412,11 @@ export default function Home({ locale }: HomeProps = {}) {
     useState<DesignStartMode>('choice');
   const [hasGeneratedAiConcept, setHasGeneratedAiConcept] =
     useState(false);
+  const [aiConcepts, setAiConcepts] = useState<AIConcept[]>([]);
+  const [selectedAiConceptId, setSelectedAiConceptId] =
+    useState<string | null>(null);
+  const [activeAiConceptId, setActiveAiConceptId] =
+    useState<string | null>(null);
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -462,6 +478,10 @@ export default function Home({ locale }: HomeProps = {}) {
   const publicQuote = estimate
     ? getPublicQuote(estimate)
     : null;
+  const selectedAiConcept =
+    aiConcepts.find((concept) => concept.id === selectedAiConceptId) ??
+    aiConcepts[0] ??
+    null;
   const processSteps = getProcessSteps(activeLocale);
   const features = getFeatures(activeLocale);
   const galleryItems = getGalleryItems(activeLocale);
@@ -688,6 +708,7 @@ export default function Home({ locale }: HomeProps = {}) {
     setLogoAnalysis(null);
     setDesignPreparation(null);
     setHasGeneratedAiConcept(false);
+    setActiveAiConceptId(null);
     setDesignStartMode('upload');
     setStatus('');
     setError('');
@@ -774,11 +795,13 @@ export default function Home({ locale }: HomeProps = {}) {
     }
   };
 
-  const generateLogo = async () => {
+  const createAiConcept = async (prompt: string) => {
     setError('');
     setStatus('');
 
-    if (!logoPrompt.trim()) {
+    const trimmedPrompt = prompt.trim();
+
+    if (!trimmedPrompt) {
       setError(t('status.describeLogoFirst'));
       return;
     }
@@ -792,7 +815,7 @@ export default function Home({ locale }: HomeProps = {}) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: logoPrompt.trim(),
+          prompt: trimmedPrompt,
         }),
       });
 
@@ -810,20 +833,21 @@ export default function Home({ locale }: HomeProps = {}) {
         return;
       }
 
-      const generatedFile = await dataUrlToNamedFile(
-        payload.imageDataUrl,
-        payload.filename ?? 'stitchra-ai-concept.png'
-      );
+      const concept: AIConcept = {
+        id: createClientId('ai-concept'),
+        imageDataUrl: payload.imageDataUrl,
+        filename: payload.filename ?? 'stitchra-ai-concept.png',
+        prompt: trimmedPrompt,
+        source: payload.source,
+      };
 
-      setFile(generatedFile);
-      await applyLogoPreview(payload.imageDataUrl);
-      if (previewObjectUrlRef.current) {
-        URL.revokeObjectURL(previewObjectUrlRef.current);
-        previewObjectUrlRef.current = null;
-      }
-      setLogoAnalysis(null);
+      setAiConcepts((currentConcepts) => [
+        concept,
+        ...currentConcepts.filter((item) => item.id !== concept.id),
+      ].slice(0, 4));
+      setSelectedAiConceptId(concept.id);
       setDesignPreparation({
-        embroidery_prompt: logoPrompt.trim(),
+        embroidery_prompt: trimmedPrompt,
         recommended_style: 'Embroidery-friendly AI concept',
         max_colors: 6,
         warnings: [
@@ -833,22 +857,67 @@ export default function Home({ locale }: HomeProps = {}) {
           'Use bold shapes, limited colors and clear placement for embroidery.',
         ],
         machine_ready_score: 78,
-        simplified_description: logoPrompt.trim(),
+        simplified_description: trimmedPrompt,
       });
       setHasGeneratedAiConcept(true);
       setDesignStartMode('ai');
-      focusShirtViewer(
-        'AI concept added. Click the shirt to reposition it.'
-      );
 
       setStatus(
-        'AI concept generated. Final stitch-ready artwork is reviewed by Stitchra.'
+        'AI concept generated. Review it below before placing it on the shirt.'
       );
     } catch {
       setError(t('status.networkError'));
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const generateLogo = async () => {
+    await createAiConcept(logoPrompt);
+  };
+
+  const acceptAiConcept = async (concept: AIConcept) => {
+    setError('');
+    setStatus('');
+
+    try {
+      const generatedFile = await dataUrlToNamedFile(
+        concept.imageDataUrl,
+        concept.filename || 'stitchra-ai-concept.png'
+      );
+
+      setFile(generatedFile);
+      await applyLogoPreview(concept.imageDataUrl);
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+      setLogoAnalysis(null);
+      setActiveAiConceptId(concept.id);
+      setEstimate(null);
+      setOrderStatus('');
+      setOrderError('');
+      setDesignStartMode('ai');
+      focusShirtViewer('Design added. Click the shirt to reposition it.');
+      setStatus(
+        'AI concept added. Final stitch-ready artwork is reviewed by Stitchra.'
+      );
+    } catch {
+      setError(t('status.generatorFailed'));
+    }
+  };
+
+  const applyAiConceptChanges = async (
+    changeRequest: string,
+    concept: AIConcept
+  ) => {
+    const refinedPrompt = `${concept.prompt}. Requested changes: ${changeRequest}`
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 400);
+
+    setLogoPrompt(refinedPrompt);
+    await createAiConcept(refinedPrompt);
   };
 
   const estimatePrice = async () => {
@@ -2640,23 +2709,42 @@ export default function Home({ locale }: HomeProps = {}) {
               )}
 
               {designStartMode === 'ai' && (
-                <AICreatorPanel
-                  prompt={logoPrompt}
-                  isGenerating={isGenerating}
-                  hasGeneratedConcept={hasGeneratedAiConcept}
-                  onPromptChange={(value) => {
-                    setLogoPrompt(value);
-                    setDesignPreparation(null);
-                    setError('');
-                    setStatus('');
-                  }}
-                  onGenerate={generateLogo}
-                  onSwitchToUpload={() => {
-                    setDesignStartMode('upload');
-                    setError('');
-                    setStatus('');
-                  }}
-                />
+                <>
+                  <AICreatorPanel
+                    prompt={logoPrompt}
+                    isGenerating={isGenerating}
+                    hasGeneratedConcept={hasGeneratedAiConcept}
+                    onPromptChange={(value) => {
+                      setLogoPrompt(value);
+                      setDesignPreparation(null);
+                      setError('');
+                      setStatus('');
+                    }}
+                    onGenerate={generateLogo}
+                    onSwitchToUpload={() => {
+                      setDesignStartMode('upload');
+                      setError('');
+                      setStatus('');
+                    }}
+                  />
+                  <AIConceptReviewPanel
+                    concepts={aiConcepts}
+                    selectedConceptId={selectedAiConcept?.id ?? null}
+                    activeConceptId={activeAiConceptId}
+                    isGenerating={isGenerating}
+                    onSelectConcept={setSelectedAiConceptId}
+                    onUseConcept={(concept) => void acceptAiConcept(concept)}
+                    onGenerateAnother={generateLogo}
+                    onApplyChanges={(changeRequest, concept) =>
+                      void applyAiConceptChanges(changeRequest, concept)
+                    }
+                    onSwitchToUpload={() => {
+                      setDesignStartMode('upload');
+                      setError('');
+                      setStatus('');
+                    }}
+                  />
+                </>
               )}
 
               {designStartMode !== 'choice' && (
@@ -4955,6 +5043,285 @@ function GlobalVisualStyles() {
         .ai-concept-status strong {
           color: #9dffc4;
           font-size: 13px;
+        }
+
+        .ai-concept-review {
+          display: grid;
+          gap: 18px;
+          padding: 18px;
+          border-radius: 28px;
+          border: 1px solid rgba(0,215,255,0.18);
+          background:
+            radial-gradient(circle at 18% 8%, rgba(0,255,136,0.13), transparent 34%),
+            radial-gradient(circle at 84% 72%, rgba(0,215,255,0.12), transparent 34%),
+            linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.026));
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 24px 78px rgba(0,0,0,0.24);
+        }
+
+        .ai-concept-review-header {
+          display: grid;
+          gap: 6px;
+        }
+
+        .ai-concept-review-header span {
+          width: fit-content;
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 10px;
+          border-radius: 999px;
+          color: #071110;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+        }
+
+        .ai-concept-review-header h3 {
+          margin: 0;
+          color: #f5f7f8;
+          font-size: clamp(20px, 2.1vw, 26px);
+          line-height: 1.12;
+        }
+
+        .ai-concept-review-header p,
+        .ai-concept-note {
+          margin: 0;
+          color: rgba(245,247,248,0.66);
+          font-size: 14px;
+          line-height: 1.58;
+        }
+
+        .ai-concept-stage {
+          position: relative;
+          min-height: clamp(280px, 38vw, 440px);
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 26px;
+          background:
+            linear-gradient(45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+            radial-gradient(circle at 50% 42%, rgba(0,215,255,0.13), transparent 34%),
+            rgba(0,0,0,0.28);
+          background-size: 28px 28px, 28px 28px, auto, auto;
+          color: inherit;
+          cursor: zoom-in;
+        }
+
+        .ai-concept-stage img {
+          width: min(78%, 520px);
+          max-height: 380px;
+          object-fit: contain;
+          display: block;
+          filter:
+            drop-shadow(0 24px 58px rgba(0,0,0,0.48))
+            drop-shadow(0 0 22px rgba(124,240,212,0.16));
+          user-select: none;
+        }
+
+        .ai-concept-stage span {
+          position: absolute;
+          left: 16px;
+          top: 16px;
+          min-height: 30px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 10px;
+          border-radius: 999px;
+          color: #9dffc4;
+          background: rgba(0,0,0,0.42);
+          border: 1px solid rgba(24,255,154,0.22);
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .ai-concept-action-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .ai-concept-primary,
+        .ai-concept-secondary,
+        .ai-concept-link {
+          min-height: 44px;
+          border-radius: 999px;
+          padding: 0 16px;
+          font: inherit;
+          font-weight: 900;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            box-shadow 160ms ease;
+        }
+
+        .ai-concept-primary {
+          border: 0;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          box-shadow: 0 16px 44px rgba(0,220,190,0.20);
+        }
+
+        .ai-concept-secondary {
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(246,255,249,0.88);
+          background: rgba(255,255,255,0.055);
+        }
+
+        .ai-concept-link {
+          border: 0;
+          padding-inline: 4px;
+          color: #00d7ff;
+          background: transparent;
+        }
+
+        .ai-concept-primary:hover,
+        .ai-concept-secondary:hover,
+        .ai-concept-link:hover {
+          transform: translateY(-1px);
+          border-color: rgba(0,215,255,0.42);
+        }
+
+        .ai-concept-primary:disabled,
+        .ai-concept-secondary:disabled {
+          cursor: not-allowed;
+          opacity: 0.58;
+          transform: none;
+        }
+
+        .ai-concept-change-box {
+          display: grid;
+          gap: 10px;
+          padding: 14px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(255,255,255,0.045);
+        }
+
+        .ai-concept-change-box label {
+          color: #f5f7f8;
+          font-size: 13px;
+          font-weight: 850;
+        }
+
+        .ai-concept-change-box textarea {
+          width: 100%;
+          min-height: 92px;
+          resize: vertical;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.045);
+          color: #f5f7f8;
+          padding: 12px 14px;
+          font: inherit;
+          line-height: 1.45;
+          outline: none;
+        }
+
+        .ai-concept-change-box textarea:focus {
+          border-color: rgba(0,215,255,0.55);
+          box-shadow: 0 0 0 3px rgba(0,215,255,0.10);
+        }
+
+        .ai-concept-history {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+          scrollbar-width: none;
+        }
+
+        .ai-concept-history::-webkit-scrollbar {
+          display: none;
+        }
+
+        .ai-concept-history button {
+          min-width: 98px;
+          display: grid;
+          gap: 7px;
+          border: 1px solid rgba(255,255,255,0.11);
+          border-radius: 18px;
+          background: rgba(255,255,255,0.045);
+          padding: 8px;
+          color: rgba(246,255,249,0.76);
+          cursor: pointer;
+        }
+
+        .ai-concept-history .ai-concept-thumb-active {
+          border-color: rgba(24,255,154,0.42);
+          box-shadow: 0 0 26px rgba(24,255,154,0.10);
+        }
+
+        .ai-concept-history img {
+          width: 82px;
+          height: 82px;
+          object-fit: contain;
+          border-radius: 12px;
+          background: rgba(0,0,0,0.24);
+        }
+
+        .ai-concept-history span {
+          font-size: 11px;
+          font-weight: 850;
+        }
+
+        .ai-concept-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 120;
+          display: grid;
+          place-items: center;
+          padding: 22px;
+          background: rgba(0,0,0,0.72);
+          backdrop-filter: blur(18px);
+        }
+
+        .ai-concept-modal {
+          position: relative;
+          width: min(920px, 100%);
+          max-height: calc(100dvh - 44px);
+          overflow: auto;
+          display: grid;
+          gap: 18px;
+          padding: clamp(18px, 3vw, 28px);
+          border-radius: 30px;
+          border: 1px solid rgba(0,215,255,0.18);
+          background:
+            radial-gradient(circle at 18% 10%, rgba(0,255,136,0.13), transparent 34%),
+            linear-gradient(145deg, rgba(8,12,13,0.96), rgba(2,4,5,0.98));
+          box-shadow: 0 42px 130px rgba(0,0,0,0.62);
+        }
+
+        .ai-concept-modal img {
+          width: 100%;
+          max-height: 70dvh;
+          object-fit: contain;
+          display: block;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.035);
+        }
+
+        .ai-concept-modal-close {
+          position: absolute;
+          right: 16px;
+          top: 16px;
+          width: 42px;
+          height: 42px;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 999px;
+          color: #f6fff9;
+          background: rgba(0,0,0,0.42);
+          font-size: 24px;
+          cursor: pointer;
         }
 
         .guided-placement-panel,

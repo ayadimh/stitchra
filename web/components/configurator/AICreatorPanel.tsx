@@ -13,7 +13,7 @@ const IDEA_SUGGESTIONS = [
   'school Eid al-Adha badge with crescent and lantern',
   'minimal green coffee brand logo',
   'retro gaming club badge with lightning',
-  'cute giraffe driving a tiny car through space',
+  'cute giraffe driving a tiny red car through space',
 ];
 
 export default function AICreatorPanel({
@@ -52,7 +52,7 @@ export default function AICreatorPanel({
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           aria-label="Describe the AI artwork idea"
-          placeholder="Example: cute giraffe driving a tiny car through space, patch logo for kids, 4 colors"
+          placeholder="Example: cute giraffe driving a tiny red car through space, patch logo for kids, 4 colors"
         />
 
         <button
@@ -72,16 +72,9 @@ export default function AICreatorPanel({
 
       <p className="design-path-helper">
         {hasGeneratedConcept
-          ? 'AI concept generated. Final stitch-ready artwork is reviewed by Stitchra.'
+          ? 'Review the concept below, then use it on the shirt.'
           : 'AI concepts are previews. Final stitch-ready artwork is reviewed by Stitchra before production.'}
       </p>
-
-      {hasGeneratedConcept && (
-        <div className="ai-concept-status">
-          <span>AI concept</span>
-          <strong>Use this on the shirt</strong>
-        </div>
-      )}
 
       <button
         type="button"
