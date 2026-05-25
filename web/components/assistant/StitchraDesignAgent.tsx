@@ -9,6 +9,19 @@ type ChatMessage = {
   content: string;
 };
 
+type StitchraDesignActionDetail = {
+  action:
+    | "openAICreator"
+    | "prefillIdeaPrompt"
+    | "generateArtworkFromSuggestion"
+    | "openUploadOwnDesign"
+    | "setPlacement"
+    | "setShirtColor";
+  prompt?: string;
+  placement?: string;
+  shirtColor?: "black" | "white";
+};
+
 type SendStatus = "idle" | "streaming";
 
 const SUGGESTED_PROMPTS = [
@@ -76,12 +89,55 @@ function scrollToDesigner() {
   target?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function dispatchDesignAction(detail: StitchraDesignActionDetail) {
+  window.dispatchEvent(
+    new CustomEvent("stitchra:design-action", {
+      detail,
+    }),
+  );
+}
+
 function openLogoUpload() {
   scrollToDesigner();
-  const uploadInput = document.querySelector<HTMLInputElement>(
-    ".stitchra-upload-box input[type='file']",
+  dispatchDesignAction({ action: "openUploadOwnDesign" });
+  window.setTimeout(() => {
+    const uploadInput = document.querySelector<HTMLInputElement>(
+      ".stitchra-upload-box input[type='file']",
+    );
+    uploadInput?.click();
+  }, 80);
+}
+
+function getLatestUserMessage(messages: ChatMessage[]) {
+  return (
+    [...messages]
+      .reverse()
+      .find((message) => message.role === "user")
+      ?.content.trim() ?? ""
   );
-  uploadInput?.click();
+}
+
+function getSuggestedArtworkPrompt(latestUserMessage: string) {
+  const cleaned = latestUserMessage
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+
+  if (/eid|adha|ramadan|lantern|crescent/i.test(cleaned)) {
+    return "school Eid al-Adha badge with crescent, lantern and bold text";
+  }
+
+  if (/school|club|team|event|badge|logo|design|shirt/i.test(cleaned)) {
+    return cleaned;
+  }
+
+  return "clean event badge with bold text, simple icon and 4-6 colors";
+}
+
+function shouldShowArtworkActions(latestUserMessage: string) {
+  return /design|idea|logo|badge|event|school|eid|create|generate|artwork/i.test(
+    latestUserMessage,
+  );
 }
 
 export default function StitchraDesignAgent() {
@@ -253,6 +309,9 @@ export default function StitchraDesignAgent() {
 
   const trimmedInput = input.trim();
   const isStreaming = status === "streaming";
+  const latestUserMessage = getLatestUserMessage(messages);
+  const suggestedArtworkPrompt = getSuggestedArtworkPrompt(latestUserMessage);
+  const showArtworkActions = shouldShowArtworkActions(latestUserMessage);
 
   return (
     <div className="stitchra-ai-agent" aria-live="polite">
@@ -311,6 +370,55 @@ export default function StitchraDesignAgent() {
           <div className="stitchra-ai-actions" aria-label="Design actions">
             <button type="button" onClick={scrollToDesigner}>
               Start Designing
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                scrollToDesigner();
+                dispatchDesignAction({ action: "openAICreator" });
+              }}
+            >
+              Open AI Creator
+            </button>
+            {showArtworkActions ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    scrollToDesigner();
+                    dispatchDesignAction({
+                      action: "prefillIdeaPrompt",
+                      prompt: suggestedArtworkPrompt,
+                    });
+                  }}
+                >
+                  Prefill this idea
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    scrollToDesigner();
+                    dispatchDesignAction({
+                      action: "generateArtworkFromSuggestion",
+                      prompt: suggestedArtworkPrompt,
+                    });
+                  }}
+                >
+                  Generate concept
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                scrollToDesigner();
+                dispatchDesignAction({
+                  action: "setPlacement",
+                  placement: "center_chest",
+                });
+              }}
+            >
+              Set Center Chest
             </button>
             <button type="button" onClick={openLogoUpload}>
               Open Upload

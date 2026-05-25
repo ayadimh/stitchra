@@ -6,7 +6,7 @@ import type {
   FormEvent,
   ReactNode,
 } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   clampLogoPlacementConfig,
   formatLogoSize,
@@ -14,7 +14,6 @@ import {
   getEmbroideryZone,
   getMaxLogoWidthForAspect,
   getPlacementSideLabel,
-  getPricingPlacementValue,
   placementGroups,
   type EmbroideryPlacementGroup,
   type EmbroideryZoneId,
@@ -22,7 +21,12 @@ import {
 } from '@/lib/embroideryZones';
 import { evaluateMachineCapability } from '@/lib/machineLimits';
 import StitchraLogo from '@/components/brand/StitchraLogo';
+import AICreatorPanel from '@/components/configurator/AICreatorPanel';
+import DesignStartOptions, {
+  type DesignStartMode,
+} from '@/components/configurator/DesignStartOptions';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
+import UploadOwnDesignPanel from '@/components/configurator/UploadOwnDesignPanel';
 import type { CustomLogoPlacement } from '@/components/configurator/types';
 import {
   createTranslator,
@@ -129,6 +133,27 @@ type DesignPreparation = {
   recommendations: string[];
   machine_ready_score: number;
   simplified_description: string;
+};
+
+type ArtworkGenerateResponse = {
+  ok?: boolean;
+  imageDataUrl?: string;
+  source?: string;
+  filename?: string;
+  message?: string;
+};
+
+type StitchraDesignActionDetail = {
+  action?:
+    | 'openAICreator'
+    | 'prefillIdeaPrompt'
+    | 'generateArtworkFromSuggestion'
+    | 'openUploadOwnDesign'
+    | 'setPlacement'
+    | 'setShirtColor';
+  prompt?: string;
+  placement?: Placement;
+  shirtColor?: TeeColor;
 };
 
 type Placement = EmbroideryZoneId;
@@ -243,29 +268,30 @@ async function dataUrlToFile(
   dataUrl: string,
   originalName: string
 ) {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
   const baseName =
     originalName.replace(/\.[^/.]+$/, '') ||
     'logo';
 
-  return new File(
-    [blob],
-    `${baseName}-processed.png`,
-    {
-      type: 'image/png',
-    }
+  return dataUrlToNamedFile(
+    dataUrl,
+    `${baseName}-processed.png`
   );
 }
 
-async function blobToDataUrl(blob: Blob) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
+async function dataUrlToNamedFile(
+  dataUrl: string,
+  filename: string
+) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
 
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
+  return new File(
+    [blob],
+    filename,
+    {
+      type: blob.type || 'image/png',
+    }
+  );
 }
 
 async function getImageAspectRatio(src: string) {
@@ -364,6 +390,10 @@ export default function Home({ locale }: HomeProps = {}) {
     );
   const [customLogoPlacement, setCustomLogoPlacement] =
     useState<CustomLogoPlacement | null>(null);
+  const [designStartMode, setDesignStartMode] =
+    useState<DesignStartMode>('choice');
+  const [hasGeneratedAiConcept, setHasGeneratedAiConcept] =
+    useState(false);
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -406,7 +436,6 @@ export default function Home({ locale }: HomeProps = {}) {
 
   const placementZoneId = placement;
   const selectedZone = getEmbroideryZone(placementZoneId);
-  const pricingPlacement = getPricingPlacementValue(placementZoneId);
   const previewSideLabel = getPlacementSideLabel(placementZoneId);
   const placementSize = {
     width: Math.round(logoPlacementConfig.logo_width_mm),
@@ -497,7 +526,7 @@ export default function Home({ locale }: HomeProps = {}) {
     );
   };
 
-  const updatePlacement = (nextPlacement: Placement) => {
+  const updatePlacement = useCallback((nextPlacement: Placement) => {
     setPlacementGroup(getEmbroideryZone(nextPlacement).group);
     setPlacement(nextPlacement);
     setEstimate(null);
@@ -511,15 +540,15 @@ export default function Home({ locale }: HomeProps = {}) {
         logoAspectRatio
       )
     );
-  };
+  }, [logoAspectRatio, teeColor]);
 
-  const updateShirtColor = (nextColor: TeeColor) => {
+  const updateShirtColor = useCallback((nextColor: TeeColor) => {
     setTeeColor(nextColor);
     setLogoPlacementConfig((current) => ({
       ...current,
       shirt_color: nextColor,
     }));
-  };
+  }, []);
 
   const updateLogoPlacementConfig = (nextConfig: LogoPlacementConfig) => {
     setLogoPlacementConfig(
@@ -546,6 +575,53 @@ export default function Home({ locale }: HomeProps = {}) {
     setOrderError('');
   };
 
+  useEffect(() => {
+    const handleDesignAction = (event: Event) => {
+      const detail = (event as CustomEvent<StitchraDesignActionDetail>).detail;
+
+      if (!detail?.action) {
+        return;
+      }
+
+      if (detail.action === 'openAICreator') {
+        setDesignStartMode('ai');
+        window.setTimeout(() => {
+          document.getElementById('stitchra-ai-idea-input')?.focus();
+        }, 0);
+      }
+
+      if (
+        detail.action === 'prefillIdeaPrompt' ||
+        detail.action === 'generateArtworkFromSuggestion'
+      ) {
+        setDesignStartMode('ai');
+        setLogoPrompt((detail.prompt ?? '').slice(0, 400));
+        setDesignPreparation(null);
+        window.setTimeout(() => {
+          document.getElementById('stitchra-ai-idea-input')?.focus();
+        }, 0);
+      }
+
+      if (detail.action === 'openUploadOwnDesign') {
+        setDesignStartMode('upload');
+      }
+
+      if (detail.action === 'setPlacement' && detail.placement) {
+        updatePlacement(detail.placement);
+      }
+
+      if (detail.action === 'setShirtColor' && detail.shirtColor) {
+        updateShirtColor(detail.shirtColor);
+      }
+    };
+
+    window.addEventListener('stitchra:design-action', handleDesignAction);
+
+    return () => {
+      window.removeEventListener('stitchra:design-action', handleDesignAction);
+    };
+  }, [logoAspectRatio, teeColor, updatePlacement, updateShirtColor]);
+
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -555,6 +631,8 @@ export default function Home({ locale }: HomeProps = {}) {
     setEstimate(null);
     setLogoAnalysis(null);
     setDesignPreparation(null);
+    setHasGeneratedAiConcept(false);
+    setDesignStartMode('upload');
     setStatus('');
     setError('');
 
@@ -651,68 +729,61 @@ export default function Home({ locale }: HomeProps = {}) {
     setIsGenerating(true);
 
     try {
-      const prepareData = new FormData();
-      prepareData.append('customer_prompt', logoPrompt);
-      prepareData.append('placement', pricingPlacement);
-      prepareData.append('width_mm', String(placementSize.width));
-      prepareData.append('height_mm', String(placementSize.height));
-      prepareData.append('shirt_color', teeColor);
-      prepareData.append(
-        'max_colors',
-        String(PRACTICAL_THREAD_COLOR_LIMIT)
-      );
+      const res = await fetch('/api/artwork/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: logoPrompt.trim(),
+        }),
+      });
 
-      const prepareResponse = await fetch(
-        `${API}/prepare_design`,
-        {
-          method: 'POST',
-          body: prepareData,
-        }
-      );
+      const payload = (await res
+        .json()
+        .catch(() => ({}))) as ArtworkGenerateResponse;
 
-      if (!prepareResponse.ok) {
-        setError(t('status.designPreparationFailed'));
+      if (!res.ok) {
+        setError(payload.message ?? t('status.generatorFailed'));
         return;
       }
 
-      const prepared =
-        (await prepareResponse.json()) as DesignPreparation;
-      setDesignPreparation(prepared);
-
-      const fd = new FormData();
-      fd.append('prompt', logoPrompt);
-      fd.append('placement', pricingPlacement);
-      fd.append('width_mm', String(placementSize.width));
-      fd.append('height_mm', String(placementSize.height));
-      fd.append('shirt_color', teeColor);
-      fd.append('max_colors', String(prepared.max_colors));
-
-      const res = await fetch(`${API}/generate_logo`, {
-        method: 'POST',
-        body: fd,
-      });
-
-      if (!res.ok) {
+      if (!payload.imageDataUrl) {
         setError(t('status.generatorFailed'));
         return;
       }
 
-      const blob = await res.blob();
-
-      const generatedFile = new File([blob], 'logo.png', {
-        type: 'image/png',
-      });
-      const previewDataUrl = await blobToDataUrl(blob);
+      const generatedFile = await dataUrlToNamedFile(
+        payload.imageDataUrl,
+        payload.filename ?? 'stitchra-ai-concept.png'
+      );
 
       setFile(generatedFile);
-      await applyLogoPreview(previewDataUrl);
+      await applyLogoPreview(payload.imageDataUrl);
       if (previewObjectUrlRef.current) {
         URL.revokeObjectURL(previewObjectUrlRef.current);
         previewObjectUrlRef.current = null;
       }
       setLogoAnalysis(null);
+      setDesignPreparation({
+        embroidery_prompt: logoPrompt.trim(),
+        recommended_style: 'Embroidery-friendly AI concept',
+        max_colors: 6,
+        warnings: [
+          'AI concept only. Final stitch-ready artwork is reviewed by Stitchra.',
+        ],
+        recommendations: [
+          'Use bold shapes, limited colors and clear placement for embroidery.',
+        ],
+        machine_ready_score: 78,
+        simplified_description: logoPrompt.trim(),
+      });
+      setHasGeneratedAiConcept(true);
+      setDesignStartMode('ai');
 
-      setStatus(t('status.generated'));
+      setStatus(
+        'AI concept generated. Final stitch-ready artwork is reviewed by Stitchra.'
+      );
     } catch {
       setError(t('status.networkError'));
     } finally {
@@ -2622,23 +2693,49 @@ export default function Home({ locale }: HomeProps = {}) {
                 )}
               </div>
 
-              <label style={label}>
-                {t('designer.uploadLogo')}
-              </label>
+              <DesignStartOptions
+                selectedMode={designStartMode}
+                onSelectMode={(mode) => {
+                  setDesignStartMode(mode);
+                  setError('');
+                  setStatus('');
 
-              <label className="stitchra-upload-box">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={onFile}
+                  if (mode === 'ai') {
+                    window.setTimeout(() => {
+                      document
+                        .getElementById('stitchra-ai-idea-input')
+                        ?.focus();
+                    }, 0);
+                  }
+                }}
+              />
+
+              {designStartMode === 'upload' && (
+                <UploadOwnDesignPanel
+                  fileName={file?.name ?? null}
+                  onFileChange={onFile}
                 />
-                <span className="stitchra-upload-button">Choose logo</span>
-                <span className="stitchra-upload-copy">
-                  {file
-                    ? file.name
-                    : 'PNG, JPG or SVG recommended'}
-                </span>
-              </label>
+              )}
+
+              {designStartMode === 'ai' && (
+                <AICreatorPanel
+                  prompt={logoPrompt}
+                  isGenerating={isGenerating}
+                  hasGeneratedConcept={hasGeneratedAiConcept}
+                  onPromptChange={(value) => {
+                    setLogoPrompt(value);
+                    setDesignPreparation(null);
+                    setError('');
+                    setStatus('');
+                  }}
+                  onGenerate={generateLogo}
+                  onSwitchToUpload={() => {
+                    setDesignStartMode('upload');
+                    setError('');
+                    setStatus('');
+                  }}
+                />
+              )}
 
               <div style={configuratorControlPanel}>
                 <div style={configuratorControlHeader}>
@@ -2681,49 +2778,6 @@ export default function Home({ locale }: HomeProps = {}) {
                     {capabilityPreview.message}
                   </p>
                 )}
-              </div>
-
-              <label style={label}>
-                {t('designer.describeIdea')}
-              </label>
-
-              <div
-                className="designer-prompt-row"
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <input
-                  value={logoPrompt}
-                  onChange={(e) => {
-                    setLogoPrompt(e.target.value);
-                    setDesignPreparation(null);
-                  }}
-                  aria-label={t('designer.promptAria')}
-                  placeholder={t('designer.promptPlaceholder')}
-                  style={{
-                    ...input,
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                />
-
-                <button
-                  onClick={generateLogo}
-                  disabled={isGenerating}
-                  className="lux-button"
-                  style={{
-                    ...primaryButton,
-                    border: 'none',
-                    minWidth: 180,
-                  }}
-                >
-                  {isGenerating
-                    ? t('designer.generating')
-                    : t('designer.generate')}
-                </button>
               </div>
 
               {designPreparation && !error && (
@@ -4365,6 +4419,264 @@ function GlobalVisualStyles() {
           overflow-wrap: anywhere;
         }
 
+        .design-start-panel,
+        .design-path-panel {
+          display: grid;
+          gap: 18px;
+          padding: 18px;
+          border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.11);
+          background:
+            radial-gradient(circle at 12% 12%, rgba(0,255,136,0.11), transparent 34%),
+            linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .design-start-header,
+        .design-path-header {
+          display: grid;
+          gap: 6px;
+        }
+
+        .design-start-header span,
+        .design-path-header span {
+          color: #00ff88;
+          font-size: 11px;
+          font-weight: 880;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .design-start-header h2,
+        .design-path-header h3 {
+          margin: 0;
+          color: #f5f7f8;
+          font-size: clamp(20px, 2.2vw, 26px);
+          line-height: 1.12;
+          letter-spacing: 0;
+        }
+
+        .design-path-header h3 {
+          font-size: clamp(18px, 1.8vw, 22px);
+        }
+
+        .design-start-header p,
+        .design-path-header p,
+        .design-path-helper {
+          margin: 0;
+          color: rgba(245,247,248,0.65);
+          font-size: 14px;
+          line-height: 1.58;
+        }
+
+        .design-start-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .design-start-card {
+          position: relative;
+          min-width: 0;
+          min-height: 220px;
+          display: grid;
+          grid-template-rows: auto auto 1fr auto;
+          gap: 13px;
+          align-content: start;
+          padding: 18px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 22px;
+          background:
+            radial-gradient(circle at 80% 18%, rgba(0,215,255,0.11), transparent 34%),
+            rgba(3,8,9,0.55);
+          color: #f5f7f8;
+          text-align: left;
+          cursor: pointer;
+          transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .design-start-card::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: linear-gradient(120deg, rgba(255,255,255,0.09), transparent 36%, rgba(0,255,136,0.07));
+          opacity: 0;
+          transition: opacity 180ms ease;
+        }
+
+        .design-start-card:hover,
+        .design-start-card-active {
+          transform: translateY(-2px);
+          border-color: rgba(0,255,136,0.44);
+          background:
+            radial-gradient(circle at 80% 18%, rgba(0,215,255,0.16), transparent 34%),
+            radial-gradient(circle at 18% 86%, rgba(0,255,136,0.13), transparent 34%),
+            rgba(3,8,9,0.68);
+          box-shadow: 0 24px 74px rgba(0,0,0,0.26), 0 0 42px rgba(0,255,136,0.08);
+        }
+
+        .design-start-card:hover::after,
+        .design-start-card-active::after {
+          opacity: 1;
+        }
+
+        .design-start-card strong,
+        .design-start-card p,
+        .design-start-card small,
+        .design-start-visual {
+          position: relative;
+          z-index: 1;
+        }
+
+        .design-start-card strong {
+          font-size: 18px;
+          line-height: 1.18;
+        }
+
+        .design-start-card p {
+          margin: 0;
+          color: rgba(245,247,248,0.64);
+          font-size: 13px;
+          line-height: 1.55;
+        }
+
+        .design-start-card small {
+          display: inline-flex;
+          width: fit-content;
+          min-height: 34px;
+          align-items: center;
+          justify-content: center;
+          padding: 0 13px;
+          border-radius: 999px;
+          color: #071110;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .design-start-visual {
+          width: 78px;
+          height: 66px;
+          display: grid;
+          place-items: center;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background:
+            radial-gradient(circle at 35% 28%, rgba(255,255,255,0.18), transparent 26%),
+            rgba(255,255,255,0.055);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .design-start-visual i {
+          position: relative;
+          width: 42px;
+          height: 34px;
+          display: block;
+          border-radius: 12px;
+          border: 2px solid rgba(0,255,136,0.86);
+          box-shadow: 0 0 22px rgba(0,255,136,0.22);
+        }
+
+        .design-start-visual-upload i::before,
+        .design-start-visual-ai i::before,
+        .design-start-visual-ai i::after {
+          content: "";
+          position: absolute;
+          pointer-events: none;
+        }
+
+        .design-start-visual-upload i::before {
+          left: 50%;
+          top: -10px;
+          width: 18px;
+          height: 18px;
+          border-top: 2px solid #00d7ff;
+          border-left: 2px solid #00d7ff;
+          transform: translateX(-50%) rotate(45deg);
+        }
+
+        .design-start-visual-ai i {
+          border-color: rgba(0,215,255,0.9);
+          border-radius: 999px;
+        }
+
+        .design-start-visual-ai i::before {
+          inset: 7px;
+          border-radius: 999px;
+          border: 1px solid rgba(211,107,255,0.88);
+        }
+
+        .design-start-visual-ai i::after {
+          right: -9px;
+          top: 4px;
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: #ff37d4;
+          box-shadow: -34px 26px 0 #00ff88, 0 0 18px rgba(255,55,212,0.65);
+        }
+
+        .design-path-panel-ai {
+          border-color: rgba(0,215,255,0.16);
+          background:
+            radial-gradient(circle at 80% 16%, rgba(0,215,255,0.13), transparent 34%),
+            radial-gradient(circle at 18% 82%, rgba(211,107,255,0.12), transparent 32%),
+            linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
+        }
+
+        .design-path-panel .designer-prompt-row {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(150px, 188px);
+          gap: 12px;
+          align-items: stretch;
+        }
+
+        .design-path-panel .designer-prompt-row input {
+          min-width: 0;
+          min-height: 54px;
+          padding: 0 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.045);
+          color: #f5f7f8;
+          font: inherit;
+          outline: none;
+        }
+
+        .design-path-panel .designer-prompt-row input:focus {
+          border-color: rgba(0,215,255,0.55);
+          box-shadow: 0 0 0 3px rgba(0,215,255,0.10);
+        }
+
+        .design-path-panel .designer-prompt-row .lux-button {
+          min-width: 0;
+          border: 0;
+        }
+
+        .design-path-link {
+          width: fit-content;
+          min-height: 36px;
+          padding: 0;
+          border: 0;
+          color: #00d7ff;
+          background: transparent;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 850;
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .design-path-link:hover {
+          color: #18ff9a;
+        }
+
         .designer-section {
           scroll-margin-top: 112px;
         }
@@ -5366,10 +5678,26 @@ function GlobalVisualStyles() {
             grid-template-columns: 1fr !important;
           }
 
+          .design-start-panel,
+          .design-path-panel {
+            padding: 16px;
+            border-radius: 22px;
+          }
+
+          .design-start-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .design-start-card {
+            min-height: 190px;
+          }
+
+          .design-path-panel .designer-prompt-row,
           .designer-prompt-row {
             grid-template-columns: 1fr !important;
           }
 
+          .design-path-panel .designer-prompt-row .lux-button,
           .designer-prompt-row .lux-button {
             width: 100% !important;
             min-width: 0 !important;
