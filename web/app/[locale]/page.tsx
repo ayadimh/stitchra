@@ -23,14 +23,19 @@ export async function generateMetadata({
   }
 
   const metadata = getLocalizedMetadata(locale);
+  const languageAlternates = locales.reduce<Record<string, string>>(
+    (alternates, item) => {
+      alternates[item] = `/${item}`;
+      return alternates;
+    },
+    {}
+  );
 
   return {
     ...metadata,
     alternates: {
       canonical: `/${locale}`,
-      languages: Object.fromEntries(
-        locales.map((item) => [item, `/${item}`])
-      ),
+      languages: languageAlternates,
     },
     openGraph: {
       ...metadata,

@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
     parallelServerBuildTraces: false,
     webpackBuildWorker: false,
   },
-  // Lint remains the explicit source validation step; this avoids a local
-  // duplicate type-check worker hang during production bundling.
+  // Lint is the explicit source validation step in this project; the local
+  // Next 16 type-check worker hangs after compile in this workspace.
   typescript: {
     ignoreBuildErrors: true,
   },
