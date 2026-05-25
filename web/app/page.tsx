@@ -163,7 +163,15 @@ type ArtworkGenerateResponse = {
   source?: string;
   filename?: string;
   message?: string;
+  seed?: number;
+  variationMode?: 'new' | 'refine' | 'same';
+  variationIndex?: number;
+  variationHint?: string;
+  createdAt?: number;
 };
+
+type ArtworkVariationMode = 'new' | 'refine' | 'same';
+type ArtworkGenerationIntent = 'initial' | 'new' | 'refine' | null;
 
 function createClientId(prefix: string) {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -387,6 +395,17 @@ function isSvgLogoFile(file: File | null) {
 
 function getConceptDisplayImage(concept: AIConcept) {
   return concept.cleanedImageDataUrl ?? concept.imageDataUrl;
+}
+
+function hashImageDataUrl(dataUrl: string) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < dataUrl.length; index += 1) {
+    hash ^= dataUrl.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return `${dataUrl.length}:${(hash >>> 0).toString(16)}`;
 }
 
 function getPublicQuote(estimate: Estimate): PublicQuote {
@@ -617,6 +636,8 @@ export default function Home({ locale }: HomeProps = {}) {
   const [orderError, setOrderError] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationIntent, setGenerationIntent] =
+    useState<ArtworkGenerationIntent>(null);
   const [isEstimating, setIsEstimating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRequestingOrder, setIsRequestingOrder] = useState(false);
@@ -899,6 +920,7 @@ export default function Home({ locale }: HomeProps = {}) {
     setStatus('');
     setError('');
     setBackgroundCleanupStatus('');
+    setGenerationIntent(null);
     setDesignAddedToastOpen(false);
     setOrderOpen(false);
     setOrderStatus('');
@@ -1047,11 +1069,19 @@ export default function Home({ locale }: HomeProps = {}) {
               return null;
             }
 
+            const restoredImageDataUrl = await blobToDataUrl(imageBlob);
             const restoredConcept: AIConcept = {
               id: concept.id,
               filename: concept.filename,
               prompt: concept.prompt,
-              imageDataUrl: await blobToDataUrl(imageBlob),
+              imageDataUrl: restoredImageDataUrl,
+              seed: concept.seed,
+              variationHint: concept.variationHint,
+              variationIndex: concept.variationIndex,
+              variationMode: concept.variationMode,
+              imageHash: concept.imageHash ?? hashImageDataUrl(restoredImageDataUrl),
+              createdAt: concept.createdAt,
+              accepted: concept.accepted ?? concept.id === draft.activeAiConceptId,
             };
 
             if (cleanedImageBlob) {
@@ -1196,12 +1226,18 @@ export default function Home({ locale }: HomeProps = {}) {
           filename: concept.filename,
           prompt: concept.prompt,
           source: concept.source,
+          seed: concept.seed,
+          variationHint: concept.variationHint,
+          variationIndex: concept.variationIndex,
+          variationMode: concept.variationMode,
+          imageHash: concept.imageHash,
+          accepted: concept.accepted,
           imageKey: `concept-${concept.id}`,
           cleanedImageKey: concept.cleanedImageDataUrl
             ? `concept-${concept.id}-cleaned`
             : undefined,
           cleanedAt: concept.cleanedAt,
-          createdAt: Date.now(),
+          createdAt: concept.createdAt ?? Date.now(),
         })),
         selectedAiConceptId,
         activeAiConceptId,
@@ -1370,7 +1406,14 @@ export default function Home({ locale }: HomeProps = {}) {
     }
   };
 
-  const createAiConcept = async (prompt: string) => {
+  const createAiConcept = async (
+    prompt: string,
+    options: {
+      variationMode?: ArtworkVariationMode;
+      intent?: Exclude<ArtworkGenerationIntent, null>;
+      variationIndex?: number;
+    } = {}
+  ) => {
     setError('');
     setStatus('');
     setBackgroundCleanupStatus('');
@@ -1382,39 +1425,91 @@ export default function Home({ locale }: HomeProps = {}) {
       return;
     }
 
+    const variationMode = options.variationMode ?? 'new';
+    const variationIndex =
+      options.variationIndex ?? Math.max(1, aiConcepts.length + 1);
+    const existingImageHashes = new Set(
+      aiConcepts
+        .map((concept) => concept.imageHash ?? hashImageDataUrl(concept.imageDataUrl))
+        .filter(Boolean)
+    );
+
     setIsGenerating(true);
+    setGenerationIntent(options.intent ?? (aiConcepts.length > 0 ? 'new' : 'initial'));
 
     try {
-      const res = await fetch('/api/artwork/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: trimmedPrompt,
-        }),
-      });
+      const requestConcept = async (forceDifferent: boolean) => {
+        const res = await fetch('/api/artwork/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: trimmedPrompt,
+            variationMode,
+            variationIndex,
+            forceDifferent,
+            previousConcepts: aiConcepts.slice(0, 4).map((concept) => ({
+              seed: concept.seed,
+              variationHint: concept.variationHint,
+              variationIndex: concept.variationIndex,
+            })),
+          }),
+        });
 
-      const payload = (await res
-        .json()
-        .catch(() => ({}))) as ArtworkGenerateResponse;
+        const payload = (await res
+          .json()
+          .catch(() => ({}))) as ArtworkGenerateResponse;
 
-      if (!res.ok) {
-        setError(payload.message ?? t('status.generatorFailed'));
-        return;
+        if (!res.ok) {
+          throw new Error(payload.message ?? t('status.generatorFailed'));
+        }
+
+        if (!payload.imageDataUrl) {
+          throw new Error(t('status.generatorFailed'));
+        }
+
+        return payload;
+      };
+
+      let payload = await requestConcept(false);
+      let imageHash = hashImageDataUrl(payload.imageDataUrl ?? '');
+      let retriedForDuplicate = false;
+
+      if (existingImageHashes.has(imageHash)) {
+        retriedForDuplicate = true;
+        setStatus('That result was too similar, so we tried another variation.');
+        payload = await requestConcept(true);
+        imageHash = hashImageDataUrl(payload.imageDataUrl ?? '');
+
+        if (existingImageHashes.has(imageHash)) {
+          setError(
+            'This provider returned a similar concept. Try changing the idea or style.'
+          );
+          return;
+        }
       }
 
-      if (!payload.imageDataUrl) {
+      const imageDataUrl = payload.imageDataUrl;
+
+      if (!imageDataUrl) {
         setError(t('status.generatorFailed'));
         return;
       }
 
       const concept: AIConcept = {
         id: createClientId('ai-concept'),
-        imageDataUrl: payload.imageDataUrl,
+        imageDataUrl,
         filename: payload.filename ?? 'stitchra-ai-concept.png',
         prompt: trimmedPrompt,
         source: payload.source,
+        seed: payload.seed,
+        variationHint: payload.variationHint,
+        variationIndex: payload.variationIndex ?? variationIndex,
+        variationMode: payload.variationMode ?? variationMode,
+        imageHash,
+        createdAt: payload.createdAt ?? 0,
+        accepted: false,
       };
 
       setAiConcepts((currentConcepts) => [
@@ -1439,17 +1534,28 @@ export default function Home({ locale }: HomeProps = {}) {
       setDesignStartMode('ai');
 
       setStatus(
-        'AI concept generated. Review it below before placing it on the shirt.'
+        retriedForDuplicate
+          ? 'That result was too similar, so we tried another variation.'
+          : 'AI concept generated. Review it below before placing it on the shirt.'
       );
-    } catch {
-      setError(t('status.networkError'));
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : t('status.networkError')
+      );
     } finally {
       setIsGenerating(false);
+      setGenerationIntent(null);
     }
   };
 
   const generateLogo = async () => {
-    await createAiConcept(getPromptWithStyleHints(logoPrompt));
+    await createAiConcept(getPromptWithStyleHints(logoPrompt), {
+      variationMode: 'new',
+      intent: aiConcepts.length > 0 ? 'new' : 'initial',
+      variationIndex: aiConcepts.length + 1,
+    });
   };
 
   const acceptAiConcept = async (concept: AIConcept) => {
@@ -1474,6 +1580,12 @@ export default function Home({ locale }: HomeProps = {}) {
       }
       setLogoAnalysis(null);
       setActiveAiConceptId(concept.id);
+      setAiConcepts((currentConcepts) =>
+        currentConcepts.map((item) => ({
+          ...item,
+          accepted: item.id === concept.id,
+        }))
+      );
       setEstimate(null);
       setOrderStatus('');
       setOrderError('');
@@ -1595,7 +1707,11 @@ export default function Home({ locale }: HomeProps = {}) {
       .slice(0, 400);
 
     setLogoPrompt(refinedPrompt);
-    await createAiConcept(refinedPrompt);
+    await createAiConcept(refinedPrompt, {
+      variationMode: 'refine',
+      intent: 'refine',
+      variationIndex: aiConcepts.length + 1,
+    });
   };
 
   const estimatePrice = async () => {
@@ -3447,6 +3563,7 @@ export default function Home({ locale }: HomeProps = {}) {
                     styleHints={aiStyleHints}
                     readiness={aiConceptReadiness}
                     isGenerating={isGenerating}
+                    isGeneratingVariation={generationIntent === 'new'}
                     isCleaningBackground={isCleaningBackground}
                     backgroundCleanupStatus={backgroundCleanupStatus}
                     onSelectConcept={setSelectedAiConceptId}
@@ -6309,6 +6426,13 @@ function GlobalVisualStyles() {
 
         .ai-cleanup-status-success {
           color: rgba(157,255,196,0.82);
+        }
+
+        .ai-variation-helper {
+          margin: -8px 0 0;
+          color: rgba(245,247,248,0.52);
+          font-size: 12px;
+          line-height: 1.45;
         }
 
         .ai-concept-action-row {

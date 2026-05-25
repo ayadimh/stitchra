@@ -10,6 +10,13 @@ export type AIConcept = {
   filename: string;
   prompt: string;
   source?: string;
+  seed?: number;
+  variationHint?: string;
+  variationIndex?: number;
+  variationMode?: 'new' | 'refine' | 'same';
+  imageHash?: string;
+  createdAt?: number;
+  accepted?: boolean;
 };
 
 export type AIConceptReadiness = {
@@ -27,6 +34,7 @@ type AIConceptReviewPanelProps = {
   styleHints: string[];
   readiness: AIConceptReadiness;
   isGenerating: boolean;
+  isGeneratingVariation: boolean;
   isCleaningBackground: boolean;
   backgroundCleanupStatus: string;
   onSelectConcept: (conceptId: string) => void;
@@ -44,6 +52,7 @@ export default function AIConceptReviewPanel({
   styleHints,
   readiness,
   isGenerating,
+  isGeneratingVariation,
   isCleaningBackground,
   backgroundCleanupStatus,
   onSelectConcept,
@@ -184,7 +193,7 @@ export default function AIConceptReviewPanel({
           onClick={onGenerateAnother}
           disabled={isGenerating}
         >
-          {isGenerating ? 'Generating...' : 'Generate another'}
+          {isGeneratingVariation ? 'Generating new variation...' : 'Generate another'}
         </button>
         <button
           type="button"
@@ -201,6 +210,10 @@ export default function AIConceptReviewPanel({
           Upload my own logo instead
         </button>
       </div>
+
+      <p className="ai-variation-helper">
+        Generate another creates a different visual direction for the same idea.
+      </p>
 
       {backgroundCleanupStatus && (
         <p className={hasCleanedImage ? 'ai-cleanup-status-success' : 'ai-cleanup-status'}>
@@ -249,7 +262,10 @@ export default function AIConceptReviewPanel({
                 alt=""
                 draggable={false}
               />
-              <span>Concept {index + 1}</span>
+              <span>
+                Variation {concept.variationIndex ?? index + 1}
+                {concept.accepted ? ' · Added' : ''}
+              </span>
             </button>
           ))}
         </div>

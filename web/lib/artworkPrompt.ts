@@ -31,14 +31,37 @@ export function validateArtworkIdea(prompt: string) {
   };
 }
 
-export function buildEmbroideryArtworkPrompt(userPrompt: string) {
+export type ArtworkVariationMode = 'new' | 'refine' | 'same';
+
+type ArtworkPromptOptions = {
+  variationMode?: ArtworkVariationMode;
+  variationHint?: string;
+  forceDifferent?: boolean;
+};
+
+export function buildEmbroideryArtworkPrompt(
+  userPrompt: string,
+  options: ArtworkPromptOptions = {}
+) {
   const cleanedPrompt = userPrompt
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/[<>]/g, '');
+  const variationMode = options.variationMode ?? 'new';
+  const variationInstruction =
+    variationMode === 'refine'
+      ? 'Modify the previous concept according to the change request while keeping the core idea.'
+      : variationMode === 'same'
+        ? 'Recreate the same core concept consistently.'
+        : 'Create a clearly different visual variation from previous concepts. Change composition, icon arrangement, framing, and decorative details while keeping the same core idea. Do not repeat the exact same layout.';
 
   return [
     `Clean embroidery-friendly logo patch concept for ${cleanedPrompt}.`,
+    options.variationHint ? `Visual direction: ${options.variationHint}.` : '',
+    variationInstruction,
+    options.forceDifferent
+      ? 'Strong variation required: use a noticeably different silhouette, layout balance, and decorative motif.'
+      : '',
     'Centered graphic.',
     'Bold readable shapes.',
     'High contrast.',
@@ -50,5 +73,7 @@ export function buildEmbroideryArtworkPrompt(userPrompt: string) {
     'No photorealistic background.',
     'Plain background.',
     'Suitable for black or white T-shirt embroidery preview.',
-  ].join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 }

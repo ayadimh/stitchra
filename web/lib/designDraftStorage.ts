@@ -14,6 +14,12 @@ export type DesignDraftConcept = {
   filename: string;
   prompt: string;
   source?: string;
+  seed?: number;
+  variationHint?: string;
+  variationIndex?: number;
+  variationMode?: 'new' | 'refine' | 'same';
+  imageHash?: string;
+  accepted?: boolean;
   imageKey: string;
   cleanedImageKey?: string;
   cleanedAt?: number;

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { randomInt, randomUUID } from 'crypto';
 import {
   buildEmbroideryArtworkPrompt,
+  type ArtworkVariationMode,
   validateArtworkIdea,
 } from '@/lib/artworkPrompt';
 import {
@@ -20,6 +22,23 @@ const DISABLED_MESSAGE =
 const RATE_LIMIT_MESSAGE =
   'You reached the generation limit for now. You can still upload your own logo.';
 const PROVIDER = 'pollinations';
+const VARIATION_HINTS = [
+  'badge emblem layout',
+  'clean mascot patch layout',
+  'minimal icon mark layout',
+  'streetwear sticker layout',
+  'round crest layout',
+  'bold center graphic layout',
+] as const;
+
+type ArtworkGenerateRequestBody = {
+  prompt?: unknown;
+  seed?: unknown;
+  variationMode?: unknown;
+  variationIndex?: unknown;
+  variationHint?: unknown;
+  forceDifferent?: unknown;
+};
 
 function jsonResponse(payload: Record<string, unknown>, status = 200) {
   return NextResponse.json(payload, {
@@ -46,6 +65,56 @@ function getImageMimeType(contentType: string | null) {
   return 'image/png';
 }
 
+function getRandomSeed() {
+  return randomInt(1, 2_147_483_647);
+}
+
+function parseSeed(value: unknown) {
+  const seed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : null;
+
+  return Number.isInteger(seed) && seed > 0
+    ? Math.min(seed, 2_147_483_647)
+    : null;
+}
+
+function parseVariationIndex(value: unknown) {
+  const index =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : null;
+
+  return Number.isInteger(index) && index > 0 ? index : 1;
+}
+
+function parseVariationMode(value: unknown): ArtworkVariationMode {
+  return value === 'refine' || value === 'same' || value === 'new'
+    ? value
+    : 'new';
+}
+
+function getVariationHint(input: {
+  requestedHint: unknown;
+  variationIndex: number;
+}) {
+  if (
+    typeof input.requestedHint === 'string' &&
+    input.requestedHint.trim().length > 0
+  ) {
+    return input.requestedHint.trim().slice(0, 80);
+  }
+
+  const index = Math.abs(input.variationIndex - 1) % VARIATION_HINTS.length;
+
+  return VARIATION_HINTS[index];
+}
+
 export async function POST(request: Request) {
   const enabled =
     process.env.STITCHRA_IMAGE_GENERATION_ENABLED ?? 'false';
@@ -59,10 +128,10 @@ export async function POST(request: Request) {
     DEFAULT_MAX_PROMPT_CHARS
   );
 
-  let body: { prompt?: unknown } | null = null;
+  let body: ArtworkGenerateRequestBody | null = null;
 
   try {
-    body = (await request.json()) as { prompt?: unknown };
+    body = (await request.json()) as ArtworkGenerateRequestBody;
   } catch {
     return jsonResponse(
       { ok: false, message: 'Please describe the artwork you want.' },
@@ -129,7 +198,20 @@ export async function POST(request: Request) {
   }
 
   const model = process.env.POLLINATIONS_IMAGE_MODEL || 'flux';
-  const artworkPrompt = buildEmbroideryArtworkPrompt(rawPrompt);
+  const seed = parseSeed(body.seed) ?? getRandomSeed();
+  const variationMode = parseVariationMode(body.variationMode);
+  const variationIndex = parseVariationIndex(body.variationIndex);
+  const variationHint = getVariationHint({
+    requestedHint: body.variationHint,
+    variationIndex,
+  });
+  const forceDifferent = Boolean(body.forceDifferent);
+  const requestId = randomUUID();
+  const artworkPrompt = buildEmbroideryArtworkPrompt(rawPrompt, {
+    variationMode,
+    variationHint,
+    forceDifferent,
+  });
   const endpoint = new URL(
     `https://image.pollinations.ai/prompt/${encodeURIComponent(artworkPrompt)}`
   );
@@ -141,6 +223,9 @@ export async function POST(request: Request) {
   endpoint.searchParams.set('nologo', 'true');
   endpoint.searchParams.set('private', 'true');
   endpoint.searchParams.set('safe', 'true');
+  endpoint.searchParams.set('seed', String(seed));
+  endpoint.searchParams.set('cacheBust', String(Date.now()));
+  endpoint.searchParams.set('requestId', requestId);
 
   const pollinationsApiKey = process.env.POLLINATIONS_API_KEY;
   const headers = new Headers({
@@ -186,6 +271,12 @@ export async function POST(request: Request) {
       imageDataUrl: `data:${contentType};base64,${buffer.toString('base64')}`,
       source: PROVIDER,
       filename: 'stitchra-ai-concept.png',
+      seed,
+      variationMode,
+      variationIndex,
+      variationHint,
+      requestId,
+      createdAt: Date.now(),
     });
   } catch (error) {
     console.error('Artwork generation route failed', {
