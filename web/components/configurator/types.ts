@@ -24,4 +24,6 @@ export type ShirtConfiguratorProps = {
   customPlacement?: CustomLogoPlacement | null;
   onCustomPlacementChange?: (placement: CustomLogoPlacement | null) => void;
   viewerGroup?: EmbroideryPlacementGroup;
+  focusPulseKey?: number;
+  guidanceHint?: string;
 };

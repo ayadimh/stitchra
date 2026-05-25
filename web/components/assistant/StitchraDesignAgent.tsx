@@ -16,7 +16,8 @@ type StitchraDesignActionDetail = {
     | "generateArtworkFromSuggestion"
     | "openUploadOwnDesign"
     | "setPlacement"
-    | "setShirtColor";
+    | "setShirtColor"
+    | "scrollToViewer";
   prompt?: string;
   placement?: string;
   shirtColor?: "black" | "white";
@@ -375,6 +376,15 @@ export default function StitchraDesignAgent() {
               type="button"
               onClick={() => {
                 scrollToDesigner();
+                dispatchDesignAction({ action: "scrollToViewer" });
+              }}
+            >
+              View Shirt
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                scrollToDesigner();
                 dispatchDesignAction({ action: "openAICreator" });
               }}
             >
@@ -392,19 +402,7 @@ export default function StitchraDesignAgent() {
                     });
                   }}
                 >
-                  Prefill this idea
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    scrollToDesigner();
-                    dispatchDesignAction({
-                      action: "generateArtworkFromSuggestion",
-                      prompt: suggestedArtworkPrompt,
-                    });
-                  }}
-                >
-                  Generate concept
+                  Use this idea
                 </button>
               </>
             ) : null}
@@ -419,6 +417,18 @@ export default function StitchraDesignAgent() {
               }}
             >
               Set Center Chest
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                scrollToDesigner();
+                dispatchDesignAction({
+                  action: "setPlacement",
+                  placement: "left_chest",
+                });
+              }}
+            >
+              Set Left Chest
             </button>
             <button type="button" onClick={openLogoUpload}>
               Open Upload

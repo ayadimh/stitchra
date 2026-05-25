@@ -420,6 +420,8 @@ export default function ShirtPlacementMockup({
   customPlacement,
   onCustomPlacementChange,
   viewerGroup,
+  focusPulseKey = 0,
+  guidanceHint,
 }: ShirtConfiguratorProps) {
   const torsoRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -735,6 +737,12 @@ export default function ShirtPlacementMockup({
             50% { opacity: 0.38; transform: translateX(10px); }
           }
 
+          @keyframes stitchraLogoPulse {
+            0% { box-shadow: 0 0 0 0 rgba(24,255,154,0.55), 0 0 0 1px rgba(255,255,255,0.10), 0 0 20px rgba(124,240,212,0.26); }
+            58% { box-shadow: 0 0 0 16px rgba(24,255,154,0.00), 0 0 0 1px rgba(255,255,255,0.16), 0 0 34px rgba(124,240,212,0.40); }
+            100% { box-shadow: 0 0 0 0 rgba(24,255,154,0.00), 0 0 0 1px rgba(255,255,255,0.08), 0 0 18px rgba(124,240,212,0.20); }
+          }
+
           @media (prefers-reduced-motion: reduce) {
             .shirt-placement-preview-card .shirt-preview-motion,
             .shirt-placement-preview-card .shirt-preview-breath,
@@ -851,6 +859,7 @@ export default function ShirtPlacementMockup({
 
           {logoUrl && (
             <div
+              key={`logo-preview-${logoUrl}-${focusPulseKey}`}
               aria-label="Design preview on shirt"
               onPointerDown={(event) => {
                 event.stopPropagation();
@@ -881,6 +890,10 @@ export default function ShirtPlacementMockup({
                 height: `${logoLayout.height}%`,
                 opacity: projectionStyle.opacity,
                 transform: `${projectionStyle.transform} rotate(${logoLayout.rotate ?? 0}deg)`,
+                animation:
+                  hasVisibleLogo && focusPulseKey > 0
+                    ? 'stitchraLogoPulse 1150ms ease-out 1'
+                    : undefined,
                 boxShadow: hasVisibleLogo
                   ? '0 0 0 1px rgba(255,255,255,0.08), 0 0 18px rgba(124,240,212,0.20)'
                   : 'none',
@@ -953,9 +966,10 @@ export default function ShirtPlacementMockup({
       )}
 
       <div style={footerHint}>
-        {hasVisibleLogo
+        {guidanceHint ??
+          (hasVisibleLogo
           ? `Drag to rotate • Click shirt to reposition logo • Logo size ${formatLogoSize(config)}`
-          : 'Upload a logo, then click the shirt to place it'}
+          : 'Upload a logo, then click the shirt to place it')}
       </div>
     </div>
   );

@@ -9,6 +9,13 @@ type AICreatorPanelProps = {
   onSwitchToUpload: () => void;
 };
 
+const IDEA_SUGGESTIONS = [
+  'school Eid al-Adha badge with crescent and lantern',
+  'minimal green coffee brand logo',
+  'retro gaming club badge with lightning',
+  'cute giraffe driving a tiny car through space',
+];
+
 export default function AICreatorPanel({
   prompt,
   isGenerating,
@@ -27,16 +34,29 @@ export default function AICreatorPanel({
         </p>
       </div>
 
+      <div className="ai-idea-chip-row" aria-label="Example AI artwork ideas">
+        {IDEA_SUGGESTIONS.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            onClick={() => onPromptChange(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+
       <div className="designer-prompt-row">
         <input
           id="stitchra-ai-idea-input"
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
           aria-label="Describe the AI artwork idea"
-          placeholder="Example: school Eid al-Adha badge with crescent, lantern and bold text"
+          placeholder="Example: cute giraffe driving a tiny car through space, patch logo for kids, 4 colors"
         />
 
         <button
+          id="stitchra-ai-generate-button"
           type="button"
           onClick={onGenerate}
           disabled={isGenerating}
@@ -51,8 +71,17 @@ export default function AICreatorPanel({
       </div>
 
       <p className="design-path-helper">
-        AI concepts are previews. Final stitch-ready artwork is reviewed by Stitchra before production.
+        {hasGeneratedConcept
+          ? 'AI concept generated. Final stitch-ready artwork is reviewed by Stitchra.'
+          : 'AI concepts are previews. Final stitch-ready artwork is reviewed by Stitchra before production.'}
       </p>
+
+      {hasGeneratedConcept && (
+        <div className="ai-concept-status">
+          <span>AI concept</span>
+          <strong>Use this on the shirt</strong>
+        </div>
+      )}
 
       <button
         type="button"

@@ -31,10 +31,13 @@ export default function DesignStartOptions({
         >
           <span className="design-start-visual design-start-visual-upload" aria-hidden="true">
             <i />
+            <b>PNG</b>
+            <b>JPG</b>
+            <b>SVG</b>
           </span>
           <strong>Bring your own design</strong>
           <p>
-            Upload your logo and preview it on the T-shirt before requesting a quote.
+            Upload your logo and see it live on the T-shirt before requesting a quote.
           </p>
           <small>Upload logo</small>
         </button>
@@ -48,6 +51,7 @@ export default function DesignStartOptions({
         >
           <span className="design-start-visual design-start-visual-ai" aria-hidden="true">
             <i />
+            <b>AI</b>
           </span>
           <strong>Create with AI</strong>
           <p>

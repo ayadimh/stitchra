@@ -27,11 +27,18 @@ export default function UploadOwnDesignPanel({
           accept="image/*"
           onChange={onFileChange}
         />
+        <span className="stitchra-upload-icon" aria-hidden="true">
+          <i />
+        </span>
         <span className="stitchra-upload-button">Choose logo</span>
         <span className="stitchra-upload-copy">
           {fileName ?? 'PNG, JPG or SVG recommended'}
         </span>
       </label>
+
+      {fileName && (
+        <p className="upload-ready-status">Logo ready for preview</p>
+      )}
     </section>
   );
 }

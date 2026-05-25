@@ -150,7 +150,8 @@ type StitchraDesignActionDetail = {
     | 'generateArtworkFromSuggestion'
     | 'openUploadOwnDesign'
     | 'setPlacement'
-    | 'setShirtColor';
+    | 'setShirtColor'
+    | 'scrollToViewer';
   prompt?: string;
   placement?: Placement;
   shirtColor?: TeeColor;
@@ -383,6 +384,8 @@ export default function Home({ locale }: HomeProps = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
+  const shirtViewerRef = useRef<HTMLDivElement | null>(null);
+  const viewerHintTimeoutRef = useRef<number | null>(null);
   const [logoAspectRatio, setLogoAspectRatio] = useState(70 / 45);
   const [logoPlacementConfig, setLogoPlacementConfig] =
     useState<LogoPlacementConfig>(() =>
@@ -390,6 +393,10 @@ export default function Home({ locale }: HomeProps = {}) {
     );
   const [customLogoPlacement, setCustomLogoPlacement] =
     useState<CustomLogoPlacement | null>(null);
+  const [placementMode, setPlacementMode] =
+    useState<'preset' | 'custom'>('preset');
+  const [viewerHint, setViewerHint] = useState('');
+  const [logoFocusPulseKey, setLogoFocusPulseKey] = useState(0);
   const [designStartMode, setDesignStartMode] =
     useState<DesignStartMode>('choice');
   const [hasGeneratedAiConcept, setHasGeneratedAiConcept] =
@@ -505,6 +512,10 @@ export default function Home({ locale }: HomeProps = {}) {
         URL.revokeObjectURL(previewObjectUrlRef.current);
         previewObjectUrlRef.current = null;
       }
+
+      if (viewerHintTimeoutRef.current) {
+        window.clearTimeout(viewerHintTimeoutRef.current);
+      }
     },
     []
   );
@@ -529,9 +540,11 @@ export default function Home({ locale }: HomeProps = {}) {
   const updatePlacement = useCallback((nextPlacement: Placement) => {
     setPlacementGroup(getEmbroideryZone(nextPlacement).group);
     setPlacement(nextPlacement);
+    setPlacementMode('preset');
     setEstimate(null);
     setStatus('');
     setError('');
+    setViewerHint('');
     setCustomLogoPlacement(null);
     setLogoPlacementConfig(
       getDefaultLogoPlacementConfig(
@@ -570,10 +583,44 @@ export default function Home({ locale }: HomeProps = {}) {
     nextPlacement: CustomLogoPlacement | null
   ) => {
     setCustomLogoPlacement(nextPlacement);
+    if (nextPlacement) {
+      setPlacementMode('custom');
+      setViewerHint('Logo placed. Click again to fine-tune it.');
+      setLogoFocusPulseKey((current) => current + 1);
+    }
     setEstimate(null);
     setOrderStatus('');
     setOrderError('');
   };
+
+  const focusShirtViewer = useCallback((hint?: string) => {
+    const viewer = shirtViewerRef.current;
+
+    if (viewer) {
+      const rect = viewer.getBoundingClientRect();
+      const isComfortablyVisible =
+        rect.top >= 72 && rect.bottom <= window.innerHeight - 48;
+
+      if (!isComfortablyVisible) {
+        viewer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    if (hint) {
+      setViewerHint(hint);
+
+      if (viewerHintTimeoutRef.current) {
+        window.clearTimeout(viewerHintTimeoutRef.current);
+      }
+
+      viewerHintTimeoutRef.current = window.setTimeout(() => {
+        setViewerHint('');
+        viewerHintTimeoutRef.current = null;
+      }, 4200);
+    }
+
+    setLogoFocusPulseKey((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     const handleDesignAction = (event: Event) => {
@@ -581,6 +628,10 @@ export default function Home({ locale }: HomeProps = {}) {
 
       if (!detail?.action) {
         return;
+      }
+
+      if (detail.action === 'scrollToViewer') {
+        focusShirtViewer();
       }
 
       if (detail.action === 'openAICreator') {
@@ -598,7 +649,12 @@ export default function Home({ locale }: HomeProps = {}) {
         setLogoPrompt((detail.prompt ?? '').slice(0, 400));
         setDesignPreparation(null);
         window.setTimeout(() => {
-          document.getElementById('stitchra-ai-idea-input')?.focus();
+          const target =
+            detail.action === 'generateArtworkFromSuggestion'
+              ? document.getElementById('stitchra-ai-generate-button')
+              : document.getElementById('stitchra-ai-idea-input');
+
+          target?.focus();
         }, 0);
       }
 
@@ -620,7 +676,7 @@ export default function Home({ locale }: HomeProps = {}) {
     return () => {
       window.removeEventListener('stitchra:design-action', handleDesignAction);
     };
-  }, [logoAspectRatio, teeColor, updatePlacement, updateShirtColor]);
+  }, [focusShirtViewer, logoAspectRatio, teeColor, updatePlacement, updateShirtColor]);
 
   const onFile = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -661,6 +717,7 @@ export default function Home({ locale }: HomeProps = {}) {
     }
 
     await applyLogoPreview(previewUrl);
+    focusShirtViewer('Logo added. Click the shirt to reposition it.');
     setIsAnalyzing(true);
     setStatus(t('status.analyzingLogo'));
 
@@ -780,6 +837,9 @@ export default function Home({ locale }: HomeProps = {}) {
       });
       setHasGeneratedAiConcept(true);
       setDesignStartMode('ai');
+      focusShirtViewer(
+        'AI concept added. Click the shirt to reposition it.'
+      );
 
       setStatus(
         'AI concept generated. Final stitch-ready artwork is reviewed by Stitchra.'
@@ -2555,144 +2615,6 @@ export default function Home({ locale }: HomeProps = {}) {
                 gap: 16,
               }}
             >
-              <label style={label}>
-                {t('designer.choosePlacement')}
-              </label>
-
-              <div style={placementSelector}>
-                <div className="placement-tab-row" style={placementTabRow}>
-                  {placementGroups.map((group) => (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => setPlacementGroup(group.id)}
-                      style={placementTabButton(
-                        placementGroup === group.id
-                      )}
-                    >
-                      {group.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="placement-chip-grid" style={placementChipGrid}>
-                  {placementGroups
-                    .find((group) => group.id === placementGroup)
-                    ?.zones.map((zoneId) => {
-                      const zone = getEmbroideryZone(zoneId);
-                      const active = placement === zoneId;
-
-                      return (
-                        <button
-                          key={zoneId}
-                          type="button"
-                          onClick={() => updatePlacement(zoneId)}
-                          style={placementChipButton(active)}
-                        >
-                          <span>{zone.label}</span>
-                          <small>
-                            {zone.maxWidthMm} × {zone.maxHeightMm} mm
-                          </small>
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <select
-                  className="placement-mobile-select"
-                  value={placement}
-                  onChange={(event) =>
-                    updatePlacement(event.target.value as Placement)
-                  }
-                  style={input}
-                  aria-label="Choose embroidery placement"
-                >
-                  {placementGroups.map((group) => (
-                    <optgroup key={group.id} label={group.label}>
-                      {group.zones.map((zoneId) => {
-                        const zone = getEmbroideryZone(zoneId);
-
-                        return (
-                          <option key={zoneId} value={zoneId}>
-                            {zone.label}
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-
-              <label style={label}>
-                {t('designer.chooseShirtColor')}
-              </label>
-
-              <div
-                className="shirt-color-grid"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'repeat(2,minmax(0,1fr))',
-                  gap: 12,
-                }}
-              >
-                {(['black', 'white'] as const).map(
-                  (color) => {
-                    const active =
-                      teeColor === color;
-
-                    return (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() =>
-                          updateShirtColor(color)
-                        }
-                        style={{
-                          minHeight: 54,
-                          borderRadius: 16,
-                          border: active
-                            ? '1px solid rgba(0,255,136,0.78)'
-                            : '1px solid rgba(255,255,255,0.12)',
-                          background: active
-                            ? 'rgba(0,255,136,0.12)'
-                            : 'rgba(255,255,255,0.045)',
-                          color: '#f5f7f8',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 10,
-                          fontWeight: 850,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 18,
-                            height: 18,
-                            borderRadius: '50%',
-                            background:
-                              color === 'black'
-                                ? '#050607'
-                                : '#f5f1e8',
-                            border:
-                              color === 'black'
-                                ? '1px solid rgba(255,255,255,0.22)'
-                                : '1px solid rgba(0,0,0,0.18)',
-                            boxShadow: active
-                              ? '0 0 18px rgba(0,255,136,0.35)'
-                              : 'none',
-                          }}
-                        />
-                        {color === 'black'
-                          ? t('designer.blackTee')
-                          : t('designer.whiteTee')}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-
               <DesignStartOptions
                 selectedMode={designStartMode}
                 onSelectMode={(mode) => {
@@ -2737,6 +2659,199 @@ export default function Home({ locale }: HomeProps = {}) {
                 />
               )}
 
+              {designStartMode !== 'choice' && (
+                <>
+                  <div className="guided-placement-panel">
+                    <div className="guided-section-header">
+                      <span>Placement</span>
+                      <h3>Choose placement</h3>
+                      <p>
+                        Pick a preset or click directly on the shirt to place
+                        the logo yourself.
+                      </p>
+                    </div>
+
+                    <div className="placement-mode-row">
+                      <button
+                        type="button"
+                        className={
+                          placementMode === 'preset'
+                            ? 'placement-mode-active'
+                            : ''
+                        }
+                        onClick={() => {
+                          setPlacementMode('preset');
+                          setCustomLogoPlacement(null);
+                          setViewerHint('');
+                        }}
+                      >
+                        Preset placement
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          placementMode === 'custom'
+                            ? 'placement-mode-active'
+                            : ''
+                        }
+                        onClick={() => {
+                          setPlacementMode('custom');
+                          focusShirtViewer(
+                            preview
+                              ? 'Click the shirt where you want the logo.'
+                              : 'Upload a logo first, then click the shirt.'
+                          );
+                        }}
+                      >
+                        Place it yourself
+                      </button>
+                    </div>
+
+                    {placementMode === 'preset' && (
+                      <div style={placementSelector}>
+                        <div
+                          className="placement-tab-row"
+                          style={placementTabRow}
+                        >
+                          {placementGroups.map((group) => (
+                            <button
+                              key={group.id}
+                              type="button"
+                              onClick={() => setPlacementGroup(group.id)}
+                              style={placementTabButton(
+                                placementGroup === group.id
+                              )}
+                            >
+                              {group.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div
+                          className="placement-chip-grid"
+                          style={placementChipGrid}
+                        >
+                          {placementGroups
+                            .find((group) => group.id === placementGroup)
+                            ?.zones.map((zoneId) => {
+                              const zone = getEmbroideryZone(zoneId);
+                              const active = placement === zoneId;
+
+                              return (
+                                <button
+                                  key={zoneId}
+                                  type="button"
+                                  onClick={() => updatePlacement(zoneId)}
+                                  style={placementChipButton(active)}
+                                >
+                                  <span>{zone.label}</span>
+                                  <small>
+                                    {zone.maxWidthMm} × {zone.maxHeightMm} mm
+                                  </small>
+                                </button>
+                              );
+                            })}
+                        </div>
+
+                        <select
+                          className="placement-mobile-select"
+                          value={placement}
+                          onChange={(event) =>
+                            updatePlacement(event.target.value as Placement)
+                          }
+                          style={input}
+                          aria-label="Choose embroidery placement"
+                        >
+                          {placementGroups.map((group) => (
+                            <optgroup key={group.id} label={group.label}>
+                              {group.zones.map((zoneId) => {
+                                const zone = getEmbroideryZone(zoneId);
+
+                                return (
+                                  <option key={zoneId} value={zoneId}>
+                                    {zone.label}
+                                  </option>
+                                );
+                              })}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="guided-shirt-color-panel">
+                    <div className="guided-section-header">
+                      <span>Garment</span>
+                      <h3>{t('designer.chooseShirtColor')}</h3>
+                    </div>
+                    <div
+                      className="shirt-color-grid"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(2,minmax(0,1fr))',
+                        gap: 12,
+                      }}
+                    >
+                      {(['black', 'white'] as const).map(
+                        (color) => {
+                          const active =
+                            teeColor === color;
+
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() =>
+                                updateShirtColor(color)
+                              }
+                              style={{
+                                minHeight: 54,
+                                borderRadius: 16,
+                                border: active
+                                  ? '1px solid rgba(0,255,136,0.78)'
+                                  : '1px solid rgba(255,255,255,0.12)',
+                                background: active
+                                  ? 'rgba(0,255,136,0.12)'
+                                  : 'rgba(255,255,255,0.045)',
+                                color: '#f5f7f8',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                fontWeight: 850,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: '50%',
+                                  background:
+                                    color === 'black'
+                                      ? '#050607'
+                                      : '#f5f1e8',
+                                  border:
+                                    color === 'black'
+                                      ? '1px solid rgba(255,255,255,0.22)'
+                                      : '1px solid rgba(0,0,0,0.18)',
+                                  boxShadow: active
+                                    ? '0 0 18px rgba(0,255,136,0.35)'
+                                    : 'none',
+                                }}
+                              />
+                              {color === 'black'
+                                ? t('designer.blackTee')
+                                : t('designer.whiteTee')}
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
+
               <div style={configuratorControlPanel}>
                 <div style={configuratorControlHeader}>
                   <strong>Logo placement</strong>
@@ -2763,8 +2878,7 @@ export default function Home({ locale }: HomeProps = {}) {
                   />
                 </label>
                 <p style={configuratorHint}>
-                  Drag the logo on the shirt preview. The placement zone
-                  is locked to current embroidery limits.
+                  Logo size stays within safe embroidery limits.
                 </p>
                 {capabilityPreview.message && (
                   <p
@@ -2775,7 +2889,9 @@ export default function Home({ locale }: HomeProps = {}) {
                         : '#ffe083',
                     }}
                   >
-                    {capabilityPreview.message}
+                    {capabilityPreview.blocked
+                      ? capabilityPreview.message
+                      : 'Studio review recommended so we can keep the stitch quality clean.'}
                   </p>
                 )}
               </div>
@@ -3283,21 +3399,34 @@ export default function Home({ locale }: HomeProps = {}) {
                   )}
                 </>
               )}
+                </>
+              )}
             </div>
           </HoverCard>
 
-          <ShirtPlacementMockup
-            key={`${placementZoneId}-${placementGroup}`}
-            logoUrl={preview}
-            shirtColor={teeColor}
-            placementZone={placementZoneId}
-            config={logoPlacementConfig}
-            logoAspectRatio={logoAspectRatio}
-            onConfigChange={updateLogoPlacementConfig}
-            customPlacement={customLogoPlacement}
-            onCustomPlacementChange={updateCustomLogoPlacement}
-            viewerGroup={placementGroup}
-          />
+          <div ref={shirtViewerRef} className="showroom-viewer-anchor">
+            <ShirtPlacementMockup
+              key={`${placementZoneId}-${placementGroup}`}
+              logoUrl={preview}
+              shirtColor={teeColor}
+              placementZone={placementZoneId}
+              config={logoPlacementConfig}
+              logoAspectRatio={logoAspectRatio}
+              onConfigChange={updateLogoPlacementConfig}
+              customPlacement={customLogoPlacement}
+              onCustomPlacementChange={updateCustomLogoPlacement}
+              viewerGroup={placementGroup}
+              focusPulseKey={logoFocusPulseKey}
+              guidanceHint={
+                viewerHint ||
+                (placementMode === 'custom'
+                  ? preview
+                    ? 'Click the shirt where you want the logo.'
+                    : 'Upload a logo first, then click the shirt.'
+                  : undefined)
+              }
+            />
+          </div>
         </div>
       </section>
 
@@ -4377,17 +4506,35 @@ function GlobalVisualStyles() {
 
         .stitchra-upload-box {
           width: 100%;
-          min-height: 92px;
+          min-height: 116px;
           display: grid;
-          grid-template-columns: minmax(130px, auto) minmax(0, 1fr);
+          grid-template-columns: auto minmax(128px, auto) minmax(0, 1fr);
           align-items: center;
-          gap: 14px;
-          padding: 16px;
-          border-radius: 18px;
-          border: 1px solid rgba(255,255,255,0.12);
+          gap: 16px;
+          padding: 18px;
+          border-radius: 24px;
+          border: 1px solid rgba(0,215,255,0.18);
           background:
-            linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.028));
+            radial-gradient(circle at 14% 22%, rgba(0,255,136,0.14), transparent 34%),
+            radial-gradient(circle at 88% 72%, rgba(0,215,255,0.11), transparent 34%),
+            linear-gradient(135deg, rgba(255,255,255,0.085), rgba(255,255,255,0.030));
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 20px 58px rgba(0,0,0,0.20);
           cursor: pointer;
+          transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .stitchra-upload-box:hover {
+          transform: translateY(-1px);
+          border-color: rgba(24,255,154,0.38);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.10),
+            0 24px 72px rgba(0,0,0,0.26),
+            0 0 34px rgba(0,215,255,0.08);
         }
 
         .stitchra-upload-box input {
@@ -4396,6 +4543,40 @@ function GlobalVisualStyles() {
           block-size: 1px;
           opacity: 0;
           pointer-events: none;
+        }
+
+        .stitchra-upload-icon {
+          width: 58px;
+          height: 58px;
+          display: grid;
+          place-items: center;
+          border-radius: 18px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background:
+            radial-gradient(circle at 34% 24%, rgba(255,255,255,0.18), transparent 32%),
+            rgba(0,255,136,0.09);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 28px rgba(0,255,136,0.10);
+        }
+
+        .stitchra-upload-icon i {
+          position: relative;
+          width: 30px;
+          height: 24px;
+          display: block;
+          border: 2px solid rgba(0,215,255,0.92);
+          border-radius: 8px;
+        }
+
+        .stitchra-upload-icon i::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          top: -12px;
+          width: 16px;
+          height: 16px;
+          border-top: 2px solid #18ff9a;
+          border-left: 2px solid #18ff9a;
+          transform: translateX(-50%) rotate(45deg);
         }
 
         .stitchra-upload-button {
@@ -4417,6 +4598,21 @@ function GlobalVisualStyles() {
           font-size: 13px;
           line-height: 1.4;
           overflow-wrap: anywhere;
+        }
+
+        .upload-ready-status {
+          margin: 0;
+          width: fit-content;
+          min-height: 34px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(24,255,154,0.25);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.08);
+          font-size: 12px;
+          font-weight: 850;
         }
 
         .design-start-panel,
@@ -4473,17 +4669,18 @@ function GlobalVisualStyles() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 14px;
+          align-items: stretch;
         }
 
         .design-start-card {
           position: relative;
           min-width: 0;
-          min-height: 220px;
+          min-height: 250px;
           display: grid;
           grid-template-rows: auto auto 1fr auto;
-          gap: 13px;
+          gap: 16px;
           align-content: start;
-          padding: 18px;
+          padding: 20px;
           overflow: hidden;
           border: 1px solid rgba(255,255,255,0.12);
           border-radius: 22px;
@@ -4561,8 +4758,9 @@ function GlobalVisualStyles() {
         }
 
         .design-start-visual {
-          width: 78px;
-          height: 66px;
+          position: relative;
+          width: 100%;
+          height: 96px;
           display: grid;
           place-items: center;
           border-radius: 20px;
@@ -4581,6 +4779,39 @@ function GlobalVisualStyles() {
           border-radius: 12px;
           border: 2px solid rgba(0,255,136,0.86);
           box-shadow: 0 0 22px rgba(0,255,136,0.22);
+        }
+
+        .design-start-visual b {
+          position: absolute;
+          right: 12px;
+          bottom: 12px;
+          min-height: 24px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 8px;
+          border-radius: 999px;
+          color: rgba(246,255,249,0.82);
+          background: rgba(0,0,0,0.34);
+          border: 1px solid rgba(255,255,255,0.12);
+          font-size: 10px;
+          font-style: normal;
+          font-weight: 900;
+          letter-spacing: 0.05em;
+        }
+
+        .design-start-visual-upload b:nth-of-type(1) {
+          right: 74px;
+        }
+
+        .design-start-visual-upload b:nth-of-type(2) {
+          right: 42px;
+        }
+
+        .design-start-visual-ai b {
+          right: 14px;
+          color: #071110;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          border-color: transparent;
         }
 
         .design-start-visual-upload i::before,
@@ -4657,6 +4888,151 @@ function GlobalVisualStyles() {
         .design-path-panel .designer-prompt-row .lux-button {
           min-width: 0;
           border: 0;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          box-shadow: 0 16px 44px rgba(0,220,190,0.20);
+        }
+
+        .ai-idea-chip-row {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+          scrollbar-width: none;
+        }
+
+        .ai-idea-chip-row::-webkit-scrollbar {
+          display: none;
+        }
+
+        .ai-idea-chip-row button {
+          min-height: 36px;
+          flex: 0 0 auto;
+          border: 1px solid rgba(0,215,255,0.16);
+          border-radius: 999px;
+          color: rgba(246,255,249,0.84);
+          background: rgba(255,255,255,0.052);
+          padding: 0 12px;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            background 160ms ease;
+        }
+
+        .ai-idea-chip-row button:hover {
+          transform: translateY(-1px);
+          border-color: rgba(0,215,255,0.42);
+          background: rgba(0,215,255,0.09);
+        }
+
+        .ai-concept-status {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
+          border-radius: 18px;
+          border: 1px solid rgba(24,255,154,0.20);
+          background: rgba(24,255,154,0.075);
+        }
+
+        .ai-concept-status span {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 10px;
+          border-radius: 999px;
+          color: #071110;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font-size: 11px;
+          font-weight: 950;
+        }
+
+        .ai-concept-status strong {
+          color: #9dffc4;
+          font-size: 13px;
+        }
+
+        .guided-placement-panel,
+        .guided-shirt-color-panel {
+          display: grid;
+          gap: 14px;
+          padding: 18px;
+          border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background:
+            radial-gradient(circle at 88% 18%, rgba(0,215,255,0.09), transparent 30%),
+            rgba(255,255,255,0.035);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .guided-section-header {
+          display: grid;
+          gap: 5px;
+        }
+
+        .guided-section-header span {
+          color: #00d7ff;
+          font-size: 11px;
+          font-weight: 880;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+        }
+
+        .guided-section-header h3 {
+          margin: 0;
+          color: #f5f7f8;
+          font-size: 19px;
+          line-height: 1.18;
+        }
+
+        .guided-section-header p {
+          margin: 0;
+          color: rgba(245,247,248,0.62);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .placement-mode-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .placement-mode-row button {
+          min-height: 46px;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 999px;
+          color: rgba(246,255,249,0.82);
+          background: rgba(255,255,255,0.045);
+          font: inherit;
+          font-weight: 850;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            background 160ms ease;
+        }
+
+        .placement-mode-row button:hover,
+        .placement-mode-row .placement-mode-active {
+          transform: translateY(-1px);
+          border-color: rgba(24,255,154,0.42);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.10);
+        }
+
+        .showroom-viewer-anchor {
+          order: 1;
+          min-width: 0;
+        }
+
+        .showroom-viewer-anchor .shirt-placement-preview-card {
+          min-height: 720px;
         }
 
         .design-path-link {
@@ -7227,12 +7603,6 @@ const configuratorWarning: CSSProperties = {
   fontSize: 13,
   lineHeight: 1.45,
   fontWeight: 750,
-};
-
-const label: CSSProperties = {
-  color: 'rgba(255,255,255,0.72)',
-  fontSize: 14,
-  fontWeight: 800,
 };
 
 const statCard: CSSProperties = {
