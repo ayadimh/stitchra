@@ -287,6 +287,22 @@ function clearSavedLauncherPosition() {
   }
 }
 
+function clearResetAgentQueryFlag() {
+  const url = new URL(window.location.href);
+
+  if (url.searchParams.get("resetAgent") !== "1") {
+    return;
+  }
+
+  clearSavedLauncherPosition();
+  url.searchParams.delete("resetAgent");
+
+  const nextSearch = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${url.hash}`;
+
+  window.history.replaceState(null, "", nextUrl || "/");
+}
+
 function isLauncherRectVisible(element: HTMLElement | null) {
   if (!element) {
     return true;
@@ -330,8 +346,22 @@ export default function StitchraDesignAgent() {
   const isHidden = useMemo(() => shouldHideAgent(pathname), [pathname]);
 
   const applyLauncherPosition = useCallback((position: LauncherPosition) => {
-    launcherPositionRef.current = position;
-    setLauncherPosition(position);
+    const nextPosition = {
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+    };
+    const currentPosition = launcherPositionRef.current;
+
+    if (
+      currentPosition &&
+      Math.abs(currentPosition.x - nextPosition.x) < 1 &&
+      Math.abs(currentPosition.y - nextPosition.y) < 1
+    ) {
+      return;
+    }
+
+    launcherPositionRef.current = nextPosition;
+    setLauncherPosition(nextPosition);
   }, []);
 
   const getLauncherSize = useCallback(() => {
@@ -374,6 +404,8 @@ export default function StitchraDesignAgent() {
   }, [applyLauncherPosition, getLauncherSize]);
 
   useEffect(() => {
+    clearResetAgentQueryFlag();
+
     return () => {
       abortControllerRef.current?.abort();
       if (launcherAnimationFrameRef.current !== null) {

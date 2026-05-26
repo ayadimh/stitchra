@@ -2611,6 +2611,63 @@ export default function Home({ locale }: HomeProps = {}) {
     scrollToOrderRequest();
   };
 
+  const mobileExploreSections = [
+    {
+      id: 'mobile-explore-how',
+      title: t('nav.how'),
+      summary: 'Create or upload, review the concept, place it on fabric, get a quote, then request your order.',
+      bullets: [
+        'Create with AI or upload a logo',
+        'Review the artwork clearly',
+        'Place it on the shirt and check price',
+      ],
+    },
+    {
+      id: 'mobile-explore-craft',
+      title: 'Craft quality',
+      summary: 'Stitchra keeps the preview practical for embroidery: clean shapes, readable size and studio review when needed.',
+      bullets: ['Fabric-aware preview', 'Background cleanup', 'Studio quality check'],
+    },
+    {
+      id: 'mobile-explore-pricing',
+      title: t('nav.pricing'),
+      summary: 'Small simple left-chest logos can start around €9. Larger front designs can start around €13.',
+      bullets: ['Final offer before production', 'Studio review for complex artwork', 'Customer-facing quote only'],
+    },
+    {
+      id: 'mobile-explore-gallery',
+      title: t('nav.gallery'),
+      summary: 'Browse compact examples for clubs, creators, events and small brands without scrolling through the full desktop page.',
+      bullets: ['Badges', 'Brand marks', 'Event shirts'],
+    },
+    {
+      id: 'mobile-explore-features',
+      title: t('nav.features'),
+      summary: 'AI concept generation, logo cleanup, placement preview and quote request are combined in one mobile studio flow.',
+      bullets: ['AI Concept Studio', 'Upload your own design', 'Draft recovery after refresh'],
+    },
+    {
+      id: 'mobile-explore-faq',
+      title: t('nav.faq'),
+      summary: 'You can order one shirt, upload your own file, or create an original AI concept before requesting a quote.',
+      bullets: ['Payment happens after final offer', 'Use only designs you have rights to', 'Support: orders@stitchra.com'],
+    },
+  ];
+  const currentMobileStepIndex = Math.max(
+    0,
+    guidedStudioSteps.findIndex((step) => step.id === currentStudioStep)
+  );
+  const currentMobileStepLabel =
+    guidedStudioSteps[currentMobileStepIndex]?.label ?? 'Start';
+  const mobileStepHelp: Record<GuidedStudioStepId, string> = {
+    start: 'Choose whether to upload your own logo or create an original AI concept.',
+    create: 'Add the artwork first. You can upload a file or describe an AI concept.',
+    review: 'Check the concept clearly before using it on the shirt.',
+    place: 'Tap the shirt, choose a preset, and adjust the logo size.',
+    price: 'Check the customer-facing estimate before you request an offer.',
+    request: 'Send the design request so Stitchra can prepare the final offer.',
+  };
+
   return (
     <main
       lang={activeLocale}
@@ -2658,8 +2715,71 @@ export default function Home({ locale }: HomeProps = {}) {
         onKeepEditing={() => setDesignAddedToastOpen(false)}
       />
 
+      <section id="mobile-home" className="mobile-app-launch" aria-label="Stitchra mobile start">
+        <div className="mobile-launch-card">
+          <div className="mobile-launch-logo" aria-hidden="true">
+            <StitchraLogo compact markOnly size={62} />
+            <span />
+          </div>
+          <p>AI Embroidery Studio</p>
+          <h1>Stitchra</h1>
+          <strong>
+            Create a logo idea, preview it on fabric, and get a clear embroidery quote.
+          </strong>
+          <div className="mobile-launch-actions">
+            <a
+              href="#designer"
+              className="mobile-launch-primary"
+              onClick={handleStartDesigningClick}
+            >
+              {t('nav.start')}
+            </a>
+            <a href="#mobile-explore" className="mobile-launch-secondary">
+              Explore
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section id="mobile-explore" className="mobile-explore-hub">
+        <div className="mobile-explore-heading">
+          <span>Explore Stitchra</span>
+          <h2>A compact guide before you design.</h2>
+          <p>
+            The full desktop story is still available on larger screens. On mobile,
+            start quickly and open only the details you need.
+          </p>
+        </div>
+
+        <div className="mobile-explore-grid">
+          {mobileExploreSections.map((item, index) => (
+            <details key={item.id} id={item.id} open={index === 0}>
+              <summary>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                {item.title}
+              </summary>
+              <p>{item.summary}</p>
+              <ul>
+                {item.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
+            </details>
+          ))}
+        </div>
+
+        <a
+          href="#designer"
+          className="mobile-explore-cta"
+          onClick={handleStartDesigningClick}
+        >
+          {t('nav.start')}
+        </a>
+      </section>
+
       <section
         id="hero"
+        className="desktop-home-section desktop-hero-section"
         style={{
           minHeight: '100svh',
           padding: '124px 24px 90px',
@@ -4051,6 +4171,7 @@ export default function Home({ locale }: HomeProps = {}) {
         id="designer"
         ref={studioRootRef}
         className="designer-section showroom-section"
+        data-mobile-step={currentStudioStep}
         style={{
           padding: '112px 24px 128px',
           position: 'relative',
@@ -4058,6 +4179,14 @@ export default function Home({ locale }: HomeProps = {}) {
           minHeight: '100vh',
         }}
       >
+        <div className="mobile-wizard-status" aria-live="polite">
+          <span>
+            Step {currentMobileStepIndex + 1} of {guidedStudioSteps.length}
+          </span>
+          <strong>{currentMobileStepLabel}</strong>
+          <p>{mobileStepHelp[currentStudioStep]}</p>
+        </div>
+
         <div className="guided-studio-stepper-wrap">
           <GuidedStudioStepper
             steps={guidedStudioSteps}
@@ -5104,7 +5233,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="how" style={sectionStyle}>
+      <section id="how" className="desktop-home-section" style={sectionStyle}>
         <SectionHeader
           eyebrow={t('sections.processEyebrow')}
           title={t('sections.processTitle')}
@@ -5126,7 +5255,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="features" className="studio-tools-section" style={toolSectionStyle}>
+      <section id="features" className="desktop-home-section studio-tools-section" style={toolSectionStyle}>
         <div style={toolSectionInner}>
           <SectionHeader
             eyebrow={t('sections.featuresEyebrow')}
@@ -5150,7 +5279,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="craft" style={sectionStyle}>
+      <section id="craft" className="desktop-home-section" style={sectionStyle}>
         <div className="production-layout">
           <div className="craft-copy-panel">
             <div style={sectionEyebrow}>
@@ -5262,7 +5391,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="gallery" style={sectionStyle}>
+      <section id="gallery" className="desktop-home-section" style={sectionStyle}>
         <SectionHeader
           eyebrow={t('sections.galleryEyebrow')}
           title={t('sections.galleryTitle')}
@@ -5282,7 +5411,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="pricing" style={sectionStyle}>
+      <section id="pricing" className="desktop-home-section" style={sectionStyle}>
         <SectionHeader
           eyebrow={t('sections.pricingEyebrow')}
           title={t('sections.pricingTitle')}
@@ -5377,7 +5506,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="faq" style={sectionStyle}>
+      <section id="faq" className="desktop-home-section" style={sectionStyle}>
         <SectionHeader
           eyebrow={t('sections.faqEyebrow')}
           title={t('sections.faqTitle')}
@@ -5397,7 +5526,7 @@ export default function Home({ locale }: HomeProps = {}) {
         </div>
       </section>
 
-      <section style={ctaSection}>
+      <section className="desktop-home-section" style={ctaSection}>
         <div
           className="glow-card final-cta-card"
         >
@@ -5469,6 +5598,14 @@ function Header({
   onStartDesigning: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const navItems = getNavItems(t);
+  const mobileNavItems = [
+    { label: t('nav.how'), href: '#mobile-explore-how' },
+    { label: t('nav.pricing'), href: '#mobile-explore-pricing' },
+    { label: t('nav.gallery'), href: '#mobile-explore-gallery' },
+    { label: t('nav.features'), href: '#mobile-explore-features' },
+    { label: t('nav.faq'), href: '#mobile-explore-faq' },
+    { label: t('footer.contact'), href: '/contact' },
+  ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileLanguageOpen, setMobileLanguageOpen] = useState(false);
   const closeMobileMenu = () => {
@@ -5657,7 +5794,7 @@ function Header({
             </div>
 
             <nav className="mobile-menu-panel" aria-label="Mobile navigation">
-              {navItems.map((item) => (
+              {mobileNavItems.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
@@ -8422,7 +8559,8 @@ function GlobalVisualStyles() {
 
         @media (prefers-reduced-motion: reduce) {
           .homepage-card-visual,
-          .homepage-card-visual::after {
+          .homepage-card-visual::after,
+          .mobile-launch-logo > span {
             animation: none !important;
           }
         }
@@ -8724,6 +8862,12 @@ function GlobalVisualStyles() {
 
         .site-nav {
           width: 100%;
+        }
+
+        .mobile-app-launch,
+        .mobile-explore-hub,
+        .mobile-wizard-status {
+          display: none;
         }
 
         .mobile-menu-panel,
@@ -9302,8 +9446,46 @@ function GlobalVisualStyles() {
             gap: 4px;
           }
 
+          .site-nav {
+            height: 74px !important;
+            padding: 0 16px !important;
+          }
+
+          .header-logo .stitchra-logo-copy {
+            display: none !important;
+          }
+
+          .header-logo {
+            gap: 0 !important;
+          }
+
+          .header-logo > span:first-child {
+            width: 46px !important;
+            height: 46px !important;
+            border-radius: 16px !important;
+          }
+
+          .header-logo svg {
+            width: 46px !important;
+            height: 46px !important;
+          }
+
+          .header-links {
+            gap: 8px !important;
+            min-width: 0;
+          }
+
+          .header-links .lux-button {
+            min-height: 44px !important;
+            padding: 0 14px !important;
+            border-radius: 14px !important;
+            font-size: 13px !important;
+            white-space: nowrap;
+          }
+
           .header-brand {
             gap: 10px !important;
+            flex-shrink: 0;
           }
 
           .production-layout {
@@ -9337,6 +9519,321 @@ function GlobalVisualStyles() {
 
           .tool-card-grid .tool-card:nth-child(even) {
             transform: none;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .desktop-home-section {
+            display: none !important;
+          }
+
+          .mobile-app-launch,
+          .mobile-explore-hub {
+            display: block;
+          }
+
+          .mobile-app-launch {
+            min-height: 100svh;
+            padding: calc(96px + env(safe-area-inset-top)) 16px 28px;
+            position: relative;
+            z-index: 1;
+          }
+
+          .mobile-launch-card {
+            min-height: calc(100svh - 132px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 18px;
+            padding: 26px;
+            border: 1px solid rgba(140,255,220,0.18);
+            border-radius: 34px;
+            background:
+              radial-gradient(circle at 20% 0%, rgba(0,255,136,0.18), transparent 34%),
+              radial-gradient(circle at 92% 16%, rgba(0,200,255,0.14), transparent 32%),
+              rgba(5, 10, 11, 0.82);
+            box-shadow:
+              0 34px 100px rgba(0,0,0,0.38),
+              inset 0 1px 0 rgba(255,255,255,0.08);
+            backdrop-filter: blur(14px);
+          }
+
+          .mobile-launch-logo {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 8px;
+          }
+
+          .mobile-launch-logo > span {
+            position: absolute;
+            left: 14px;
+            right: 8px;
+            bottom: 4px;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, transparent, #18ff9a, #00c8ff);
+            transform-origin: left center;
+            animation: mobileThreadDraw 900ms ease-out 1 both;
+          }
+
+          .mobile-launch-card p,
+          .mobile-explore-heading span {
+            margin: 0;
+            color: #18ff9a;
+            font-size: 12px;
+            font-weight: 950;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+          }
+
+          .mobile-launch-card h1 {
+            margin: 0;
+            color: #f7fff9;
+            font-size: clamp(50px, 17vw, 72px);
+            line-height: 0.94;
+            letter-spacing: 0;
+          }
+
+          .mobile-launch-card strong {
+            max-width: 330px;
+            color: rgba(246,255,249,0.74);
+            font-size: 18px;
+            line-height: 1.5;
+            font-weight: 650;
+          }
+
+          .mobile-launch-actions {
+            width: 100%;
+            display: grid;
+            gap: 12px;
+            margin-top: 10px;
+          }
+
+          .mobile-launch-primary,
+          .mobile-launch-secondary,
+          .mobile-explore-cta {
+            min-height: 54px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 950;
+          }
+
+          .mobile-launch-primary,
+          .mobile-explore-cta {
+            color: #06100a;
+            background: linear-gradient(135deg, #00ff88, #00c8ff);
+            box-shadow: 0 18px 48px rgba(0,200,255,0.20);
+          }
+
+          .mobile-launch-secondary {
+            color: #f7fff9;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.055);
+          }
+
+          .mobile-explore-hub {
+            padding: 28px 16px 38px;
+            scroll-margin-top: 92px;
+            position: relative;
+            z-index: 1;
+          }
+
+          .mobile-explore-heading {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 16px;
+          }
+
+          .mobile-explore-heading h2 {
+            margin: 0;
+            color: #f7fff9;
+            font-size: clamp(28px, 9vw, 40px);
+            line-height: 1.04;
+            letter-spacing: 0;
+          }
+
+          .mobile-explore-heading p {
+            margin: 0;
+            color: rgba(246,255,249,0.64);
+            line-height: 1.58;
+          }
+
+          .mobile-explore-grid {
+            display: grid;
+            gap: 10px;
+          }
+
+          .mobile-explore-grid details {
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 22px;
+            background: rgba(255,255,255,0.045);
+            overflow: hidden;
+          }
+
+          .mobile-explore-grid summary {
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 15px;
+            color: #f7fff9;
+            font-weight: 900;
+            cursor: pointer;
+            list-style: none;
+          }
+
+          .mobile-explore-grid summary::-webkit-details-marker {
+            display: none;
+          }
+
+          .mobile-explore-grid summary span {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            color: #06100a;
+            background: linear-gradient(135deg, #18ff9a, #00c8ff);
+            font-size: 12px;
+          }
+
+          .mobile-explore-grid details p,
+          .mobile-explore-grid details ul {
+            margin: 0;
+            padding: 0 15px 14px 61px;
+            color: rgba(246,255,249,0.68);
+            line-height: 1.5;
+            font-size: 14px;
+          }
+
+          .mobile-explore-grid details ul {
+            display: grid;
+            gap: 6px;
+            padding-bottom: 16px;
+          }
+
+          .mobile-explore-cta {
+            width: 100%;
+            margin-top: 16px;
+          }
+
+          .designer-section {
+            padding: calc(92px + env(safe-area-inset-top)) 12px 120px !important;
+            min-height: auto !important;
+          }
+
+          .mobile-wizard-status {
+            max-width: 100%;
+            margin: 0 auto 12px;
+            display: grid;
+            gap: 5px;
+            padding: 15px;
+            border: 1px solid rgba(140,255,220,0.16);
+            border-radius: 22px;
+            background:
+              radial-gradient(circle at 12% 0%, rgba(0,255,136,0.12), transparent 34%),
+              rgba(255,255,255,0.045);
+          }
+
+          .mobile-wizard-status span {
+            color: #18ff9a;
+            font-size: 11px;
+            font-weight: 950;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+          }
+
+          .mobile-wizard-status strong {
+            color: #f7fff9;
+            font-size: 22px;
+            line-height: 1.1;
+          }
+
+          .mobile-wizard-status p {
+            margin: 0;
+            color: rgba(246,255,249,0.64);
+            line-height: 1.45;
+            font-size: 14px;
+          }
+
+          .guided-studio-stepper-wrap {
+            position: sticky;
+            top: calc(74px + env(safe-area-inset-top));
+            z-index: 32;
+            margin-bottom: 14px;
+            scroll-margin-top: 112px;
+          }
+
+          .guided-studio-stepper {
+            border-radius: 22px;
+            padding: 7px;
+            background: rgba(4, 10, 11, 0.82);
+            backdrop-filter: blur(12px);
+          }
+
+          .guided-studio-step {
+            flex: 0 0 auto;
+            min-height: 38px;
+            padding: 0 11px;
+            font-size: 11px;
+          }
+
+          .designer-grid.showroom-grid {
+            display: flex !important;
+            flex-direction: column;
+            gap: 16px !important;
+            max-width: 100% !important;
+          }
+
+          .showroom-viewer-anchor {
+            order: 1;
+            scroll-margin-top: 112px;
+          }
+
+          .showroom-controls-card {
+            order: 2;
+          }
+
+          .designer-stat-grid {
+            display: none !important;
+          }
+
+          .showroom-control-stack {
+            gap: 13px !important;
+          }
+
+          .guided-placement-panel,
+          .guided-shirt-color-panel,
+          .quote-action-anchor,
+          .order-request-anchor,
+          .design-draft-footer {
+            scroll-margin-top: 112px;
+          }
+
+          .designer-controls-card {
+            box-shadow:
+              0 24px 80px rgba(0,0,0,0.28),
+              inset 0 1px 0 rgba(255,255,255,0.08) !important;
+            backdrop-filter: blur(12px) !important;
+          }
+
+          @keyframes mobileThreadDraw {
+            from {
+              transform: scaleX(0);
+              opacity: 0;
+            }
+            to {
+              transform: scaleX(1);
+              opacity: 1;
+            }
           }
         }
 
