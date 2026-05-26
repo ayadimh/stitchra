@@ -712,6 +712,8 @@ export default function Home({ locale }: HomeProps = {}) {
   const previewObjectUrlRef = useRef<string | null>(null);
   const studioRootRef = useRef<HTMLDivElement | null>(null);
   const shirtViewerRef = useRef<HTMLDivElement | null>(null);
+  const uploadPanelRef = useRef<HTMLDivElement | null>(null);
+  const aiCreatorRef = useRef<HTMLDivElement | null>(null);
   const aiReviewRef = useRef<HTMLDivElement | null>(null);
   const placementControlsRef = useRef<HTMLDivElement | null>(null);
   const priceActionRef = useRef<HTMLDivElement | null>(null);
@@ -749,6 +751,7 @@ export default function Home({ locale }: HomeProps = {}) {
   const [designAddedToastOpen, setDesignAddedToastOpen] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [previewExportStatus, setPreviewExportStatus] = useState('');
+  const [emptyDesignHelperOpen, setEmptyDesignHelperOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [newDesignToast, setNewDesignToast] = useState('');
 
@@ -1058,6 +1061,62 @@ export default function Home({ locale }: HomeProps = {}) {
     scrollToPriceAction();
   }, [scrollToPriceAction]);
 
+  const scrollToUploadPanel = useCallback(() => {
+    setDesignStartMode('upload');
+    setError('');
+    setUploadError('');
+    setStatus('');
+    setBackgroundCleanupStatus('');
+    setEmptyDesignHelperOpen(false);
+
+    window.setTimeout(() => {
+      const target = uploadPanelRef.current ?? studioRootRef.current;
+
+      if (target) {
+        scrollElementToViewportCenter(target);
+      }
+    }, 0);
+  }, []);
+
+  const scrollToAiCreator = useCallback(() => {
+    setDesignStartMode('ai');
+    setError('');
+    setUploadError('');
+    setStatus('');
+    setBackgroundCleanupStatus('');
+    setEmptyDesignHelperOpen(false);
+
+    window.setTimeout(() => {
+      const target = aiCreatorRef.current ?? studioRootRef.current;
+
+      if (target) {
+        scrollElementToViewportCenter(target);
+      }
+
+      document.getElementById('stitchra-ai-idea-input')?.focus();
+    }, 0);
+  }, []);
+
+  const showEmptyDesignHelper = useCallback(() => {
+    if (preview) {
+      return;
+    }
+
+    setEmptyDesignHelperOpen(true);
+    setViewerHint(
+      'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.'
+    );
+
+    if (viewerHintTimeoutRef.current) {
+      window.clearTimeout(viewerHintTimeoutRef.current);
+    }
+
+    viewerHintTimeoutRef.current = window.setTimeout(() => {
+      setViewerHint('');
+      viewerHintTimeoutRef.current = null;
+    }, 5200);
+  }, [preview]);
+
   const handleStartDesigningClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
@@ -1113,6 +1172,7 @@ export default function Home({ locale }: HomeProps = {}) {
     setError('');
     setUploadError('');
     setPreviewExportStatus('');
+    setEmptyDesignHelperOpen(false);
     setBackgroundCleanupStatus('');
     setGenerationIntent(null);
     setDesignAddedToastOpen(false);
@@ -1596,6 +1656,7 @@ export default function Home({ locale }: HomeProps = {}) {
     }
 
     await applyLogoPreview(previewUrl);
+    setEmptyDesignHelperOpen(false);
     setDesignAddedToastOpen(true);
     focusShirtViewer('Logo added. Click the shirt to reposition it.', true);
     setIsAnalyzing(true);
@@ -1843,6 +1904,7 @@ export default function Home({ locale }: HomeProps = {}) {
       setStatus(
         'AI concept added. Final stitch-ready artwork is reviewed by Stitchra.'
       );
+      setEmptyDesignHelperOpen(false);
       setDraftSaveStatus('Draft saved just now');
     } catch {
       setError(t('status.generatorFailed'));
@@ -1885,6 +1947,7 @@ export default function Home({ locale }: HomeProps = {}) {
       setBackgroundCleanupStatus('Background cleaned. Preview updated.');
       setDesignAddedToastOpen(true);
       focusShirtViewer('Background cleaned. Click the shirt to reposition it.', true);
+      setEmptyDesignHelperOpen(false);
     } catch {
       setBackgroundCleanupStatus(
         'Background cleanup failed. You can still use the original design.'
@@ -2439,7 +2502,7 @@ export default function Home({ locale }: HomeProps = {}) {
         ? 'place'
         : designStartMode === 'ai' && aiConcepts.length > 0
           ? 'review'
-          : designStartMode !== 'choice'
+          : emptyDesignHelperOpen || designStartMode !== 'choice'
             ? 'create'
             : 'start';
 
@@ -4051,6 +4114,7 @@ export default function Home({ locale }: HomeProps = {}) {
                   setUploadError('');
                   setStatus('');
                   setBackgroundCleanupStatus('');
+                  setEmptyDesignHelperOpen(false);
 
                   if (mode === 'ai') {
                     window.setTimeout(() => {
@@ -4063,41 +4127,41 @@ export default function Home({ locale }: HomeProps = {}) {
               />
 
               {designStartMode === 'upload' && (
-                <UploadOwnDesignPanel
-                  fileName={file?.name ?? null}
-                  canCleanBackground={Boolean(file) && !isSvgLogoFile(file)}
-                  isCleaningBackground={isCleaningBackground}
-                  cleanupStatus={backgroundCleanupStatus}
-                  errorMessage={uploadError}
-                  onFileChange={onFile}
-                  onCleanBackground={() => void cleanUploadedLogoBackground()}
-                  onViewOnShirt={() => focusShirtViewer(undefined, true)}
-                />
+                <div ref={uploadPanelRef}>
+                  <UploadOwnDesignPanel
+                    fileName={file?.name ?? null}
+                    canCleanBackground={Boolean(file) && !isSvgLogoFile(file)}
+                    isCleaningBackground={isCleaningBackground}
+                    cleanupStatus={backgroundCleanupStatus}
+                    errorMessage={uploadError}
+                    onFileChange={onFile}
+                    onCleanBackground={() => void cleanUploadedLogoBackground()}
+                    onViewOnShirt={() => focusShirtViewer(undefined, true)}
+                  />
+                </div>
               )}
 
               {designStartMode === 'ai' && (
                 <>
-                  <AICreatorPanel
-                    prompt={logoPrompt}
-                    selectedStyleHints={aiStyleHints}
-                    isGenerating={isGenerating}
-                    hasGeneratedConcept={hasGeneratedAiConcept}
-                    onPromptChange={(value) => {
-                      setLogoPrompt(value);
-                      setDesignPreparation(null);
-                      setError('');
-                      setStatus('');
-                    }}
-                    onToggleStyleHint={toggleAiStyleHint}
-                    onGenerate={generateLogo}
-                    onSwitchToUpload={() => {
-                      setDesignStartMode('upload');
-                      setError('');
-                      setUploadError('');
-                      setStatus('');
-                      setBackgroundCleanupStatus('');
-                    }}
-                  />
+                  <div ref={aiCreatorRef}>
+                    <AICreatorPanel
+                      prompt={logoPrompt}
+                      selectedStyleHints={aiStyleHints}
+                      isGenerating={isGenerating}
+                      hasGeneratedConcept={hasGeneratedAiConcept}
+                      onPromptChange={(value) => {
+                        setLogoPrompt(value);
+                        setDesignPreparation(null);
+                        setError('');
+                        setStatus('');
+                      }}
+                      onToggleStyleHint={toggleAiStyleHint}
+                      onGenerate={generateLogo}
+                      onSwitchToUpload={() => {
+                        scrollToUploadPanel();
+                      }}
+                    />
+                  </div>
                   <div ref={aiReviewRef}>
                     <AIConceptReviewPanel
                       concepts={aiConcepts}
@@ -4119,11 +4183,7 @@ export default function Home({ locale }: HomeProps = {}) {
                         void applyAiConceptChanges(changeRequest, concept)
                       }
                       onSwitchToUpload={() => {
-                        setDesignStartMode('upload');
-                        setError('');
-                        setUploadError('');
-                        setStatus('');
-                        setBackgroundCleanupStatus('');
+                        scrollToUploadPanel();
                       }}
                     />
                   </div>
@@ -4173,7 +4233,7 @@ export default function Home({ locale }: HomeProps = {}) {
                           focusShirtViewer(
                             preview
                               ? 'Click the shirt where you want the logo.'
-                              : 'Upload a logo first, then click the shirt.',
+                              : 'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.',
                             true
                           );
                         }}
@@ -4944,12 +5004,16 @@ export default function Home({ locale }: HomeProps = {}) {
               onCustomPlacementChange={updateCustomLogoPlacement}
               viewerGroup={placementGroup}
               focusPulseKey={logoFocusPulseKey}
+              showEmptyStateHelper={!preview && emptyDesignHelperOpen}
+              onEmptyDesignClick={showEmptyDesignHelper}
+              onStartUpload={scrollToUploadPanel}
+              onStartAi={scrollToAiCreator}
               guidanceHint={
                 viewerHint ||
                 (placementMode === 'custom'
                   ? preview
                     ? 'Click the shirt where you want the logo.'
-                    : 'Upload a logo first, then click the shirt.'
+                    : 'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.'
                   : undefined)
               }
             />

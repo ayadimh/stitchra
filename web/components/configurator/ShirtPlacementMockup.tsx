@@ -422,6 +422,10 @@ export default function ShirtPlacementMockup({
   viewerGroup,
   focusPulseKey = 0,
   guidanceHint,
+  showEmptyStateHelper = false,
+  onEmptyDesignClick,
+  onStartUpload,
+  onStartAi,
 }: ShirtConfiguratorProps) {
   const torsoRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -609,7 +613,8 @@ export default function ShirtPlacementMockup({
     }
 
     if (!hasVisibleLogo) {
-      setPlacementNotice('Upload a logo first');
+      setPlacementNotice('Add your design first');
+      onEmptyDesignClick?.();
       return false;
     }
 
@@ -947,6 +952,49 @@ export default function ShirtPlacementMockup({
         </div>
       </div>
 
+      {!hasVisibleLogo && showEmptyStateHelper && (
+        <div style={emptyStateHelper}>
+          <div style={emptyStateCopy}>
+            <strong>Start with a design</strong>
+            <span>Upload your logo or create an AI concept below.</span>
+          </div>
+          <div style={emptyStateActions}>
+            <button
+              type="button"
+              style={{
+                ...emptyStateActionButtonBase,
+                border: 0,
+                color: '#06100a',
+                background: 'linear-gradient(135deg, #18ff9a, #00c8ff)',
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onStartUpload?.();
+              }}
+            >
+              Upload logo
+            </button>
+            <button
+              type="button"
+              style={{
+                ...emptyStateActionButtonBase,
+                border: '1px solid rgba(255,255,255,0.14)',
+                color: 'rgba(246,255,249,0.86)',
+                background: 'rgba(255,255,255,0.06)',
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onStartAi?.();
+              }}
+            >
+              Create with AI
+            </button>
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onPointerDown={(event) => event.stopPropagation()}
@@ -969,7 +1017,7 @@ export default function ShirtPlacementMockup({
         {guidanceHint ??
           (hasVisibleLogo
           ? `Drag to rotate • Click shirt to reposition logo • Logo size ${formatLogoSize(config)}`
-          : 'Upload a logo, then click the shirt to place it')}
+          : 'Upload a logo or create an AI concept, then click the shirt to place it.')}
       </div>
     </div>
   );
@@ -1192,6 +1240,47 @@ const resetButton: CSSProperties = {
   fontWeight: 800,
   cursor: 'pointer',
   boxShadow: '0 16px 40px rgba(0,0,0,0.26)',
+};
+
+const emptyStateHelper: CSSProperties = {
+  position: 'absolute',
+  right: 22,
+  bottom: 76,
+  zIndex: 8,
+  width: 'min(360px, calc(100% - 44px))',
+  display: 'grid',
+  gap: 12,
+  padding: 14,
+  borderRadius: 22,
+  border: '1px solid rgba(24,255,154,0.22)',
+  background:
+    'radial-gradient(circle at 12% 0%, rgba(0,255,136,0.14), transparent 34%), rgba(5,10,11,0.82)',
+  backdropFilter: 'blur(16px)',
+  boxShadow: '0 20px 64px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.08)',
+};
+
+const emptyStateCopy: CSSProperties = {
+  display: 'grid',
+  gap: 4,
+  color: '#f6fff9',
+  fontSize: 13,
+  lineHeight: 1.4,
+};
+
+const emptyStateActions: CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  flexWrap: 'wrap',
+};
+
+const emptyStateActionButtonBase: CSSProperties = {
+  minHeight: 34,
+  borderRadius: 999,
+  padding: '0 12px',
+  font: 'inherit',
+  fontSize: 12,
+  fontWeight: 900,
+  cursor: 'pointer',
 };
 
 const placementNoticeStyle: CSSProperties = {
