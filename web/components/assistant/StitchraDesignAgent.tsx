@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useCallback,
   useMemo,
   useRef,
   useState,
@@ -69,7 +70,7 @@ const LOCALE_SEGMENTS = new Set(["en", "de", "fr", "ar", "es", "ru"]);
 const CLIENT_MAX_INPUT_CHARS = 1200;
 const CLIENT_MAX_MESSAGES = 6;
 const MOBILE_LAUNCHER_POSITION_KEY = "stitchra-agent-launcher-position-v1";
-const MOBILE_DRAG_QUERY = "(max-width: 680px) and (pointer: coarse)";
+const MOBILE_DRAG_QUERY = "(max-width: 760px)";
 const MOBILE_EDGE_PADDING = 12;
 const MOBILE_TOP_SAFE_PADDING = 16;
 const MOBILE_BOTTOM_RESERVED = 96;
@@ -174,6 +175,8 @@ function getViewportSize() {
   return {
     width: visualViewport?.width ?? window.innerWidth,
     height: visualViewport?.height ?? window.innerHeight,
+    offsetLeft: visualViewport?.offsetLeft ?? 0,
+    offsetTop: visualViewport?.offsetTop ?? 0,
   };
 }
 
@@ -182,15 +185,15 @@ function clampLauncherPosition(
   size: { width: number; height: number },
 ) {
   const viewport = getViewportSize();
-  const minX = MOBILE_EDGE_PADDING;
-  const minY = MOBILE_TOP_SAFE_PADDING;
+  const minX = viewport.offsetLeft + MOBILE_EDGE_PADDING;
+  const minY = viewport.offsetTop + MOBILE_TOP_SAFE_PADDING;
   const maxX = Math.max(
     minX,
-    viewport.width - size.width - MOBILE_EDGE_PADDING,
+    viewport.offsetLeft + viewport.width - size.width - MOBILE_EDGE_PADDING,
   );
   const maxY = Math.max(
     minY,
-    viewport.height - size.height - MOBILE_BOTTOM_RESERVED,
+    viewport.offsetTop + viewport.height - size.height - MOBILE_BOTTOM_RESERVED,
   );
 
   return {
@@ -204,10 +207,42 @@ function getDefaultLauncherPosition(size: { width: number; height: number }) {
 
   return clampLauncherPosition(
     {
-      x: viewport.width - size.width - MOBILE_EDGE_PADDING,
-      y: viewport.height - size.height - MOBILE_BOTTOM_RESERVED,
+      x: viewport.offsetLeft + viewport.width - size.width - MOBILE_EDGE_PADDING,
+      y: viewport.offsetTop + viewport.height - size.height - MOBILE_BOTTOM_RESERVED,
     },
     size,
+  );
+}
+
+function isMobileLauncherViewport() {
+  const viewport = getViewportSize();
+  const hasTouch =
+    navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+  const narrowViewport =
+    viewport.width <= 760 || window.innerWidth <= 760;
+
+  return narrowViewport || (hasTouch && viewport.width <= 1024);
+}
+
+function isReasonableSavedPosition(
+  position: LauncherPosition,
+  size: { width: number; height: number },
+) {
+  if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+    return false;
+  }
+
+  const viewport = getViewportSize();
+  const looseLeft = viewport.offsetLeft - size.width * 1.5;
+  const looseTop = viewport.offsetTop - size.height * 1.5;
+  const looseRight = viewport.offsetLeft + viewport.width + size.width * 0.75;
+  const looseBottom = viewport.offsetTop + viewport.height + size.height * 0.75;
+
+  return (
+    position.x >= looseLeft &&
+    position.x <= looseRight &&
+    position.y >= looseTop &&
+    position.y <= looseBottom
   );
 }
 
@@ -251,6 +286,28 @@ function clearSavedLauncherPosition() {
   }
 }
 
+function isLauncherRectVisible(element: HTMLElement | null) {
+  if (!element) {
+    return true;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const viewport = getViewportSize();
+  const visibleLeft = 0;
+  const visibleTop = 0;
+  const visibleRight = viewport.width;
+  const visibleBottom = viewport.height;
+
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    rect.left >= visibleLeft - 1 &&
+    rect.top >= visibleTop - 1 &&
+    rect.right <= visibleRight + 1 &&
+    rect.bottom <= visibleBottom - 1
+  );
+}
+
 export default function StitchraDesignAgent() {
   const pathname = usePathname() ?? "/";
   const [isOpen, setIsOpen] = useState(false);
@@ -271,21 +328,21 @@ export default function StitchraDesignAgent() {
 
   const isHidden = useMemo(() => shouldHideAgent(pathname), [pathname]);
 
-  const applyLauncherPosition = (position: LauncherPosition) => {
+  const applyLauncherPosition = useCallback((position: LauncherPosition) => {
     launcherPositionRef.current = position;
     setLauncherPosition(position);
-  };
+  }, []);
 
-  const getLauncherSize = () => {
+  const getLauncherSize = useCallback(() => {
     const rect = launcherRef.current?.getBoundingClientRect();
 
     return {
       width: rect?.width ?? 48,
       height: rect?.height ?? 48,
     };
-  };
+  }, []);
 
-  const resetLauncherPosition = () => {
+  const resetLauncherPosition = useCallback(() => {
     if (!isMobileDraggable) {
       return;
     }
@@ -293,7 +350,27 @@ export default function StitchraDesignAgent() {
     const nextPosition = getDefaultLauncherPosition(getLauncherSize());
     clearSavedLauncherPosition();
     applyLauncherPosition(nextPosition);
-  };
+  }, [applyLauncherPosition, getLauncherSize, isMobileDraggable]);
+
+  const clampCurrentLauncherPosition = useCallback((save = true) => {
+    const size = getLauncherSize();
+    const currentPosition =
+      launcherPositionRef.current ?? getDefaultLauncherPosition(size);
+    const nextPosition = clampLauncherPosition(currentPosition, size);
+
+    applyLauncherPosition(nextPosition);
+    if (save) {
+      saveLauncherPosition(nextPosition);
+    }
+
+    window.requestAnimationFrame(() => {
+      if (!isLauncherRectVisible(launcherRef.current)) {
+        const fallbackPosition = getDefaultLauncherPosition(getLauncherSize());
+        clearSavedLauncherPosition();
+        applyLauncherPosition(fallbackPosition);
+      }
+    });
+  }, [applyLauncherPosition, getLauncherSize]);
 
   useEffect(() => {
     return () => {
@@ -308,8 +385,9 @@ export default function StitchraDesignAgent() {
     const query = window.matchMedia(MOBILE_DRAG_QUERY);
 
     const updateMobileMode = () => {
-      setIsMobileDraggable(query.matches);
-      if (!query.matches) {
+      const shouldEnable = query.matches || isMobileLauncherViewport();
+      setIsMobileDraggable(shouldEnable);
+      if (!shouldEnable) {
         setLauncherPosition(null);
         launcherPositionRef.current = null;
         launcherDragRef.current = null;
@@ -318,9 +396,15 @@ export default function StitchraDesignAgent() {
 
     updateMobileMode();
     query.addEventListener("change", updateMobileMode);
+    window.addEventListener("resize", updateMobileMode);
+    window.addEventListener("orientationchange", updateMobileMode);
+    window.visualViewport?.addEventListener("resize", updateMobileMode);
 
     return () => {
       query.removeEventListener("change", updateMobileMode);
+      window.removeEventListener("resize", updateMobileMode);
+      window.removeEventListener("orientationchange", updateMobileMode);
+      window.visualViewport?.removeEventListener("resize", updateMobileMode);
     };
   }, []);
 
@@ -332,14 +416,28 @@ export default function StitchraDesignAgent() {
     const initializePosition = () => {
       const size = getLauncherSize();
       const savedPosition = loadSavedLauncherPosition();
-      const nextPosition = savedPosition
+      const hasValidSavedPosition =
+        savedPosition && isReasonableSavedPosition(savedPosition, size);
+      const nextPosition = hasValidSavedPosition
         ? clampLauncherPosition(savedPosition, size)
         : getDefaultLauncherPosition(size);
 
+      if (savedPosition && !hasValidSavedPosition) {
+        clearSavedLauncherPosition();
+      }
+
       applyLauncherPosition(nextPosition);
-      if (savedPosition) {
+      if (hasValidSavedPosition) {
         saveLauncherPosition(nextPosition);
       }
+
+      window.requestAnimationFrame(() => {
+        if (!isLauncherRectVisible(launcherRef.current)) {
+          const fallbackPosition = getDefaultLauncherPosition(getLauncherSize());
+          clearSavedLauncherPosition();
+          applyLauncherPosition(fallbackPosition);
+        }
+      });
     };
 
     const frame = window.requestAnimationFrame(initializePosition);
@@ -347,32 +445,34 @@ export default function StitchraDesignAgent() {
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [isHidden, isMobileDraggable]);
+  }, [applyLauncherPosition, getLauncherSize, isHidden, isMobileDraggable]);
 
   useEffect(() => {
     if (!isMobileDraggable || isHidden) {
       return undefined;
     }
 
-    const clampToViewport = () => {
-      const currentPosition =
-        launcherPositionRef.current ?? getDefaultLauncherPosition(getLauncherSize());
-      const nextPosition = clampLauncherPosition(currentPosition, getLauncherSize());
-
-      applyLauncherPosition(nextPosition);
-      saveLauncherPosition(nextPosition);
+    const clampToViewport = () => clampCurrentLauncherPosition();
+    const clampWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        clampCurrentLauncherPosition();
+      }
     };
 
     window.addEventListener("resize", clampToViewport);
+    window.addEventListener("orientationchange", clampToViewport);
+    document.addEventListener("visibilitychange", clampWhenVisible);
     window.visualViewport?.addEventListener("resize", clampToViewport);
     window.visualViewport?.addEventListener("scroll", clampToViewport);
 
     return () => {
       window.removeEventListener("resize", clampToViewport);
+      window.removeEventListener("orientationchange", clampToViewport);
+      document.removeEventListener("visibilitychange", clampWhenVisible);
       window.visualViewport?.removeEventListener("resize", clampToViewport);
       window.visualViewport?.removeEventListener("scroll", clampToViewport);
     };
-  }, [isHidden, isMobileDraggable]);
+  }, [clampCurrentLauncherPosition, isHidden, isMobileDraggable]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -862,7 +962,7 @@ export default function StitchraDesignAgent() {
           position: fixed;
           right: clamp(16px, 2.5vw, 30px);
           bottom: clamp(16px, 2.5vw, 30px);
-          z-index: 90;
+          z-index: 120;
           color: #f6fff9;
           font-family: inherit;
         }
@@ -1136,7 +1236,7 @@ export default function StitchraDesignAgent() {
           letter-spacing: 0;
         }
 
-        @media (max-width: 680px) {
+        @media (max-width: 760px) {
           .stitchra-ai-agent {
             right: 12px;
             bottom: max(82px, calc(14px + env(safe-area-inset-bottom)));
@@ -1148,6 +1248,9 @@ export default function StitchraDesignAgent() {
             right: auto;
             bottom: auto;
             left: 0;
+            width: 0;
+            height: 0;
+            overflow: visible;
             pointer-events: none;
           }
 
@@ -1175,8 +1278,10 @@ export default function StitchraDesignAgent() {
             min-height: 48px;
             padding: 6px 12px 6px 6px;
             margin-left: auto;
+            pointer-events: auto;
             touch-action: none;
             will-change: transform, left, top;
+            -webkit-tap-highlight-color: transparent;
           }
 
           .stitchra-ai-agent-positioned .stitchra-ai-launcher {
