@@ -1,8 +1,51 @@
-import { stitchraLogoConcepts } from './logoConcepts';
+import {
+  premiumLogoConcepts,
+  roundOneExplorations,
+  type BrandConceptScores,
+  type BrandLogoConcept,
+} from './logoConcepts';
 
-function ScoreDots({ score }: { score: number }) {
+const scoreLabels: Record<keyof BrandConceptScores, string> = {
+  memorability: 'Memorability',
+  premiumFeel: 'Premium feel',
+  embroiderySuitability: 'Embroidery suitability',
+  smallSizeReadability: 'Small-size readability',
+  uniqueness: 'Uniqueness',
+  navbarReadability: 'Navbar readability',
+  appIconStrength: 'App icon strength',
+  longTermPotential: 'Long-term potential',
+};
+
+const promptPack = [
+  {
+    title: 'Premium wordmark prompt',
+    prompt:
+      'Create a premium custom wordmark logo for Stitchra, an AI embroidery T-shirt design studio. Focus on the word Stitchra as the main identity with custom typography, subtle thread or stitch micro-detail in one letter, modern crafted luxury feel, dark background version, light background version, one-color version, scalable app icon companion, suitable for embroidery and website navbar. Avoid generic AI robots, generic needle stock icons, clipart, childish effects, excessive neon glow, and unreadable small text.',
+  },
+  {
+    title: 'Thread-S monogram prompt',
+    prompt:
+      'Design a refined Thread-S monogram for Stitchra, an AI embroidery T-shirt design studio. Build a standalone S mark from a controlled continuous thread path with one elegant stitch or needle-point detail. Premium, timeless, modern, crafted, readable at 16px and 32px, strong as app icon and social avatar, works in dark, light and one-color versions, suitable for embroidery. Avoid cheap neon effects, generic sewing icons, robot symbols and stock-logo composition.',
+  },
+  {
+    title: 'Embroidery patch prompt',
+    prompt:
+      'Create a premium embroidery patch identity for Stitchra, an AI embroidery T-shirt design studio. Design a circular or soft-square badge/seal with a refined S/thread symbol, fashion-label feeling, scalable one-color embroidery version, app icon version, neck label version, dark and light lockups. Make it crafted and modern, not a cheap stamp. Avoid generic needle clipart, crowded details, childish badge styling and fake vintage clutter.',
+  },
+  {
+    title: 'AI atelier grid prompt',
+    prompt:
+      'Create a premium AI atelier grid logo direction for Stitchra, an AI embroidery T-shirt design studio. Combine subtle precision grid or alignment-node language with a handcrafted thread/stitch symbol. Communicate AI-assisted craft without looking like a generic AI startup. Include custom Stitchra typography, dark/light/one-color versions, app icon, favicon, embroidery-safe simplified mark. Avoid robots, sparkles, stock neural icons, generic needles and excessive glowing effects.',
+  },
+];
+
+function totalScore(scores: BrandConceptScores) {
+  return Object.values(scores).reduce((sum, score) => sum + score, 0);
+}
+
+function ScorePips({ score }: { score: number }) {
   return (
-    <span className="brand-lab-score" aria-label={`Embroidery suitability ${score} out of 5`}>
+    <span className="brand-score-pips" aria-label={`${score} out of 5`}>
       {Array.from({ length: 5 }).map((_, index) => (
         <i key={index} data-active={index < score} />
       ))}
@@ -10,612 +53,1210 @@ function ScoreDots({ score }: { score: number }) {
   );
 }
 
+function RoundOneSection() {
+  return (
+    <section className="lab-section lab-round-one" aria-labelledby="round-one-title">
+      <div className="section-heading">
+        <p>Round 1 archive</p>
+        <h2 id="round-one-title">Rough structure tests, not final candidates.</h2>
+      </div>
+      <p className="section-copy">
+        The first Brand Lab pass helped map possible territories, but these concepts are intentionally treated as
+        raw scaffolding. Round 2 below is the serious identity exploration.
+      </p>
+      <div className="round-one-list" aria-label="Round 1 exploration names">
+        {roundOneExplorations.map((name) => (
+          <span key={name}>{name}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SurfacePreviews({ concept }: { concept: BrandLogoConcept }) {
+  const Artwork = concept.Artwork;
+
+  return (
+    <div className="surface-preview-grid" aria-label={`${concept.name} color system previews`}>
+      <div className="surface-card surface-dark">
+        <span>Dark background</span>
+        <Artwork className="surface-logo" title={`${concept.name} dark background version`} />
+      </div>
+      <div className="surface-card surface-light">
+        <span>Light background</span>
+        <Artwork className="surface-logo" title={`${concept.name} light background version`} />
+      </div>
+      <div className="surface-card surface-mono">
+        <span>One-color</span>
+        <Artwork tone="mono" className="surface-logo" title={`${concept.name} one-color version`} />
+      </div>
+    </div>
+  );
+}
+
+function FaviconPreviews({ concept }: { concept: BrandLogoConcept }) {
+  const Artwork = concept.Artwork;
+  const sizes = [16, 32, 64, 128];
+
+  return (
+    <div className="favicon-panel">
+      <div className="panel-label">Favicon / app icon scale</div>
+      <div className="favicon-row">
+        {sizes.map((size) => (
+          <div key={size} className="favicon-frame">
+            <div className="favicon-box" style={{ width: size, height: size }}>
+              <Artwork variant="mark" className="favicon-logo" title={`${concept.name} ${size}px preview`} />
+            </div>
+            <small>{size}px</small>
+          </div>
+        ))}
+      </div>
+      <div className="app-icon-preview">
+        <div>
+          <Artwork variant="mark" className="app-icon-logo" title={`${concept.name} 512px app icon preview`} />
+        </div>
+        <span>512 app icon preview</span>
+      </div>
+    </div>
+  );
+}
+
+function ApplicationPreviews({ concept }: { concept: BrandLogoConcept }) {
+  const Artwork = concept.Artwork;
+
+  return (
+    <div className="application-grid" aria-label={`${concept.name} applied context previews`}>
+      <div className="application-card navbar-application">
+        <span>Navbar preview</span>
+        <div>
+          <Artwork className="nav-preview-logo" />
+          <button type="button">Start Designing</button>
+        </div>
+      </div>
+
+      <div className="application-card label-application">
+        <span>T-shirt neck label</span>
+        <div>
+          <Artwork variant="mark" tone="mono" className="label-mark" />
+          <strong>STITCHRA</strong>
+          <small>AI EMBROIDERY</small>
+        </div>
+      </div>
+
+      <div className="application-card patch-application">
+        <span>Embroidered patch</span>
+        <div>
+          <Artwork variant="mark" tone="mono" className="patch-preview-mark" />
+        </div>
+      </div>
+
+      <div className="application-card invoice-application">
+        <span>Invoice / header</span>
+        <div>
+          <Artwork className="invoice-logo" />
+          <p>Quote #ST-2048</p>
+        </div>
+      </div>
+
+      <div className="application-card social-application">
+        <span>Social avatar</span>
+        <div>
+          <Artwork variant="mark" className="social-avatar-mark" />
+        </div>
+      </div>
+
+      <div className="application-card stamp-application">
+        <span>Black-and-white stamp</span>
+        <div>
+          <Artwork tone="mono" className="stamp-logo" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScorePanel({ scores }: { scores: BrandConceptScores }) {
+  return (
+    <div className="score-panel">
+      <div className="score-total">
+        <span>Total score</span>
+        <strong>{totalScore(scores)} / 40</strong>
+      </div>
+      <div className="score-list">
+        {(Object.entries(scores) as Array<[keyof BrandConceptScores, number]>).map(([key, score]) => (
+          <div key={key} className="score-row">
+            <span>{scoreLabels[key]}</span>
+            <ScorePips score={score} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DetailPanel({ concept }: { concept: BrandLogoConcept }) {
+  return (
+    <div className="detail-panel">
+      {Object.entries(concept.details).map(([key, value]) => (
+        <div key={key}>
+          <span>{key.replace(/([A-Z])/g, ' $1')}</span>
+          <p>{value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CritiquePanel({ concept }: { concept: BrandLogoConcept }) {
+  return (
+    <div className="critique-grid">
+      <div>
+        <h4>Why this could work</h4>
+        <ul>
+          {concept.critique.works.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h4>Why this could fail</h4>
+        <ul>
+          {concept.critique.fails.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h4>Must refine before production</h4>
+        <ul>
+          {concept.critique.refine.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function PremiumConceptCard({ concept, index }: { concept: BrandLogoConcept; index: number }) {
+  const Artwork = concept.Artwork;
+
+  return (
+    <article className="premium-concept-card">
+      <header className="premium-concept-header">
+        <div>
+          <span>{String(index + 1).padStart(2, '0')}</span>
+          <p>{concept.direction}</p>
+          <h3>{concept.name}</h3>
+        </div>
+        <div className="primary-lockup">
+          <span>Primary horizontal logo</span>
+          <Artwork className="primary-logo" title={`${concept.name} primary horizontal logo`} />
+        </div>
+        <div className="standalone-mark">
+          <span>Standalone icon</span>
+          <Artwork variant="mark" className="standalone-logo" title={`${concept.name} standalone icon`} />
+        </div>
+      </header>
+
+      <p className="concept-description">{concept.description}</p>
+
+      <SurfacePreviews concept={concept} />
+
+      <div className="deep-preview-grid">
+        <FaviconPreviews concept={concept} />
+        <ApplicationPreviews concept={concept} />
+      </div>
+
+      <div className="analysis-grid">
+        <DetailPanel concept={concept} />
+        <ScorePanel scores={concept.scores} />
+      </div>
+
+      <CritiquePanel concept={concept} />
+    </article>
+  );
+}
+
+function PromptPack() {
+  return (
+    <section className="lab-section prompt-pack" aria-labelledby="prompt-pack-title">
+      <div className="section-heading">
+        <p>External AI/design tool prompt pack</p>
+        <h2 id="prompt-pack-title">Prompt Pack for Recraft / Kittl / Logo Diffusion</h2>
+      </div>
+      <p className="section-copy">
+        These prompts are copy-ready starting points for generating stronger external candidates. Bring the best
+        SVG/vector results back into Stitchra for final refinement.
+      </p>
+      <div className="prompt-grid">
+        {promptPack.map((item) => (
+          <article key={item.title} className="prompt-card">
+            <h3>{item.title}</h3>
+            <pre>{item.prompt}</pre>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ImportedCandidates() {
+  return (
+    <section className="lab-section imported-candidates" aria-labelledby="imported-candidates-title">
+      <div className="section-heading">
+        <p>Future candidate intake</p>
+        <h2 id="imported-candidates-title">Imported Candidates</h2>
+      </div>
+      <p className="section-copy">
+        Drop final candidate files into <code>/public/brand/candidates/</code> later. These slots are placeholders
+        only; no external assets are included in this task.
+      </p>
+      <div className="candidate-grid">
+        {['Imported SVG Candidate 1', 'Imported PNG Candidate 2', 'Imported Vector Candidate 3'].map((label) => (
+          <div key={label} className="candidate-slot">
+            <span>{label}</span>
+            <strong>Empty slot</strong>
+            <p>Ready for a future reviewed candidate file.</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function StitchraBrandLab() {
   return (
-    <main className="brand-lab-page">
-      <style>{brandLabStyles}</style>
+    <main className="brand-lab-pro-page">
+      <style>{brandLabProStyles}</style>
 
-      <section className="brand-lab-hero">
+      <section className="brand-lab-pro-hero">
         <p>Private exploration</p>
-        <h1>Stitchra Brand Lab</h1>
-        <span>
-          Choose a timeless identity for an AI embroidery design studio.
-        </span>
+        <h1>Stitchra Brand Lab Pro</h1>
+        <span>Build a timeless identity for an AI embroidery design studio.</span>
+        <div className="quality-note">
+          The goal is not a glowing S. The goal is a scalable brand system: wordmark, monogram, patch mark, app
+          icon, favicon and embroidery-safe one-color version.
+        </div>
       </section>
 
-      <section className="brand-lab-principles" aria-label="Brand principles">
+      <section className="brand-principles" aria-label="Brand quality principles">
         {[
-          'Premium and modern',
-          'Crafted, not clipart',
-          'Embroidery-safe',
-          'Strong at icon size',
-          'AI-assisted without robot cues',
+          'Wordmark must carry the identity',
+          'Embroidery-safe in one color',
+          'Readable at 16px',
+          'Premium without neon dependence',
+          'AI-assisted, not robot-coded',
+          'Useful on labels and invoices',
         ].map((principle) => (
           <span key={principle}>{principle}</span>
         ))}
       </section>
 
-      <section className="brand-lab-grid" aria-label="Stitchra logo concepts">
-        {stitchraLogoConcepts.map((concept, conceptIndex) => {
-          const Artwork = concept.Artwork;
+      <RoundOneSection />
 
-          return (
-            <article key={concept.id} className="brand-concept-card">
-              <header className="brand-concept-header">
-                <span>{String(conceptIndex + 1).padStart(2, '0')}</span>
-                <div>
-                  <p>{concept.direction}</p>
-                  <h2>{concept.name}</h2>
-                </div>
-              </header>
-
-              <div className="brand-surface-grid">
-                <div className="brand-surface brand-surface-dark">
-                  <small>Dark background</small>
-                  <Artwork className="brand-lockup" title={`${concept.name} dark version`} />
-                </div>
-                <div className="brand-surface brand-surface-light">
-                  <small>Light background</small>
-                  <Artwork className="brand-lockup" title={`${concept.name} light version`} />
-                </div>
-                <div className="brand-surface brand-surface-mono">
-                  <small>One-color</small>
-                  <Artwork tone="mono" className="brand-lockup" title={`${concept.name} one-color version`} />
-                </div>
-              </div>
-
-              <div className="brand-preview-row" aria-label={`${concept.name} app icon previews`}>
-                {[32, 64, 128].map((size) => (
-                  <div key={size} className="brand-icon-preview" style={{ width: size + 24, height: size + 44 }}>
-                    <Artwork
-                      lockup="mark"
-                      className="brand-icon-svg"
-                      title={`${concept.name} ${size}px icon preview`}
-                    />
-                    <small>{size}px</small>
-                  </div>
-                ))}
-              </div>
-
-              <div className="brand-context-previews">
-                <div className="brand-navbar-preview">
-                  <span>Navbar</span>
-                  <Artwork className="brand-nav-lockup" title={`${concept.name} navbar preview`} />
-                  <button type="button">Start Designing</button>
-                </div>
-
-                <div className="brand-patch-preview">
-                  <span>Neck label / patch</span>
-                  <div>
-                    <Artwork lockup="mark" tone="mono" className="brand-patch-mark" />
-                    <strong>Stitchra</strong>
-                    <small>AI embroidery studio</small>
-                  </div>
-                </div>
-              </div>
-
-              <p className="brand-concept-description">{concept.description}</p>
-
-              <div className="brand-evaluation">
-                <div>
-                  <h3>Pros</h3>
-                  <ul>
-                    {concept.pros.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3>Cons</h3>
-                  <ul>
-                    {concept.cons.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <footer className="brand-concept-footer">
-                <span>Embroidery suitability</span>
-                <ScoreDots score={concept.embroideryScore} />
-              </footer>
-            </article>
-          );
-        })}
+      <section className="lab-section premium-directions" aria-labelledby="round-two-title">
+        <div className="section-heading">
+          <p>Round 2</p>
+          <h2 id="round-two-title">Premium Directions</h2>
+        </div>
+        <p className="section-copy">
+          Four stricter identity systems built around scalable usage, honest critique and production constraints.
+          These are still explorations, not final production logos.
+        </p>
+        <div className="premium-concepts">
+          {premiumLogoConcepts.map((concept, index) => (
+            <PremiumConceptCard key={concept.id} concept={concept} index={index} />
+          ))}
+        </div>
       </section>
+
+      <PromptPack />
+      <ImportedCandidates />
     </main>
   );
 }
 
-const brandLabStyles = `
-  .brand-lab-page {
+const brandLabProStyles = `
+  .brand-lab-pro-page {
     min-height: 100vh;
-    padding: 64px 24px 88px;
-    color: #f6fff9;
+    padding: 72px 22px 96px;
+    color: #f4f0e8;
     background:
-      radial-gradient(circle at 14% 8%, rgba(0,255,136,0.15), transparent 28%),
-      radial-gradient(circle at 92% 4%, rgba(0,215,255,0.12), transparent 30%),
-      radial-gradient(circle at 50% 96%, rgba(211,107,255,0.09), transparent 30%),
-      #050607;
+      linear-gradient(120deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+      radial-gradient(circle at 18% 4%, rgba(29,255,157,0.12), transparent 34%),
+      radial-gradient(circle at 88% 2%, rgba(112,210,255,0.10), transparent 30%),
+      linear-gradient(180deg, #070a08 0%, #030504 100%);
+    background-size: 72px 72px, auto, auto, auto;
   }
 
-  .brand-lab-hero {
-    max-width: 1120px;
-    margin: 0 auto 26px;
+  .brand-lab-pro-hero,
+  .brand-principles,
+  .lab-section {
+    width: min(1500px, 100%);
+    margin-inline: auto;
+  }
+
+  .brand-lab-pro-hero {
     display: grid;
-    gap: 14px;
+    gap: 18px;
+    padding: 28px 0 34px;
   }
 
-  .brand-lab-hero p,
-  .brand-concept-header > span,
-  .brand-concept-header p,
-  .brand-surface small,
-  .brand-navbar-preview span,
-  .brand-patch-preview > span,
-  .brand-concept-footer > span {
+  .brand-lab-pro-hero p,
+  .section-heading p,
+  .surface-card span,
+  .panel-label,
+  .application-card > span,
+  .primary-lockup span,
+  .standalone-mark span,
+  .score-total span,
+  .detail-panel span {
     margin: 0;
-    color: #00ff88;
+    color: #69f5b1;
     font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .brand-lab-pro-hero h1 {
+    margin: 0;
+    max-width: 1020px;
+    font-size: clamp(52px, 8vw, 116px);
+    line-height: 0.88;
+    letter-spacing: -0.08em;
+  }
+
+  .brand-lab-pro-hero > span {
+    max-width: 760px;
+    color: rgba(244,240,232,0.76);
+    font-size: clamp(18px, 2vw, 25px);
+    line-height: 1.55;
+  }
+
+  .quality-note {
+    max-width: 980px;
+    padding: 20px 22px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 22px;
+    color: rgba(244,240,232,0.82);
+    background: rgba(255,255,255,0.055);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    font-size: clamp(15px, 1.5vw, 18px);
+    line-height: 1.6;
+  }
+
+  .brand-principles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 42px;
+  }
+
+  .brand-principles span,
+  .round-one-list span {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.11);
+    border-radius: 999px;
+    padding: 0 14px;
+    color: rgba(244,240,232,0.78);
+    background: rgba(255,255,255,0.045);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .lab-section {
+    margin-top: 32px;
+    padding: clamp(22px, 3vw, 38px);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 34px;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(105,245,177,0.075), transparent 32%),
+      rgba(255,255,255,0.035);
+    box-shadow: 0 30px 100px rgba(0,0,0,0.24);
+  }
+
+  .section-heading {
+    display: grid;
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+
+  .section-heading h2 {
+    margin: 0;
+    font-size: clamp(32px, 5vw, 72px);
+    line-height: 0.94;
+    letter-spacing: -0.065em;
+  }
+
+  .section-copy {
+    max-width: 900px;
+    margin: 0 0 22px;
+    color: rgba(244,240,232,0.70);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .round-one-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  .premium-concepts {
+    display: grid;
+    gap: 28px;
+  }
+
+  .premium-concept-card {
+    display: grid;
+    gap: 24px;
+    padding: clamp(18px, 2.5vw, 30px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 30px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.070), rgba(255,255,255,0.025)),
+      #070b09;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.09),
+      0 24px 90px rgba(0,0,0,0.25);
+  }
+
+  .premium-concept-header {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.78fr) minmax(340px, 1.34fr) minmax(150px, 0.42fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .premium-concept-header > div:first-child {
+    display: grid;
+    align-content: center;
+    gap: 8px;
+  }
+
+  .premium-concept-header > div:first-child > span {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: #07100b;
+    background: linear-gradient(135deg, #f4f0e8, #69f5b1);
+    font-size: 14px;
+    font-weight: 950;
+  }
+
+  .premium-concept-header p {
+    margin: 0;
+    color: #69f5b1;
+    font-size: 12px;
     font-weight: 900;
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
-  .brand-lab-hero h1 {
+  .premium-concept-header h3 {
     margin: 0;
-    max-width: 840px;
-    font-size: clamp(48px, 9vw, 112px);
-    line-height: 0.9;
-    letter-spacing: -0.075em;
+    max-width: 520px;
+    font-size: clamp(29px, 4vw, 52px);
+    line-height: 0.96;
+    letter-spacing: -0.055em;
   }
 
-  .brand-lab-hero span {
-    max-width: 680px;
-    color: rgba(245,247,248,0.72);
-    font-size: clamp(17px, 2vw, 22px);
-    line-height: 1.55;
-  }
-
-  .brand-lab-principles {
-    max-width: 1120px;
-    margin: 0 auto 34px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .brand-lab-principles span {
-    min-height: 36px;
-    display: inline-flex;
-    align-items: center;
-    padding: 0 13px;
-    border-radius: 999px;
+  .primary-lockup,
+  .standalone-mark,
+  .surface-card,
+  .favicon-panel,
+  .application-card,
+  .detail-panel,
+  .score-panel,
+  .critique-grid > div,
+  .prompt-card,
+  .candidate-slot {
     border: 1px solid rgba(255,255,255,0.10);
-    color: rgba(246,255,249,0.72);
     background: rgba(255,255,255,0.045);
-    font-size: 12px;
-    font-weight: 850;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
   }
 
-  .brand-lab-grid {
-    max-width: 1480px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px;
-  }
-
-  .brand-concept-card {
-    display: grid;
-    gap: 18px;
-    padding: clamp(18px, 2.5vw, 28px);
-    border-radius: 30px;
-    border: 1px solid rgba(255,255,255,0.11);
-    background:
-      radial-gradient(circle at 14% 10%, rgba(0,255,136,0.10), transparent 30%),
-      radial-gradient(circle at 88% 22%, rgba(0,215,255,0.075), transparent 32%),
-      rgba(255,255,255,0.045);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.08),
-      0 30px 90px rgba(0,0,0,0.28);
-  }
-
-  .brand-concept-header {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-  }
-
-  .brand-concept-header > span {
-    width: 46px;
-    height: 46px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    border-radius: 15px;
-    color: #06100a;
-    background: linear-gradient(135deg, #18ff9a, #00c8ff);
-    letter-spacing: 0;
-  }
-
-  .brand-concept-header div {
-    min-width: 0;
-    display: grid;
-    gap: 5px;
-  }
-
-  .brand-concept-header h2 {
-    margin: 0;
-    font-size: clamp(24px, 3vw, 38px);
-    line-height: 1;
-    letter-spacing: -0.045em;
-  }
-
-  .brand-surface-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .brand-surface,
-  .brand-navbar-preview,
-  .brand-patch-preview {
-    min-width: 0;
+  .primary-lockup,
+  .standalone-mark {
+    min-height: 180px;
     display: grid;
     gap: 12px;
-    padding: 16px;
-    border-radius: 22px;
-    border: 1px solid rgba(255,255,255,0.10);
-    background: rgba(255,255,255,0.04);
-  }
-
-  .brand-surface-dark {
-    background: linear-gradient(145deg, #050806, #0b1714);
-  }
-
-  .brand-surface-light {
-    background: linear-gradient(145deg, #f6f1e8, #dcebe5);
-  }
-
-  .brand-surface-light small,
-  .brand-surface-mono small {
-    color: rgba(7,20,15,0.62);
-  }
-
-  .brand-surface-mono {
-    background: #f7f5ee;
-    color: #07140f;
-  }
-
-  .brand-lockup {
-    width: 100%;
-    min-height: 112px;
-    color: #f6fff9;
-  }
-
-  .brand-surface-light .brand-lockup,
-  .brand-surface-mono .brand-lockup {
-    color: #07140f;
-  }
-
-  .brand-preview-row {
-    display: flex;
-    align-items: end;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-
-  .brand-icon-preview {
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    gap: 7px;
-    padding: 10px;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.10);
-    background: rgba(0,0,0,0.24);
-  }
-
-  .brand-icon-svg {
-    width: calc(100% - 24px);
-    height: calc(100% - 44px);
-    min-width: 32px;
-    min-height: 32px;
-  }
-
-  .brand-icon-preview small {
-    color: rgba(245,247,248,0.58);
-    font-size: 11px;
-    font-weight: 850;
-  }
-
-  .brand-context-previews {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.9fr);
-    gap: 12px;
-  }
-
-  .brand-navbar-preview {
-    background: rgba(0,0,0,0.38);
-  }
-
-  .brand-nav-lockup {
-    width: min(300px, 100%);
-    height: 72px;
-  }
-
-  .brand-navbar-preview button {
-    width: fit-content;
-    min-height: 36px;
-    border: 0;
-    border-radius: 999px;
-    padding: 0 14px;
-    color: #06100a;
-    background: linear-gradient(135deg, #18ff9a, #00c8ff);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .brand-patch-preview {
-    place-items: center;
-    text-align: center;
-    background:
-      linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)),
-      repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 3px, transparent 3px 8px);
-  }
-
-  .brand-patch-preview > div {
-    width: 156px;
-    min-height: 156px;
-    display: grid;
-    place-items: center;
     align-content: center;
-    gap: 6px;
+    border-radius: 24px;
     padding: 18px;
-    border-radius: 999px;
-    border: 1px dashed rgba(245,247,248,0.28);
-    color: rgba(246,255,249,0.84);
-    background: rgba(0,0,0,0.32);
+    overflow: hidden;
   }
 
-  .brand-patch-mark {
-    width: 58px;
-    height: 58px;
+  .primary-logo {
+    width: 100%;
+    height: 112px;
   }
 
-  .brand-patch-preview strong {
-    font-size: 18px;
-    line-height: 1;
+  .standalone-logo {
+    width: min(124px, 100%);
+    height: 124px;
+    justify-self: center;
   }
 
-  .brand-patch-preview small {
-    color: rgba(245,247,248,0.52);
-    font-size: 10px;
-    font-weight: 850;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .brand-concept-description {
+  .concept-description {
+    max-width: 980px;
     margin: 0;
-    color: rgba(245,247,248,0.72);
-    font-size: 15px;
+    color: rgba(244,240,232,0.78);
+    font-size: 17px;
     line-height: 1.65;
   }
 
-  .brand-evaluation {
+  .surface-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .surface-card {
+    min-height: 190px;
+    display: grid;
+    gap: 12px;
+    align-content: center;
+    border-radius: 24px;
+    padding: 18px;
+    overflow: hidden;
+  }
+
+  .surface-light {
+    color: #111512;
+    background: #f4f0e8;
+  }
+
+  .surface-dark {
+    background:
+      radial-gradient(circle at 22% 14%, rgba(105,245,177,0.12), transparent 36%),
+      #070b09;
+  }
+
+  .surface-mono {
+    background: #111;
+  }
+
+  .surface-light span {
+    color: rgba(17,21,18,0.56);
+  }
+
+  .surface-logo {
+    width: 100%;
+    height: 120px;
+  }
+
+  .deep-preview-grid {
+    display: grid;
+    grid-template-columns: 360px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .favicon-panel {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .favicon-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .favicon-frame {
+    min-width: 58px;
+    display: grid;
+    justify-items: center;
+    gap: 7px;
+  }
+
+  .favicon-box {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 9px;
+    background: #101612;
+  }
+
+  .favicon-logo,
+  .app-icon-logo,
+  .social-avatar-mark {
+    width: 100%;
+    height: 100%;
+  }
+
+  .favicon-frame small,
+  .app-icon-preview span {
+    color: rgba(244,240,232,0.52);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .app-icon-preview {
+    display: grid;
+    gap: 10px;
+  }
+
+  .app-icon-preview > div {
+    width: 152px;
+    height: 152px;
+    display: grid;
+    place-items: center;
+    border-radius: 34px;
+    background:
+      radial-gradient(circle at 30% 12%, rgba(105,245,177,0.16), transparent 42%),
+      #111612;
+  }
+
+  .application-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .application-card {
+    min-height: 152px;
+    display: grid;
+    gap: 12px;
+    align-content: center;
+    border-radius: 24px;
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .navbar-application {
+    grid-column: span 3;
+  }
+
+  .navbar-application > div {
+    display: flex;
+    min-height: 74px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-radius: 18px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.34);
+  }
+
+  .navbar-application button {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 16px;
+    color: #07100b;
+    background: linear-gradient(135deg, #18ff9a, #00c8ff);
+    font-weight: 900;
+  }
+
+  .nav-preview-logo {
+    width: min(310px, 62%);
+    height: 58px;
+  }
+
+  .label-application > div,
+  .patch-application > div,
+  .social-application > div {
+    display: grid;
+    place-items: center;
+  }
+
+  .label-application > div {
+    min-height: 92px;
+    border: 1px solid rgba(244,240,232,0.38);
+    border-radius: 4px;
+    color: #111;
+    background: #f4f0e8;
+  }
+
+  .label-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  .label-application strong {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+  }
+
+  .label-application small {
+    color: rgba(17,21,18,0.62);
+    font-size: 8px;
+    letter-spacing: 0.12em;
+  }
+
+  .patch-application > div {
+    width: 104px;
+    height: 104px;
+    justify-self: center;
+    border-radius: 999px;
+    background: #f4f0e8;
+  }
+
+  .patch-preview-mark {
+    width: 82px;
+    height: 82px;
+  }
+
+  .invoice-application > div {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 10px;
+    color: #141812;
+    background: #f4f0e8;
+  }
+
+  .invoice-logo {
+    width: 220px;
+    max-width: 100%;
+    height: 52px;
+  }
+
+  .invoice-application p {
+    margin: 0;
+    color: rgba(20,24,18,0.55);
+    font-size: 12px;
+    font-weight: 850;
+  }
+
+  .social-application > div {
+    width: 96px;
+    height: 96px;
+    justify-self: center;
+    border-radius: 999px;
+    background: #0d130f;
+  }
+
+  .stamp-application > div {
+    display: grid;
+    min-height: 92px;
+    place-items: center;
+    border: 2px solid #f4f0e8;
+    border-radius: 12px;
+    filter: grayscale(1);
+  }
+
+  .stamp-logo {
+    width: 220px;
+    max-width: 96%;
+    height: 58px;
+  }
+
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.55fr);
+    gap: 16px;
+  }
+
+  .detail-panel,
+  .score-panel {
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .detail-panel {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+  }
+
+  .detail-panel div {
+    display: grid;
+    gap: 6px;
+  }
+
+  .detail-panel p {
+    margin: 0;
+    color: rgba(244,240,232,0.72);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+
+  .score-panel {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+
+  .score-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 12px;
   }
 
-  .brand-evaluation > div {
-    min-width: 0;
-    padding: 14px;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.035);
+  .score-total strong {
+    font-size: 28px;
+    letter-spacing: -0.04em;
   }
 
-  .brand-evaluation h3 {
-    margin: 0 0 8px;
-    color: #9dffc4;
+  .score-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .score-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: rgba(244,240,232,0.72);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .brand-score-pips {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .brand-score-pips i {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(244,240,232,0.17);
+  }
+
+  .brand-score-pips i[data-active='true'] {
+    background: #69f5b1;
+  }
+
+  .critique-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .critique-grid > div {
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .critique-grid h4,
+  .prompt-card h3,
+  .candidate-slot strong {
+    margin: 0 0 10px;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+  }
+
+  .critique-grid ul {
+    margin: 0;
+    padding-left: 18px;
+    color: rgba(244,240,232,0.70);
+    line-height: 1.58;
+    font-size: 14px;
+  }
+
+  .prompt-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .prompt-card {
+    display: grid;
+    gap: 10px;
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .prompt-card pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    color: rgba(244,240,232,0.74);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.62;
+  }
+
+  .candidate-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .candidate-slot {
+    min-height: 210px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 8px;
+    border-style: dashed;
+    border-radius: 26px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .candidate-slot span {
+    color: #69f5b1;
     font-size: 12px;
+    font-weight: 900;
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
-  .brand-evaluation ul {
+  .candidate-slot p {
     margin: 0;
-    padding-left: 18px;
-    color: rgba(245,247,248,0.68);
-    font-size: 13px;
-    line-height: 1.6;
+    color: rgba(244,240,232,0.56);
+    font-size: 14px;
   }
 
-  .brand-concept-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+  .primary-logo,
+  .standalone-logo,
+  .surface-logo,
+  .nav-preview-logo,
+  .label-mark,
+  .patch-preview-mark,
+  .invoice-logo,
+  .social-avatar-mark,
+  .stamp-logo,
+  .favicon-logo,
+  .app-icon-logo {
+    overflow: visible;
   }
 
-  .brand-lab-score {
-    display: inline-flex;
-    gap: 6px;
+  svg[data-tone='color'] .pro-mark-field,
+  svg[data-tone='color'] .signature-field,
+  svg[data-tone='color'] .grid-field {
+    fill: rgba(105,245,177,0.08);
+    stroke: rgba(105,245,177,0.44);
   }
 
-  .brand-lab-score i {
-    width: 12px;
-    height: 12px;
-    display: block;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.16);
-    background: rgba(255,255,255,0.08);
-  }
-
-  .brand-lab-score i[data-active="true"] {
-    border-color: transparent;
-    background: linear-gradient(135deg, #18ff9a, #00c8ff);
-  }
-
-  .concept-mark-bg,
-  .concept-soft-circle,
-  .concept-grid-box {
-    fill: var(--logo-bg, rgba(255,255,255,0.045));
-    stroke: var(--logo-muted, rgba(245,247,248,0.22));
-    stroke-width: 2;
-  }
-
-  .concept-thread-stroke,
-  .concept-needle-stroke,
-  .concept-stitch-line,
-  .concept-seal-outer,
-  .concept-seal-inner,
-  .concept-grid-line,
-  .concept-lux-frame,
-  .concept-lux-rule {
+  svg[data-tone='mono'] .pro-mark-field,
+  svg[data-tone='mono'] .signature-field,
+  svg[data-tone='mono'] .grid-field {
     fill: none;
-    vector-effect: non-scaling-stroke;
+    stroke: currentColor;
   }
 
-  .concept-thread-stroke {
-    stroke: var(--logo-accent, #18ff9a);
-    stroke-width: 7;
+  .pro-heavy-thread,
+  .signature-thread,
+  .patch-thread,
+  .grid-thread {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 9;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
 
-  .concept-needle-stroke {
-    stroke: var(--logo-accent-2, #00c8ff);
-    stroke-width: 3;
-    stroke-linecap: round;
+  svg[data-tone='color'] .pro-heavy-thread,
+  svg[data-tone='color'] .signature-thread,
+  svg[data-tone='color'] .patch-thread,
+  svg[data-tone='color'] .grid-thread,
+  svg[data-tone='color'] .pro-word,
+  svg[data-tone='color'] .atelier-word {
+    color: #f4f0e8;
+    fill: #f4f0e8;
+    stroke: #69f5b1;
   }
 
-  .concept-needle-eye {
-    fill: none;
-    stroke: var(--logo-ink, #f6fff9);
-    stroke-width: 2;
-    stroke-linejoin: round;
+  svg[data-tone='mono'] .pro-heavy-thread,
+  svg[data-tone='mono'] .signature-thread,
+  svg[data-tone='mono'] .patch-thread,
+  svg[data-tone='mono'] .grid-thread,
+  svg[data-tone='mono'] .pro-word,
+  svg[data-tone='mono'] .atelier-word {
+    color: currentColor;
+    fill: currentColor;
+    stroke: currentColor;
   }
 
-  .concept-stitch-line {
-    stroke: var(--logo-accent-2, #00c8ff);
-    stroke-width: 3;
-    stroke-linecap: round;
-    stroke-dasharray: 0.03 0.07;
-    opacity: 0.9;
-  }
-
-  .concept-word,
-  .concept-single-letter {
-    fill: var(--logo-ink, #f6fff9);
-    font-family: Inter, Avenir Next, Helvetica Neue, Arial, sans-serif;
+  .pro-word,
+  .atelier-word {
+    fill: currentColor;
+    stroke: none;
+    font-size: 68px;
     font-weight: 950;
-    letter-spacing: -0.055em;
+    letter-spacing: -0.075em;
   }
 
-  .concept-word {
-    font-size: 40px;
+  .atelier-word {
+    font-size: 82px;
+    letter-spacing: -0.09em;
   }
 
-  .concept-word.compact {
-    font-size: 34px;
+  .pro-word-rule,
+  .atelier-rule,
+  .pro-micro-stitches,
+  .grid-top-rule {
+    fill: none;
+    stroke: #69f5b1;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 0.05 0.055;
   }
 
-  .concept-single-letter {
-    font-size: 64px;
+  .pro-subline {
+    fill: rgba(244,240,232,0.58);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
-  .concept-seal-outer {
-    stroke: var(--logo-accent, #18ff9a);
-    stroke-width: 4;
+  .pro-needle,
+  .signature-needle {
+    fill: none;
+    stroke: #f4f0e8;
+    stroke-width: 3.5;
+    stroke-linecap: round;
   }
 
-  .concept-seal-inner {
-    stroke: var(--logo-muted, rgba(245,247,248,0.26));
-    stroke-width: 2;
+  .pro-needle-eye,
+  .signature-eye,
+  .signature-endpoint,
+  .grid-node {
+    fill: #69f5b1;
   }
 
-  .seal-thread,
-  .lux-thread {
-    stroke-width: 6;
-  }
-
-  .seal-stitches {
-    opacity: 0.42;
-  }
-
-  .wordmark-focus {
-    font-size: 52px;
-  }
-
-  .word-needle {
-    stroke-width: 2.5;
-  }
-
-  .concept-grid-line {
-    stroke: var(--logo-muted, rgba(245,247,248,0.18));
-    stroke-width: 1.4;
-  }
-
-  .concept-node {
-    fill: var(--logo-accent-2, #00c8ff);
-  }
-
-  .concept-lux-frame {
-    stroke: var(--logo-ink, #f6fff9);
+  .patch-outer {
+    fill: #f4f0e8;
+    stroke: rgba(105,245,177,0.55);
     stroke-width: 3;
   }
 
-  .concept-lux-rule {
-    stroke: var(--logo-accent, #18ff9a);
+  .patch-inner {
+    fill: #0b100d;
+    stroke: rgba(244,240,232,0.48);
     stroke-width: 2;
   }
 
-  svg[data-tone="mono"] {
-    --logo-ink: currentColor;
-    --logo-accent: currentColor;
-    --logo-accent-2: currentColor;
-    --logo-muted: currentColor;
-    --logo-bg: transparent;
+  .patch-stitch {
+    fill: none;
+    stroke: rgba(105,245,177,0.72);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 0.035 0.06;
   }
 
-  .brand-surface-light svg,
-  .brand-surface-mono svg {
-    --logo-ink: #07140f;
-    --logo-accent: #087a55;
-    --logo-accent-2: #0d7082;
-    --logo-muted: rgba(7,20,15,0.22);
-    --logo-bg: rgba(7,20,15,0.045);
+  .patch-stitch.secondary {
+    stroke: rgba(244,240,232,0.42);
+  }
+
+  .grid-lines {
+    fill: none;
+    stroke: rgba(244,240,232,0.20);
+    stroke-width: 1.5;
+  }
+
+  svg[data-tone='mono'] .patch-outer,
+  svg[data-tone='mono'] .patch-inner {
+    fill: none;
+    stroke: currentColor;
+  }
+
+  svg[data-tone='mono'] .patch-stitch,
+  svg[data-tone='mono'] .grid-lines,
+  svg[data-tone='mono'] .pro-word-rule,
+  svg[data-tone='mono'] .atelier-rule,
+  svg[data-tone='mono'] .pro-micro-stitches,
+  svg[data-tone='mono'] .grid-top-rule,
+  svg[data-tone='mono'] .pro-needle,
+  svg[data-tone='mono'] .signature-needle {
+    stroke: currentColor;
+  }
+
+  svg[data-tone='mono'] .pro-needle-eye,
+  svg[data-tone='mono'] .signature-eye,
+  svg[data-tone='mono'] .signature-endpoint,
+  svg[data-tone='mono'] .grid-node {
+    fill: currentColor;
+  }
+
+  .surface-light svg[data-tone='color'] .pro-word,
+  .surface-light svg[data-tone='color'] .atelier-word,
+  .surface-light svg[data-tone='color'] .pro-heavy-thread,
+  .surface-light svg[data-tone='color'] .signature-thread,
+  .surface-light svg[data-tone='color'] .grid-thread {
+    fill: #111512;
+    stroke: #0f6d46;
+    color: #111512;
+  }
+
+  .surface-light svg[data-tone='color'] .patch-inner {
+    fill: #111512;
+  }
+
+  code {
+    border-radius: 7px;
+    padding: 2px 6px;
+    color: #69f5b1;
+    background: rgba(105,245,177,0.10);
   }
 
   @media (max-width: 1180px) {
-    .brand-lab-grid {
+    .premium-concept-header,
+    .deep-preview-grid,
+    .analysis-grid {
       grid-template-columns: 1fr;
+    }
+
+    .application-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .navbar-application {
+      grid-column: span 2;
     }
   }
 
   @media (max-width: 760px) {
-    .brand-lab-page {
+    .brand-lab-pro-page {
       padding: 42px 14px 72px;
     }
 
-    .brand-surface-grid,
-    .brand-context-previews,
-    .brand-evaluation {
+    .lab-section,
+    .premium-concept-card {
+      border-radius: 24px;
+      padding: 18px;
+    }
+
+    .surface-preview-grid,
+    .application-grid,
+    .detail-panel,
+    .critique-grid,
+    .prompt-grid,
+    .candidate-grid {
       grid-template-columns: 1fr;
     }
 
-    .brand-concept-header {
-      align-items: center;
+    .navbar-application {
+      grid-column: auto;
     }
 
-    .brand-preview-row {
-      padding-bottom: 8px;
+    .navbar-application > div {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .nav-preview-logo {
+      width: 100%;
+    }
+
+    .primary-lockup,
+    .standalone-mark,
+    .surface-card {
+      min-height: 150px;
+    }
+
+    .primary-logo,
+    .surface-logo {
+      height: 92px;
     }
   }
 `;
+

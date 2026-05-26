@@ -1,36 +1,59 @@
 import type { ComponentType, ReactNode } from 'react';
 
 export type LogoTone = 'color' | 'mono';
-export type LogoLockup = 'mark' | 'horizontal';
+export type LogoVariant = 'horizontal' | 'mark';
 
 export type LogoConceptArtworkProps = {
   tone?: LogoTone;
-  lockup?: LogoLockup;
+  variant?: LogoVariant;
   className?: string;
   title?: string;
+};
+
+export type BrandConceptScores = {
+  memorability: number;
+  premiumFeel: number;
+  embroiderySuitability: number;
+  smallSizeReadability: number;
+  uniqueness: number;
+  navbarReadability: number;
+  appIconStrength: number;
+  longTermPotential: number;
 };
 
 export type BrandLogoConcept = {
   id: string;
   name: string;
+  shortName: string;
   direction: string;
   description: string;
-  pros: string[];
-  cons: string[];
-  embroideryScore: 1 | 2 | 3 | 4 | 5;
+  scores: BrandConceptScores;
+  details: {
+    coreIdea: string;
+    visualSignature: string;
+    typographyDirection: string;
+    embroiderySuitability: string;
+    scalabilityNotes: string;
+    riskNotes: string;
+  };
+  critique: {
+    works: string[];
+    fails: string[];
+    refine: string[];
+  };
   Artwork: ComponentType<LogoConceptArtworkProps>;
 };
 
-function LogoSvg({
+function LogoCanvas({
   children,
   tone = 'color',
-  lockup = 'horizontal',
+  variant = 'horizontal',
   className,
   title,
 }: LogoConceptArtworkProps & {
   children: ReactNode;
 }) {
-  const viewBox = lockup === 'mark' ? '0 0 112 112' : '0 0 396 112';
+  const viewBox = variant === 'mark' ? '0 0 160 160' : '0 0 560 160';
 
   return (
     <svg
@@ -40,7 +63,7 @@ function LogoSvg({
       aria-label={title}
       aria-hidden={title ? undefined : true}
       data-tone={tone}
-      data-lockup={lockup}
+      data-variant={variant}
       xmlns="http://www.w3.org/2000/svg"
     >
       {children}
@@ -48,289 +71,324 @@ function LogoSvg({
   );
 }
 
-function Wordmark({
-  x = 132,
-  y = 55,
-  compact = false,
+function Word({
+  x = 196,
+  y = 96,
+  className = '',
 }: {
   x?: number;
   y?: number;
-  compact?: boolean;
+  className?: string;
 }) {
   return (
-    <g className="concept-wordmark">
-      <text x={x} y={y} className={compact ? 'concept-word compact' : 'concept-word'}>
+    <g className={`pro-wordmark ${className}`}>
+      <text x={x} y={y} className="pro-word">
         Stitchra
       </text>
-      <path
-        d={`M${x + 6} ${y + 18}C${x + 54} ${y + 8} ${x + 96} ${y + 30} ${x + 142} ${y + 18}`}
-        className="concept-stitch-line"
-        pathLength="1"
-      />
+      <path d={`M${x + 5} ${y + 20}H${x + 238}`} className="pro-word-rule" pathLength="1" />
     </g>
   );
 }
 
-function ThreadSMonogram({
+function AtelierWordmark({
   tone = 'color',
-  lockup = 'horizontal',
+  variant = 'horizontal',
   className,
   title,
 }: LogoConceptArtworkProps) {
-  return (
-    <LogoSvg tone={tone} lockup={lockup} className={className} title={title}>
-      <g transform="translate(0 0)">
-        <rect x="12" y="12" width="88" height="88" rx="25" className="concept-mark-bg" />
+  if (variant === 'mark') {
+    return (
+      <LogoCanvas tone={tone} variant={variant} className={className} title={title}>
+        <rect x="22" y="22" width="116" height="116" rx="30" className="pro-mark-field" />
         <path
-          d="M76 27C68 19 48 18 37 27C24 38 33 50 49 54L63 58C78 62 81 78 66 86C53 94 34 89 27 77"
-          className="concept-thread-stroke"
+          d="M101 44C93 36 73 35 62 43C49 52 54 65 72 69L89 73C109 77 113 96 96 108C80 120 55 114 48 99"
+          className="pro-heavy-thread"
           pathLength="1"
         />
-        <path d="M78 25L34 88" className="concept-needle-stroke" />
-        <path d="M77 25C82 27 85 31 84 37C79 36 76 32 77 25Z" className="concept-needle-eye" />
-        <path d="M24 80C40 70 62 70 84 80" className="concept-stitch-line" pathLength="1" />
+        <path d="M48 124C68 116 91 116 112 124" className="pro-micro-stitches" pathLength="1" />
+      </LogoCanvas>
+    );
+  }
+
+  return (
+    <LogoCanvas tone={tone} variant={variant} className={className} title={title}>
+      <g className="atelier-wordmark">
+        <text x="34" y="98" className="atelier-word">
+          Stitchra
+        </text>
+        <path d="M172 46V99" className="pro-needle" />
+        <path d="M172 46C181 50 183 58 179 66C173 64 170 57 172 46Z" className="pro-needle-eye" />
+        <path d="M170 113C184 105 203 105 221 113" className="pro-micro-stitches" pathLength="1" />
+        <path d="M46 117H376" className="atelier-rule" pathLength="1" />
       </g>
-      {lockup === 'horizontal' && <Wordmark />}
-    </LogoSvg>
+    </LogoCanvas>
   );
 }
 
-function NeedleLoopMark({
+function ThreadSSignature({
   tone = 'color',
-  lockup = 'horizontal',
+  variant = 'horizontal',
   className,
   title,
 }: LogoConceptArtworkProps) {
   return (
-    <LogoSvg tone={tone} lockup={lockup} className={className} title={title}>
+    <LogoCanvas tone={tone} variant={variant} className={className} title={title}>
       <g>
-        <circle cx="56" cy="56" r="42" className="concept-soft-circle" />
+        <rect x="18" y="18" width="124" height="124" rx="38" className="signature-field" />
         <path
-          d="M72 18L35 93"
-          className="concept-needle-stroke"
-        />
-        <path
-          d="M72 18C78 21 81 27 80 34C74 32 71 26 72 18Z"
-          className="concept-needle-eye"
-        />
-        <path
-          d="M36 70C27 53 38 35 57 35C80 35 83 59 64 65L46 71C33 75 34 91 51 94C66 96 78 88 82 77"
-          className="concept-thread-stroke"
+          d="M105 41C94 30 67 30 54 42C40 55 49 70 72 74L91 78C112 83 117 105 98 119C79 132 49 124 42 105"
+          className="signature-thread"
           pathLength="1"
         />
+        <path d="M104 39L52 121" className="signature-needle" />
+        <circle cx="105" cy="40" r="5" className="signature-eye" />
+        <circle cx="43" cy="105" r="4" className="signature-endpoint" />
       </g>
-      {lockup === 'horizontal' && <Wordmark />}
-    </LogoSvg>
+      {variant === 'horizontal' && <Word className="signature-word" />}
+    </LogoCanvas>
   );
 }
 
-function EmbroiderySeal({
+function EmbroideryPatchSystem({
   tone = 'color',
-  lockup = 'horizontal',
+  variant = 'horizontal',
   className,
   title,
 }: LogoConceptArtworkProps) {
   return (
-    <LogoSvg tone={tone} lockup={lockup} className={className} title={title}>
+    <LogoCanvas tone={tone} variant={variant} className={className} title={title}>
       <g>
-        <circle cx="56" cy="56" r="47" className="concept-seal-outer" />
-        <circle cx="56" cy="56" r="38" className="concept-seal-inner" />
         <path
-          d="M73 35C65 28 47 28 38 36C29 45 36 55 51 58L62 60C76 63 78 78 65 84C54 90 38 86 32 76"
-          className="concept-thread-stroke seal-thread"
+          d="M80 15C115 15 140 40 140 80C140 120 115 145 80 145C45 145 20 120 20 80C20 40 45 15 80 15Z"
+          className="patch-outer"
+        />
+        <path
+          d="M80 28C108 28 127 48 127 80C127 112 108 132 80 132C52 132 33 112 33 80C33 48 52 28 80 28Z"
+          className="patch-inner"
+        />
+        <path
+          d="M104 53C96 44 73 43 61 52C49 61 56 74 75 78L91 81C108 85 111 102 96 112C82 121 59 116 53 101"
+          className="patch-thread"
           pathLength="1"
         />
-        <path d="M29 27L83 85" className="concept-stitch-line seal-stitches" pathLength="1" />
+        <path d="M45 45L115 115" className="patch-stitch" pathLength="1" />
+        <path d="M47 115L115 45" className="patch-stitch secondary" pathLength="1" />
       </g>
-      {lockup === 'horizontal' && <Wordmark />}
-    </LogoSvg>
-  );
-}
-
-function CustomWordmark({
-  tone = 'color',
-  lockup = 'horizontal',
-  className,
-  title,
-}: LogoConceptArtworkProps) {
-  return (
-    <LogoSvg tone={tone} lockup={lockup} className={className} title={title}>
-      {lockup === 'mark' ? (
+      {variant === 'horizontal' && (
         <g>
-          <rect x="14" y="14" width="84" height="84" rx="18" className="concept-mark-bg" />
-          <text x="56" y="72" textAnchor="middle" className="concept-single-letter">S</text>
-          <path d="M32 82C46 74 66 74 82 82" className="concept-stitch-line" pathLength="1" />
-        </g>
-      ) : (
-        <g>
-          <text x="20" y="68" className="concept-word wordmark-focus">Stitchra</text>
-          <path d="M152 33V68" className="concept-needle-stroke word-needle" />
-          <path d="M152 33C156 35 158 38 158 43C154 42 152 38 152 33Z" className="concept-needle-eye" />
-          <path d="M149 75C163 69 177 69 191 75" className="concept-stitch-line" pathLength="1" />
+          <Word className="patch-word" />
+          <text x="199" y="122" className="pro-subline">
+            AI embroidery studio
+          </text>
         </g>
       )}
-    </LogoSvg>
+    </LogoCanvas>
   );
 }
 
-function AICraftMark({
+function AIAtelierGrid({
   tone = 'color',
-  lockup = 'horizontal',
+  variant = 'horizontal',
   className,
   title,
 }: LogoConceptArtworkProps) {
   return (
-    <LogoSvg tone={tone} lockup={lockup} className={className} title={title}>
+    <LogoCanvas tone={tone} variant={variant} className={className} title={title}>
       <g>
-        <rect x="13" y="13" width="86" height="86" rx="22" className="concept-grid-box" />
-        <path d="M30 36H82M30 56H82M30 76H82M36 30V82M56 30V82M76 30V82" className="concept-grid-line" />
+        <rect x="18" y="18" width="124" height="124" rx="28" className="grid-field" />
+        <path d="M42 44H118M42 80H118M42 116H118M44 42V118M80 42V118M116 42V118" className="grid-lines" />
         <path
-          d="M74 31C63 24 43 28 38 41C34 52 43 58 58 59C74 60 81 73 69 83C58 92 40 88 33 78"
-          className="concept-thread-stroke"
+          d="M106 48C93 39 66 43 58 58C51 70 61 79 81 80C103 81 112 99 96 113C81 126 55 120 48 105"
+          className="grid-thread"
           pathLength="1"
         />
-        <circle cx="32" cy="36" r="3" className="concept-node" />
-        <circle cx="82" cy="56" r="3" className="concept-node" />
-        <circle cx="56" cy="82" r="3" className="concept-node" />
+        <circle cx="44" cy="44" r="4" className="grid-node" />
+        <circle cx="116" cy="80" r="4" className="grid-node" />
+        <circle cx="80" cy="116" r="4" className="grid-node" />
       </g>
-      {lockup === 'horizontal' && <Wordmark />}
-    </LogoSvg>
-  );
-}
-
-function MinimalLuxuryMark({
-  tone = 'color',
-  lockup = 'horizontal',
-  className,
-  title,
-}: LogoConceptArtworkProps) {
-  return (
-    <LogoSvg tone={tone} lockup={lockup} className={className} title={title}>
-      <g>
-        <path d="M56 13L91 33V79L56 99L21 79V33L56 13Z" className="concept-lux-frame" />
-        <path
-          d="M72 35C64 28 49 28 41 36C33 44 39 54 52 57L63 60C74 63 76 75 65 81C55 87 41 83 35 75"
-          className="concept-thread-stroke lux-thread"
-          pathLength="1"
-        />
-      </g>
-      {lockup === 'horizontal' && (
+      {variant === 'horizontal' && (
         <g>
-          <text x="130" y="65" className="concept-word luxury-word">Stitchra</text>
-          <path d="M132 78H286" className="concept-lux-rule" />
+          <Word className="grid-word" />
+          <path d="M199 44H430" className="grid-top-rule" pathLength="1" />
         </g>
       )}
-    </LogoSvg>
+    </LogoCanvas>
   );
 }
 
-export const stitchraLogoConcepts: BrandLogoConcept[] = [
+export const premiumLogoConcepts: BrandLogoConcept[] = [
   {
-    id: 'thread-s-monogram',
-    name: 'Thread-S Monogram',
-    direction: 'Continuous thread icon',
+    id: 'atelier-wordmark',
+    name: 'Stitchra Atelier Wordmark',
+    shortName: 'Atelier Wordmark',
+    direction: 'Wordmark-led identity',
     description:
-      'A confident S built from a single thread stroke with a restrained needle detail. Strongest as an app icon and small mark.',
-    pros: [
-      'Memorable at small sizes',
-      'Clear embroidery reference',
-      'Works without the wordmark',
-    ],
-    cons: [
-      'Needs careful stroke weight for tiny embroidery',
-      'More expressive than corporate',
-    ],
-    embroideryScore: 4,
-    Artwork: ThreadSMonogram,
+      'A restrained wordmark-first system where Stitchra owns the brand and the stitch detail stays secondary.',
+    scores: {
+      memorability: 4,
+      premiumFeel: 5,
+      embroiderySuitability: 4,
+      smallSizeReadability: 4,
+      uniqueness: 4,
+      navbarReadability: 5,
+      appIconStrength: 3,
+      longTermPotential: 5,
+    },
+    details: {
+      coreIdea: 'Make the name the asset. The mark supports the word instead of competing with it.',
+      visualSignature: 'A single needle/stitch intervention around the wordmark, not a generic sewing icon.',
+      typographyDirection: 'High-contrast modern sans/soft-serif hybrid with a slightly tailored lowercase rhythm.',
+      embroiderySuitability: 'Strong as a woven label or one-color chest mark because the detail is minimal.',
+      scalabilityNotes: 'Best for navbar, invoices and packaging. Needs a refined companion monogram for tiny app use.',
+      riskNotes: 'If the type is not custom enough, it can feel like a dressed-up text logo.',
+    },
+    critique: {
+      works: [
+        'The brand name becomes recognizable instead of relying on a decorative symbol.',
+        'Premium enough for invoices, labels and a future clothing-adjacent identity.',
+      ],
+      fails: [
+        'The standalone app icon is weaker than the other directions.',
+        'A production version would need real type customization, not just SVG text.',
+      ],
+      refine: [
+        'Draw custom S/t/i details and test the wordmark at 120px navbar width.',
+        'Create a companion favicon monogram that inherits the same stitch logic.',
+      ],
+    },
+    Artwork: AtelierWordmark,
   },
   {
-    id: 'needle-loop-mark',
-    name: 'Needle Loop Mark',
-    direction: 'Elegant needle and loop',
+    id: 'thread-s-signature',
+    name: 'Thread-S Signature',
+    shortName: 'Thread-S',
+    direction: 'Refined monogram',
     description:
-      'A minimal needle and loop system that implies an S without becoming a generic sewing icon.',
-    pros: [
-      'Timeless and premium',
-      'Good one-color potential',
-      'Works well on invoices and labels',
-    ],
-    cons: [
-      'Less instantly readable as S',
-      'Needs wordmark support in first launch',
-    ],
-    embroideryScore: 5,
-    Artwork: NeedleLoopMark,
+      'A controlled S thread path designed to work as app icon, favicon and social avatar without excessive glow.',
+    scores: {
+      memorability: 5,
+      premiumFeel: 4,
+      embroiderySuitability: 4,
+      smallSizeReadability: 5,
+      uniqueness: 4,
+      navbarReadability: 4,
+      appIconStrength: 5,
+      longTermPotential: 4,
+    },
+    details: {
+      coreIdea: 'Own a simple Stitchra S that feels drawn by thread but remains crisp.',
+      visualSignature: 'One thick S curve, a needle axis and restrained endpoints for stitch craft.',
+      typographyDirection: 'Pair with a confident geometric wordmark and wide tracking for premium utility.',
+      embroiderySuitability: 'Excellent if simplified to two stroke weights for one-color embroidery.',
+      scalabilityNotes: 'Strongest direction for favicon, app icon, stickers and social profile.',
+      riskNotes: 'Could still drift toward generic thread-icon territory unless the S proportions are distinctive.',
+    },
+    critique: {
+      works: [
+        'Clear brand shorthand that reads quickly at small sizes.',
+        'Can become a recognizable app icon and garment label mark.',
+      ],
+      fails: [
+        'Many craft brands use thread loops, so the exact curve must be owned.',
+        'The needle detail can become too literal if overemphasized.',
+      ],
+      refine: [
+        'Iterate the S silhouette until it is unmistakable at 16px.',
+        'Develop one-color and embroidered stroke versions before launch.',
+      ],
+    },
+    Artwork: ThreadSSignature,
   },
   {
-    id: 'embroidery-seal',
-    name: 'Embroidery Seal',
-    direction: 'Patch and badge identity',
+    id: 'embroidery-patch-system',
+    name: 'Embroidery Patch System',
+    shortName: 'Patch System',
+    direction: 'Badge and label identity',
     description:
-      'A circular seal that feels like a label, patch, sticker or social profile mark for creator-led merch.',
-    pros: [
-      'Excellent badge and sticker use',
-      'Feels physical and crafted',
-      'Strong social avatar shape',
-    ],
-    cons: [
-      'More casual than luxury',
-      'Circular lockup can feel busy at 32px',
-    ],
-    embroideryScore: 4,
-    Artwork: EmbroiderySeal,
+      'A fashion-label patch system that gives Stitchra a ready-made language for merch, neck labels and packaging.',
+    scores: {
+      memorability: 4,
+      premiumFeel: 4,
+      embroiderySuitability: 5,
+      smallSizeReadability: 4,
+      uniqueness: 4,
+      navbarReadability: 3,
+      appIconStrength: 5,
+      longTermPotential: 4,
+    },
+    details: {
+      coreIdea: 'Treat Stitchra like a patch label from day one, not only a SaaS interface.',
+      visualSignature: 'Layered seal, stitch cross-lines and a centered S-thread form.',
+      typographyDirection: 'Compact label typography with functional subline and high legibility.',
+      embroiderySuitability: 'Very strong for labels and patches because the system already thinks in borders.',
+      scalabilityNotes: 'Excellent for social avatars and physical applications; horizontal lockup needs restraint.',
+      riskNotes: 'A badge can feel like a stamp if the proportions and type are not elevated.',
+    },
+    critique: {
+      works: [
+        'Directly connects to embroidery, patches and textile production.',
+        'Creates a strong physical-world identity for labels and packaging.',
+      ],
+      fails: [
+        'Less elegant in a narrow navbar than a pure wordmark.',
+        'Too many rings or stitch details can make it feel souvenir-like.',
+      ],
+      refine: [
+        'Reduce border complexity and test a stitched one-color patch sample.',
+        'Create a calmer horizontal wordmark companion for web navigation.',
+      ],
+    },
+    Artwork: EmbroideryPatchSystem,
   },
   {
-    id: 'custom-wordmark',
-    name: 'Custom Wordmark',
-    direction: 'Readable name-led identity',
+    id: 'ai-atelier-grid',
+    name: 'AI Atelier Grid',
+    shortName: 'AI Grid',
+    direction: 'Precision plus craft',
     description:
-      'A wordmark-first route where Stitchra owns the name, with one subtle needle treatment instead of a separate symbol-heavy logo.',
-    pros: [
-      'Most readable in navbar',
-      'Good for invoices and product pages',
-      'Avoids generic icon traps',
-    ],
-    cons: [
-      'Needs a companion app icon',
-      'Less distinctive as a standalone mark',
-    ],
-    embroideryScore: 4,
-    Artwork: CustomWordmark,
-  },
-  {
-    id: 'ai-craft-mark',
-    name: 'AI Craft Mark',
-    direction: 'Precision grid with thread',
-    description:
-      'A balanced AI-assisted craft direction using a precision grid, nodes and a thread S without robot or chatbot cues.',
-    pros: [
-      'Communicates AI assistance',
-      'Feels technical but still tactile',
-      'Distinctive for digital product surfaces',
-    ],
-    cons: [
-      'Grid may need simplification for embroidery',
-      'Slightly more startup-tech leaning',
-    ],
-    embroideryScore: 3,
-    Artwork: AICraftMark,
-  },
-  {
-    id: 'minimal-luxury-mark',
-    name: 'Minimal Luxury Mark',
-    direction: 'One-color premium system',
-    description:
-      'A simple geometric frame with a thread S, designed to work in black, off-white and mint with minimal effects.',
-    pros: [
-      'Best one-color behavior',
-      'Premium and restrained',
-      'Strong for labels and packaging',
-    ],
-    cons: [
-      'Less playful for student audiences',
-      'Needs polish to avoid fashion-monogram cliches',
-    ],
-    embroideryScore: 5,
-    Artwork: MinimalLuxuryMark,
+      'A subtle grid-and-thread identity that signals AI-assisted placement and production craft without robot tropes.',
+    scores: {
+      memorability: 4,
+      premiumFeel: 4,
+      embroiderySuitability: 3,
+      smallSizeReadability: 4,
+      uniqueness: 5,
+      navbarReadability: 4,
+      appIconStrength: 4,
+      longTermPotential: 4,
+    },
+    details: {
+      coreIdea: 'Position Stitchra as a precise design system: AI layout intelligence plus hand-finished craft.',
+      visualSignature: 'Technical grid points crossed by a single organic thread stroke.',
+      typographyDirection: 'Modern editorial sans with measured spacing and a technical substructure.',
+      embroiderySuitability: 'Good if the grid is simplified or removed in small stitched applications.',
+      scalabilityNotes: 'Distinctive in digital contexts and product UI; needs simplified embroidery variant.',
+      riskNotes: 'The grid can skew too software-heavy if the thread does not feel warm enough.',
+    },
+    critique: {
+      works: [
+        'Communicates AI assistance without using a robot, sparkle or generic neural icon.',
+        'Feels credible for a premium product customizer and design studio.',
+      ],
+      fails: [
+        'More complex than the other systems for one-color embroidery.',
+        'Could date faster if the grid treatment feels too current-tech.',
+      ],
+      refine: [
+        'Create a reduced grid variant for favicon and embroidery.',
+        'Warm up the wordmark so the system does not become too clinical.',
+      ],
+    },
+    Artwork: AIAtelierGrid,
   },
 ];
+
+export const roundOneExplorations = [
+  'Thread-S Monogram',
+  'Needle Loop Mark',
+  'Embroidery Seal',
+  'Custom Wordmark',
+  'AI Craft Mark',
+  'Minimal Luxury Mark',
+];
+
