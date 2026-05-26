@@ -10,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { usePathname } from "next/navigation";
+import StitchraAgentOrb from "./StitchraAgentOrb";
 
 type ChatMessage = {
   id: string;
@@ -953,7 +954,10 @@ export default function StitchraDesignAgent() {
         aria-expanded={isOpen}
         aria-label="Open Stitchra AI Design Agent. Drag on mobile to move."
       >
-        <span aria-hidden="true">S</span>
+        <StitchraAgentOrb
+          active={isStreaming}
+          className="stitchra-agent-orb-shell"
+        />
         <strong>Design Agent</strong>
       </button>
 
@@ -1202,38 +1206,78 @@ export default function StitchraDesignAgent() {
         }
 
         .stitchra-ai-launcher {
-          min-height: 56px;
+          min-height: 58px;
           display: inline-flex;
           align-items: center;
-          gap: 12px;
-          border: 1px solid rgba(70, 255, 212, 0.35);
+          gap: 11px;
+          border: 1px solid rgba(127, 255, 221, 0.24);
           border-radius: 999px;
-          color: #071110;
-          background: linear-gradient(135deg, #16ff9a, #00c8ff);
-          padding: 8px 18px 8px 8px;
-          box-shadow: 0 20px 60px rgba(0, 225, 190, 0.28);
-          transition: transform 160ms ease, box-shadow 160ms ease;
+          color: #f6fff9;
+          background:
+            radial-gradient(circle at 22% 22%, rgba(0, 255, 190, 0.18), transparent 38%),
+            linear-gradient(135deg, rgba(8, 22, 20, 0.94), rgba(3, 11, 13, 0.92));
+          padding: 7px 17px 7px 7px;
+          box-shadow:
+            0 20px 60px rgba(0, 225, 190, 0.2),
+            0 8px 22px rgba(0, 0, 0, 0.32),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
           user-select: none;
           -webkit-user-select: none;
         }
 
-        .stitchra-ai-launcher span {
-          width: 40px;
-          height: 40px;
-          display: grid;
-          place-items: center;
+        .stitchra-agent-orb-shell {
+          width: 44px;
+          height: 44px;
+          display: block;
+          flex: 0 0 auto;
           border-radius: 999px;
-          color: #dffff0;
-          background:
-            radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.16), transparent 36%),
-            #071110;
-          font-weight: 900;
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+          filter: drop-shadow(0 0 14px rgba(0, 255, 190, 0.24));
+          animation: stitchraAgentOrbIntro 1400ms ease-out 1;
+        }
+
+        .stitchra-agent-orb-shell svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+
+        .stitchra-agent-orb-shell[data-active="true"] {
+          filter: drop-shadow(0 0 18px rgba(0, 200, 255, 0.36));
+        }
+
+        .stitchra-ai-launcher:hover,
+        .stitchra-ai-launcher:focus-visible {
+          box-shadow:
+            0 24px 66px rgba(0, 225, 190, 0.28),
+            0 10px 26px rgba(0, 0, 0, 0.36),
+            inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        }
+
+        .stitchra-ai-launcher:focus-visible {
+          outline: 3px solid rgba(0, 245, 210, 0.32);
+          outline-offset: 3px;
         }
 
         .stitchra-ai-launcher strong {
           font-size: 0.92rem;
           letter-spacing: 0;
+          text-shadow: 0 1px 18px rgba(0, 255, 190, 0.2);
+        }
+
+        @keyframes stitchraAgentOrbIntro {
+          0% {
+            transform: scale(0.94);
+            filter: drop-shadow(0 0 4px rgba(0, 255, 190, 0.12));
+          }
+          55% {
+            transform: scale(1.04);
+            filter: drop-shadow(0 0 22px rgba(0, 255, 190, 0.42));
+          }
+          100% {
+            transform: scale(1);
+            filter: drop-shadow(0 0 14px rgba(0, 255, 190, 0.24));
+          }
         }
 
         @media (max-width: 760px) {
@@ -1275,8 +1319,12 @@ export default function StitchraDesignAgent() {
             position: fixed;
             right: 12px;
             bottom: max(82px, calc(14px + env(safe-area-inset-bottom)));
-            min-height: 48px;
-            padding: 6px 12px 6px 6px;
+            width: 56px;
+            min-width: 56px;
+            min-height: 56px;
+            justify-content: center;
+            gap: 0;
+            padding: 6px;
             margin-left: auto;
             pointer-events: auto;
             touch-action: none;
@@ -1295,9 +1343,9 @@ export default function StitchraDesignAgent() {
             display: none;
           }
 
-          .stitchra-ai-launcher span {
-            width: 36px;
-            height: 36px;
+          .stitchra-agent-orb-shell {
+            width: 44px;
+            height: 44px;
           }
 
           .stitchra-ai-launcher strong {
@@ -1326,6 +1374,10 @@ export default function StitchraDesignAgent() {
           .stitchra-ai-actions button,
           .stitchra-ai-form button {
             transition: none;
+          }
+
+          .stitchra-agent-orb-shell {
+            animation: none;
           }
         }
       `}</style>
