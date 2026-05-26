@@ -656,6 +656,46 @@ function GuidedStudioStepper({
   );
 }
 
+function StartNewDesignDialog({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="reset-design-modal-overlay" role="presentation">
+      <section
+        className="reset-design-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-design-title"
+        aria-describedby="reset-design-description"
+      >
+        <span>Fresh start</span>
+        <h2 id="reset-design-title">Start a new design?</h2>
+        <p id="reset-design-description">
+          This clears your saved draft and returns Stitchra to the beginning.
+        </p>
+        <div className="reset-design-actions">
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm}>
+            Start new design
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function Home({ locale }: HomeProps = {}) {
   const activeLocale = resolveLocale(locale);
   const t = createTranslator(activeLocale);
@@ -709,6 +749,8 @@ export default function Home({ locale }: HomeProps = {}) {
   const [designAddedToastOpen, setDesignAddedToastOpen] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [previewExportStatus, setPreviewExportStatus] = useState('');
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [newDesignToast, setNewDesignToast] = useState('');
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -790,6 +832,19 @@ export default function Home({ locale }: HomeProps = {}) {
       designPreparation?.recommendations[0] ??
       'Use bold shapes and clear placement for best stitch quality.',
   };
+  const hasActiveDesignDraft = Boolean(
+    file ||
+      preview ||
+      aiConcepts.length > 0 ||
+      logoPrompt.trim() ||
+      designStartMode !== 'choice' ||
+      estimate ||
+      orderStatus ||
+      orderSuccess ||
+      customLogoPlacement ||
+      showDraftRecovery ||
+      draftImageNeedsUpload
+  );
 
   const processSteps = getProcessSteps(activeLocale);
   const features = getFeatures(activeLocale);
@@ -1012,13 +1067,19 @@ export default function Home({ locale }: HomeProps = {}) {
     [focusShirtViewer]
   );
 
-  const resetDesignDraftState = useCallback(async () => {
-    const confirmed = window.confirm('This clears your current design draft.');
+  const scrollToHomeStart = useCallback(() => {
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${window.location.search}`
+    );
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }, []);
 
-    if (!confirmed) {
-      return;
-    }
-
+  const resetDesignToStart = useCallback(async () => {
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
       previewObjectUrlRef.current = null;
@@ -1056,15 +1117,51 @@ export default function Home({ locale }: HomeProps = {}) {
     setGenerationIntent(null);
     setDesignAddedToastOpen(false);
     setOrderOpen(false);
+    setOrderForm({
+      name: '',
+      email: '',
+      phone: '',
+      quantity: '1',
+      note: '',
+    });
     setOrderStatus('');
     setOrderError('');
     setOrderSuccess(null);
     setOrderFieldErrors({});
+    setResetDialogOpen(false);
     setShowDraftRecovery(false);
     setDraftImageNeedsUpload(false);
     setRestoredDraftAt(null);
     setDraftSaveStatus('Draft cleared');
+    setNewDesignToast('New design started');
+    scrollToHomeStart();
+
+    window.setTimeout(() => {
+      setNewDesignToast('');
+    }, 3200);
+  }, [scrollToHomeStart]);
+
+  const requestDesignReset = useCallback(() => {
+    setResetDialogOpen(true);
   }, []);
+
+  const resetDesignDraftState = useCallback(() => {
+    requestDesignReset();
+  }, [requestDesignReset]);
+
+  const handleBrandResetClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (hasActiveDesignDraft) {
+        event.preventDefault();
+        requestDesignReset();
+        return;
+      }
+
+      event.preventDefault();
+      scrollToHomeStart();
+    },
+    [hasActiveDesignDraft, requestDesignReset, scrollToHomeStart]
+  );
 
   const continueRestoredDraft = useCallback(() => {
     setShowDraftRecovery(false);
@@ -2455,8 +2552,19 @@ export default function Home({ locale }: HomeProps = {}) {
       <Header
         locale={activeLocale}
         t={t}
+        onBrandReset={handleBrandResetClick}
         onStartDesigning={handleStartDesigningClick}
       />
+      <StartNewDesignDialog
+        open={resetDialogOpen}
+        onCancel={() => setResetDialogOpen(false)}
+        onConfirm={() => void resetDesignToStart()}
+      />
+      {newDesignToast && (
+        <div className="new-design-toast" role="status">
+          {newDesignToast}
+        </div>
+      )}
       <DesignAddedToast
         open={designAddedToastOpen}
         onViewOnShirt={() => {
@@ -5243,10 +5351,12 @@ export default function Home({ locale }: HomeProps = {}) {
 function Header({
   locale,
   t,
+  onBrandReset,
   onStartDesigning,
 }: {
   locale: Locale;
   t: Translator;
+  onBrandReset: (event: MouseEvent<HTMLAnchorElement>) => void;
   onStartDesigning: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const navItems = getNavItems(t);
@@ -5282,6 +5392,8 @@ function Header({
         <a
           href="#hero"
           className="header-brand"
+          aria-label="Go to Stitchra home and start a new design"
+          onClick={onBrandReset}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -7536,6 +7648,109 @@ function GlobalVisualStyles() {
           font-size: 11px;
           font-weight: 850;
           text-align: center;
+        }
+
+        .reset-design-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 155;
+          display: grid;
+          place-items: center;
+          padding: 22px;
+          background: rgba(0,0,0,0.62);
+          backdrop-filter: blur(18px);
+        }
+
+        .reset-design-modal {
+          width: min(430px, calc(100vw - 32px));
+          display: grid;
+          gap: 14px;
+          padding: 22px;
+          border-radius: 28px;
+          border: 1px solid rgba(24,255,154,0.24);
+          background:
+            radial-gradient(circle at 16% 8%, rgba(0,255,136,0.16), transparent 34%),
+            radial-gradient(circle at 86% 82%, rgba(0,215,255,0.13), transparent 34%),
+            rgba(5,10,11,0.96);
+          box-shadow:
+            0 30px 100px rgba(0,0,0,0.58),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .reset-design-modal > span {
+          width: fit-content;
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 10px;
+          border-radius: 999px;
+          color: #071110;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .reset-design-modal h2 {
+          margin: 0;
+          color: #f6fff9;
+          font-size: 24px;
+          line-height: 1.15;
+        }
+
+        .reset-design-modal p {
+          margin: 0;
+          color: rgba(245,247,248,0.68);
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .reset-design-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .reset-design-actions button {
+          min-height: 42px;
+          padding: 0 15px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(246,255,249,0.86);
+          background: rgba(255,255,255,0.055);
+          font: inherit;
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .reset-design-actions button:last-child {
+          border: 0;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          box-shadow: 0 16px 44px rgba(0,220,190,0.20);
+        }
+
+        .new-design-toast {
+          position: fixed;
+          left: 50%;
+          bottom: max(22px, env(safe-area-inset-bottom));
+          z-index: 150;
+          transform: translateX(-50%);
+          min-height: 42px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 16px;
+          border-radius: 999px;
+          border: 1px solid rgba(24,255,154,0.24);
+          color: #9dffc4;
+          background: rgba(5,10,11,0.92);
+          backdrop-filter: blur(14px);
+          box-shadow: 0 18px 54px rgba(0,0,0,0.34);
+          font-size: 13px;
+          font-weight: 900;
         }
 
         .design-added-toast {
