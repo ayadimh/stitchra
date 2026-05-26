@@ -35,6 +35,7 @@ import DesignStartOptions, {
   type DesignStartMode,
 } from '@/components/configurator/DesignStartOptions';
 import DraftRecoveryBanner from '@/components/configurator/DraftRecoveryBanner';
+import MobileLogoIntro from '@/components/mobile/MobileLogoIntro';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
 import UploadOwnDesignPanel from '@/components/configurator/UploadOwnDesignPanel';
 import type { CustomLogoPlacement } from '@/components/configurator/types';
@@ -837,6 +838,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const [emptyDesignHelperOpen, setEmptyDesignHelperOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [newDesignToast, setNewDesignToast] = useState('');
+  const [draftPromptNow] = useState(() => Date.now());
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -2891,6 +2893,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       }, 0);
     }
   };
+  const draftIsRecent =
+    restoredDraftAt !== null &&
+    draftPromptNow - restoredDraftAt < 7 * 24 * 60 * 60 * 1000;
+  const showMobileDraftPrompt =
+    entry === 'home' && draftIsRecent && hasActiveDesignDraft;
 
   return (
     <main
@@ -2910,6 +2917,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     >
       <BackgroundEffects />
       <GlobalVisualStyles />
+      {entry === 'home' && <MobileLogoIntro />}
 
       <Header
         locale={activeLocale}
@@ -2967,6 +2975,24 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             <span>Fabric preview</span>
             <span>Clear quote</span>
           </div>
+          {showMobileDraftPrompt && (
+            <div className="mobile-draft-soft-card" role="status">
+              <div>
+                <span>Saved draft</span>
+                <strong>Continue your last design</strong>
+                <p>We found a recent design draft on this device.</p>
+              </div>
+              <div>
+                <Link href="/design">Continue</Link>
+                <button
+                  type="button"
+                  onClick={() => void resetDesignDraftState()}
+                >
+                  Start fresh
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -6604,11 +6630,13 @@ function Header({
 
   useEffect(() => {
     if (!mobileMenuOpen && !mobileLanguageOpen) {
+      delete document.body.dataset.stitchraMobileSheetOpen;
       return undefined;
     }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.body.dataset.stitchraMobileSheetOpen = 'true';
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -6627,6 +6655,7 @@ function Header({
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      delete document.body.dataset.stitchraMobileSheetOpen;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [mobileLanguageOpen, mobileMenuOpen]);
@@ -6656,7 +6685,7 @@ function Header({
         top: 0,
         left: 0,
         width: '100%',
-        zIndex: mobileMenuOpen || mobileLanguageOpen ? 180 : 50,
+        zIndex: mobileMenuOpen || mobileLanguageOpen ? 280 : 50,
         backdropFilter: 'blur(22px)',
         background:
           'rgba(0,0,0,0.35)',
@@ -9875,13 +9904,17 @@ function GlobalVisualStyles() {
         .mobile-menu-backdrop,
         .mobile-language-backdrop {
           position: fixed;
-          inset: 0;
-          z-index: 180;
+          inset: 0 !important;
+          width: 100vw;
+          height: 100dvh;
+          z-index: 280;
           display: flex;
           align-items: flex-end;
           justify-content: center;
           padding: 18px;
           padding-bottom: max(18px, calc(18px + env(safe-area-inset-bottom)));
+          box-sizing: border-box;
+          overflow: hidden;
           background:
             radial-gradient(circle at 50% 100%, rgba(0, 255, 180, 0.13), transparent 42%),
             rgba(0, 0, 0, 0.58);
@@ -9889,14 +9922,16 @@ function GlobalVisualStyles() {
         }
 
         .mobile-language-backdrop {
-          z-index: 190;
+          z-index: 300;
         }
 
         .mobile-menu-sheet,
         .mobile-language-sheet {
-          width: min(100%, 480px);
+          width: min(calc(100vw - 24px), 480px);
           max-height: min(720px, calc(100dvh - 28px));
           overflow-y: auto;
+          box-sizing: border-box;
+          margin: 0 auto;
           border: 1px solid rgba(140, 255, 220, 0.18);
           border-radius: 30px 30px 24px 24px;
           background:
@@ -9907,6 +9942,7 @@ function GlobalVisualStyles() {
             0 34px 100px rgba(0,0,0,0.58),
             inset 0 1px 0 rgba(255,255,255,0.08);
           backdrop-filter: blur(22px);
+          transform: translateZ(0);
         }
 
         .mobile-menu-heading,
@@ -10965,6 +11001,73 @@ function GlobalVisualStyles() {
             padding: 6px 10px;
             font-size: 12px;
             font-weight: 850;
+          }
+
+          .mobile-draft-soft-card {
+            width: 100%;
+            display: grid;
+            gap: 12px;
+            margin-top: 2px;
+            padding: 14px;
+            border: 1px solid rgba(140,255,220,0.14);
+            border-radius: 22px;
+            background: rgba(255,255,255,0.05);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+          }
+
+          .mobile-draft-soft-card span {
+            display: block;
+            margin-bottom: 4px;
+            color: #18ff9a;
+            font-size: 11px;
+            font-weight: 950;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+          }
+
+          .mobile-draft-soft-card strong {
+            display: block;
+            color: #f7fff9;
+            font-size: 16px;
+          }
+
+          .mobile-draft-soft-card p {
+            margin: 4px 0 0;
+            color: rgba(246,255,249,0.62);
+            font-size: 13px;
+            line-height: 1.4;
+            letter-spacing: 0;
+            text-transform: none;
+          }
+
+          .mobile-draft-soft-card div:last-child {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+          }
+
+          .mobile-draft-soft-card a,
+          .mobile-draft-soft-card button {
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 950;
+            text-decoration: none;
+          }
+
+          .mobile-draft-soft-card a {
+            color: #06100a;
+            background: linear-gradient(135deg, #00ff88, #00c8ff);
+          }
+
+          .mobile-draft-soft-card button {
+            border: 1px solid rgba(255,255,255,0.14);
+            color: #f7fff9;
+            background: rgba(255,255,255,0.055);
           }
 
           .mobile-launch-primary,

@@ -93,11 +93,13 @@ export default function MobileInfoPage({
 
   useEffect(() => {
     if (!menuOpen && !languageOpen) {
+      delete document.body.dataset.stitchraMobileSheetOpen;
       return undefined;
     }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.body.dataset.stitchraMobileSheetOpen = 'true';
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -116,6 +118,7 @@ export default function MobileInfoPage({
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      delete document.body.dataset.stitchraMobileSheetOpen;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [languageOpen, menuOpen]);
@@ -513,25 +516,31 @@ export default function MobileInfoPage({
 
         .mobile-info-sheet-backdrop {
           position: fixed;
-          inset: 0;
-          z-index: 230;
+          inset: 0 !important;
+          width: 100vw;
+          height: 100dvh;
+          z-index: 280;
           display: flex;
           align-items: flex-end;
           justify-content: center;
           padding: 18px;
           padding-bottom: max(18px, calc(18px + env(safe-area-inset-bottom)));
+          box-sizing: border-box;
+          overflow: hidden;
           background: rgba(0,0,0,0.62);
           backdrop-filter: blur(10px);
         }
 
         .mobile-info-language-backdrop {
-          z-index: 240;
+          z-index: 300;
         }
 
         .mobile-info-sheet {
-          width: min(100%, 480px);
+          width: min(calc(100vw - 24px), 480px);
           max-height: min(720px, calc(100dvh - 28px));
           overflow-y: auto;
+          box-sizing: border-box;
+          margin: 0 auto;
           border: 1px solid rgba(140,255,220,0.18);
           border-radius: 30px 30px 24px 24px;
           background:

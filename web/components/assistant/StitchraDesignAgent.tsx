@@ -71,6 +71,7 @@ const LOCALE_SEGMENTS = new Set(["en", "de", "fr", "ar", "es", "ru"]);
 const CLIENT_MAX_INPUT_CHARS = 1200;
 const CLIENT_MAX_MESSAGES = 6;
 const MOBILE_LAUNCHER_POSITION_KEY = "stitchra-agent-launcher-position-v1";
+const AGENT_HELPER_SEEN_KEY = "stitchra-agent-help-seen-v1";
 const MOBILE_DRAG_QUERY = "(max-width: 760px)";
 const MOBILE_EDGE_PADDING = 12;
 const MOBILE_TOP_SAFE_PADDING = 16;
@@ -313,6 +314,22 @@ function clearResetAgentQueryFlag() {
   }
 }
 
+function rememberAgentHelperSeen() {
+  try {
+    window.sessionStorage.setItem(AGENT_HELPER_SEEN_KEY, "true");
+  } catch {
+    // Session hints are optional.
+  }
+}
+
+function hasSeenAgentHelper() {
+  try {
+    return window.sessionStorage.getItem(AGENT_HELPER_SEEN_KEY) === "true";
+  } catch {
+    return true;
+  }
+}
+
 function isLauncherRectVisible(element: HTMLElement | null) {
   if (!element) {
     return true;
@@ -342,6 +359,7 @@ export default function StitchraDesignAgent() {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [status, setStatus] = useState<SendStatus>("idle");
   const [isMobileDraggable, setIsMobileDraggable] = useState(false);
+  const [showHelperCloud, setShowHelperCloud] = useState(false);
   const [launcherPosition, setLauncherPosition] =
     useState<LauncherPosition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -393,6 +411,11 @@ export default function StitchraDesignAgent() {
     applyLauncherPosition(nextPosition);
   }, [applyLauncherPosition, getLauncherSize, isMobileDraggable]);
 
+  const dismissHelperCloud = useCallback(() => {
+    rememberAgentHelperSeen();
+    setShowHelperCloud(false);
+  }, []);
+
   const clampCurrentLauncherPosition = useCallback((save = true) => {
     const size = getLauncherSize();
     const currentPosition =
@@ -423,6 +446,34 @@ export default function StitchraDesignAgent() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      isHidden ||
+      isOpen ||
+      !isMobileLauncherViewport() ||
+      hasSeenAgentHelper() ||
+      document.body.dataset.stitchraMobileSheetOpen === "true"
+    ) {
+      return undefined;
+    }
+
+    const showFrame = window.requestAnimationFrame(() => {
+      setShowHelperCloud(true);
+    });
+    const timeout = window.setTimeout(() => {
+      dismissHelperCloud();
+    }, 5200);
+    const hideOnScroll = () => dismissHelperCloud();
+
+    window.addEventListener("scroll", hideOnScroll, { passive: true, once: true });
+
+    return () => {
+      window.cancelAnimationFrame(showFrame);
+      window.clearTimeout(timeout);
+      window.removeEventListener("scroll", hideOnScroll);
+    };
+  }, [dismissHelperCloud, isHidden, isOpen]);
 
   useEffect(() => {
     const query = window.matchMedia(MOBILE_DRAG_QUERY);
@@ -709,6 +760,8 @@ export default function StitchraDesignAgent() {
   const handleLauncherPointerDown = (
     event: ReactPointerEvent<HTMLButtonElement>,
   ) => {
+    dismissHelperCloud();
+
     if (!isMobileDraggable || event.pointerType !== "touch") {
       return;
     }
@@ -740,6 +793,8 @@ export default function StitchraDesignAgent() {
     if (!drag || drag.pointerId !== event.pointerId) {
       return;
     }
+
+    dismissHelperCloud();
 
     const distanceX = event.clientX - drag.startX;
     const distanceY = event.clientY - drag.startY;
@@ -977,6 +1032,19 @@ export default function StitchraDesignAgent() {
         </section>
       ) : null}
 
+      {showHelperCloud && !isOpen ? (
+        <button
+          type="button"
+          className="stitchra-agent-helper-cloud"
+          onClick={() => {
+            dismissHelperCloud();
+            setIsOpen(true);
+          }}
+        >
+          Need help?
+        </button>
+      ) : null}
+
       <button
         ref={launcherRef}
         type="button"
@@ -991,6 +1059,7 @@ export default function StitchraDesignAgent() {
             return;
           }
 
+          dismissHelperCloud();
           setIsOpen((current) => !current);
         }}
         aria-expanded={isOpen}
@@ -1307,6 +1376,19 @@ export default function StitchraDesignAgent() {
           text-shadow: 0 1px 18px rgba(0, 255, 190, 0.2);
         }
 
+        .stitchra-agent-helper-cloud {
+          display: none;
+        }
+
+        body[data-stitchra-mobile-sheet-open="true"] .stitchra-ai-agent {
+          z-index: 90;
+          pointer-events: none;
+        }
+
+        body[data-stitchra-mobile-sheet-open="true"] .stitchra-agent-helper-cloud {
+          display: none !important;
+        }
+
         @keyframes stitchraAgentOrbIntro {
           0% {
             transform: scale(0.94);
@@ -1327,6 +1409,43 @@ export default function StitchraDesignAgent() {
             right: 12px;
             bottom: max(82px, calc(14px + env(safe-area-inset-bottom)));
             left: 12px;
+          }
+
+          .stitchra-agent-helper-cloud {
+            position: fixed;
+            right: 78px;
+            bottom: max(98px, calc(30px + env(safe-area-inset-bottom)));
+            width: max-content;
+            max-width: 128px;
+            min-height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(140, 255, 220, 0.24);
+            border-radius: 999px;
+            color: #06100a;
+            background: linear-gradient(135deg, rgba(185,255,218,0.98), rgba(113,231,255,0.92));
+            padding: 0 13px;
+            box-shadow:
+              0 14px 34px rgba(0,0,0,0.24),
+              0 0 28px rgba(0,255,190,0.16);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 950;
+            pointer-events: auto;
+            animation: stitchraAgentHelperIn 420ms ease-out both;
+          }
+
+          .stitchra-agent-helper-cloud::after {
+            content: "";
+            position: absolute;
+            right: -4px;
+            bottom: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            background: inherit;
+            transform: rotate(45deg);
           }
 
           .stitchra-ai-agent-mobile-drag {
@@ -1381,6 +1500,13 @@ export default function StitchraDesignAgent() {
             bottom: auto;
           }
 
+          .stitchra-ai-agent-positioned .stitchra-agent-helper-cloud {
+            left: clamp(12px, calc(var(--stitchra-agent-launcher-x) - 100px), calc(100vw - 142px));
+            top: calc(var(--stitchra-agent-launcher-y) + 8px);
+            right: auto;
+            bottom: auto;
+          }
+
           .stitchra-ai-agent-open.stitchra-ai-agent-mobile-drag .stitchra-ai-launcher {
             display: none;
           }
@@ -1409,6 +1535,17 @@ export default function StitchraDesignAgent() {
           }
         }
 
+        @keyframes stitchraAgentHelperIn {
+          from {
+            opacity: 0;
+            transform: translateY(4px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .stitchra-ai-icon-button,
           .stitchra-ai-launcher,
@@ -1419,6 +1556,10 @@ export default function StitchraDesignAgent() {
           }
 
           .stitchra-agent-orb-shell {
+            animation: none;
+          }
+
+          .stitchra-agent-helper-cloud {
             animation: none;
           }
         }
