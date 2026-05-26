@@ -1,44 +1,126 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StitchraLogo from '@/components/brand/StitchraLogo';
 
-const MOBILE_INTRO_KEY = 'stitchra-mobile-intro-seen-v1';
+const MOBILE_INTRO_KEY = 'stitchra-mobile-intro-entered-v1';
+const MOBILE_INTRO_EXCLUDED_PATHS = [
+  '/design',
+  '/order',
+  '/pay',
+  '/studio',
+  '/brand-lab',
+  '/brand-preview',
+];
+
+function isExcludedPath(pathname: string) {
+  return MOBILE_INTRO_EXCLUDED_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
+function hasForcedIntroFlag() {
+  const url = new URL(window.location.href);
+  return url.searchParams.get('intro') === '1';
+}
+
+function removeForcedIntroFlag() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('intro') !== '1') {
+    return;
+  }
+
+  url.searchParams.delete('intro');
+  const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState(window.history.state, '', nextUrl);
+}
+
+function hasEnteredIntro() {
+  try {
+    return window.sessionStorage.getItem(MOBILE_INTRO_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function markIntroEntered() {
+  try {
+    window.sessionStorage.setItem(MOBILE_INTRO_KEY, 'true');
+  } catch {
+    // Session storage can be unavailable in restricted browser modes.
+  }
+}
 
 function shouldShowMobileIntro() {
   if (typeof window === 'undefined') {
     return false;
   }
 
-  if (window.sessionStorage.getItem(MOBILE_INTRO_KEY) === 'true') {
+  if (isExcludedPath(window.location.pathname)) {
     return false;
   }
 
-  return window.matchMedia('(max-width: 768px)').matches;
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  if (!isMobile) {
+    return false;
+  }
+
+  const forced = hasForcedIntroFlag();
+  if (forced) {
+    return true;
+  }
+
+  return !hasEnteredIntro();
 }
 
 export default function MobileLogoIntro() {
   const [visible, setVisible] = useState(() => shouldShowMobileIntro());
+  const [exiting, setExiting] = useState(false);
+  const exitTimeoutRef = useRef<number | null>(null);
+
+  const dismiss = useCallback(() => {
+    if (exitTimeoutRef.current !== null) {
+      return;
+    }
+
+    markIntroEntered();
+    setExiting(true);
+
+    exitTimeoutRef.current = window.setTimeout(() => {
+      setVisible(false);
+    }, 380);
+  }, []);
 
   useEffect(() => {
     if (!visible) {
       return undefined;
     }
 
-    const timeout = window.setTimeout(() => {
-      window.sessionStorage.setItem(MOBILE_INTRO_KEY, 'true');
-      setVisible(false);
-    }, 1050);
+    removeForcedIntroFlag();
+
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        dismiss();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.clearTimeout(timeout);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+      window.removeEventListener('keydown', handleKeyDown);
+      if (exitTimeoutRef.current !== null) {
+        window.clearTimeout(exitTimeoutRef.current);
+        exitTimeoutRef.current = null;
+      }
     };
-  }, [visible]);
-
-  const dismiss = () => {
-    window.sessionStorage.setItem(MOBILE_INTRO_KEY, 'true');
-    setVisible(false);
-  };
+  }, [dismiss, visible]);
 
   if (!visible) {
     return null;
@@ -48,9 +130,10 @@ export default function MobileLogoIntro() {
     <section
       className="mobile-logo-intro"
       aria-label="Stitchra intro"
+      data-exiting={exiting ? 'true' : 'false'}
       onClick={dismiss}
     >
-      <button type="button" className="mobile-logo-intro-stage">
+      <button type="button" className="mobile-logo-intro-stage" aria-label="Enter Stitchra">
         <span className="mobile-logo-intro-mark">
           <StitchraLogo compact markOnly size={92} />
           <i />
@@ -58,7 +141,7 @@ export default function MobileLogoIntro() {
           <em />
         </span>
         <span className="mobile-logo-intro-word">Stitchra</span>
-        <span className="mobile-logo-intro-action">Enter</span>
+        <span className="mobile-logo-intro-action">ENTER</span>
       </button>
 
       <style>{`
@@ -71,10 +154,17 @@ export default function MobileLogoIntro() {
           padding: 24px;
           padding-top: calc(24px + env(safe-area-inset-top));
           padding-bottom: calc(24px + env(safe-area-inset-bottom));
+          overflow: hidden;
+          touch-action: none;
           background:
             radial-gradient(circle at 50% 38%, rgba(0,255,170,0.14), transparent 34%),
             radial-gradient(circle at 50% 64%, rgba(0,200,255,0.10), transparent 36%),
             #050607;
+        }
+
+        .mobile-logo-intro[data-exiting="true"] {
+          pointer-events: none;
+          animation: stitchraIntroExit 380ms ease forwards;
         }
 
         .mobile-logo-intro-stage {
@@ -87,6 +177,7 @@ export default function MobileLogoIntro() {
           background: transparent;
           font: inherit;
           cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
         }
 
         .mobile-logo-intro-mark {
@@ -157,6 +248,11 @@ export default function MobileLogoIntro() {
           letter-spacing: 0.16em;
           text-transform: uppercase;
           animation: stitchraIntroReveal 780ms ease-out 360ms both;
+        }
+
+        @keyframes stitchraIntroExit {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(0.985); }
         }
 
         @keyframes stitchraIntroGlow {

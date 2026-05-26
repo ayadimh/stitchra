@@ -9906,15 +9906,17 @@ function GlobalVisualStyles() {
           position: fixed;
           inset: 0 !important;
           width: 100vw;
-          height: 100dvh;
+          width: 100dvw;
+          min-height: 100vh;
+          min-height: 100dvh;
           z-index: 280;
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-          padding: 18px;
-          padding-bottom: max(18px, calc(18px + env(safe-area-inset-bottom)));
+          display: block;
+          padding: 0;
           box-sizing: border-box;
           overflow: hidden;
+          overflow-x: hidden;
+          overscroll-behavior: contain;
+          touch-action: pan-y;
           background:
             radial-gradient(circle at 50% 100%, rgba(0, 255, 180, 0.13), transparent 42%),
             rgba(0, 0, 0, 0.58);
@@ -9927,11 +9929,21 @@ function GlobalVisualStyles() {
 
         .mobile-menu-sheet,
         .mobile-language-sheet {
+          position: fixed;
+          left: 50%;
+          right: auto;
+          bottom: max(12px, env(safe-area-inset-bottom));
           width: min(calc(100vw - 24px), 480px);
-          max-height: min(720px, calc(100dvh - 28px));
+          width: min(calc(100dvw - 24px), 480px);
+          max-width: calc(100vw - 24px);
+          max-width: calc(100dvw - 24px);
+          max-height: min(720px, calc(100dvh - max(34px, calc(34px + env(safe-area-inset-bottom)))));
           overflow-y: auto;
+          overflow-x: hidden;
+          overscroll-behavior: contain;
+          touch-action: pan-y;
           box-sizing: border-box;
-          margin: 0 auto;
+          margin: 0;
           border: 1px solid rgba(140, 255, 220, 0.18);
           border-radius: 30px 30px 24px 24px;
           background:
@@ -9942,7 +9954,12 @@ function GlobalVisualStyles() {
             0 34px 100px rgba(0,0,0,0.58),
             inset 0 1px 0 rgba(255,255,255,0.08);
           backdrop-filter: blur(22px);
-          transform: translateZ(0);
+          transform: translateX(-50%);
+        }
+
+        .mobile-menu-sheet *,
+        .mobile-language-sheet * {
+          box-sizing: border-box;
         }
 
         .mobile-menu-heading,
