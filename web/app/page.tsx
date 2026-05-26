@@ -5470,16 +5470,84 @@ function Header({
 }) {
   const navItems = getNavItems(t);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const closeMobileMenu = () => setMobileMenuOpen(false);
+  const [mobileLanguageOpen, setMobileLanguageOpen] = useState(false);
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    setMobileLanguageOpen(false);
+  };
+  const openMobileLanguageSheet = () => setMobileLanguageOpen(true);
+  const closeMobileLanguageSheet = () => setMobileLanguageOpen(false);
+
+  const switchLocale = (nextLocale: Locale) => {
+    const currentPath = window.location.pathname;
+    const hash = window.location.hash;
+    const segments = currentPath.split('/').filter(Boolean);
+    const rest =
+      segments[0] && locales.includes(segments[0] as Locale)
+        ? segments.slice(1)
+        : [];
+    const nextPath = `/${nextLocale}${rest.length ? `/${rest.join('/')}` : ''}`;
+
+    setMobileLanguageOpen(false);
+    setMobileMenuOpen(false);
+    window.location.assign(`${nextPath}${hash}`);
+  };
+
+  useEffect(() => {
+    if (!mobileMenuOpen && !mobileLanguageOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (mobileLanguageOpen) {
+        setMobileLanguageOpen(false);
+        return;
+      }
+
+      setMobileMenuOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileLanguageOpen, mobileMenuOpen]);
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 901px)');
+    const closeDesktopMenu = () => {
+      if (query.matches) {
+        setMobileMenuOpen(false);
+        setMobileLanguageOpen(false);
+      }
+    };
+
+    closeDesktopMenu();
+    query.addEventListener('change', closeDesktopMenu);
+
+    return () => {
+      query.removeEventListener('change', closeDesktopMenu);
+    };
+  }, []);
 
   return (
     <header
+      className="site-header"
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         width: '100%',
-        zIndex: 50,
+        zIndex: mobileMenuOpen || mobileLanguageOpen ? 180 : 50,
         backdropFilter: 'blur(22px)',
         background:
           'rgba(0,0,0,0.35)',
@@ -5558,18 +5626,63 @@ function Header({
             {mobileMenuOpen ? 'Close' : 'Menu'}
           </button>
         </div>
+      </nav>
 
-        {mobileMenuOpen && (
-          <div className="mobile-menu-panel" aria-label="Mobile navigation">
-            {navItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
+      {mobileMenuOpen && (
+        <div
+          className="mobile-menu-backdrop"
+          onClick={closeMobileMenu}
+          role="presentation"
+        >
+          <section
+            className="mobile-menu-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mobile-menu-heading">
+              <div>
+                <p>Stitchra</p>
+                <h2 id="mobile-menu-title">Menu</h2>
+              </div>
+              <button
+                type="button"
+                className="mobile-menu-close"
                 onClick={closeMobileMenu}
+                aria-label="Close navigation menu"
               >
-                {item.label}
-              </a>
-            ))}
+                ×
+              </button>
+            </div>
+
+            <nav className="mobile-menu-panel" aria-label="Mobile navigation">
+              {navItems.map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  onClick={closeMobileMenu}
+                >
+                  <span>{item.label}</span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              ))}
+            </nav>
+
+            <div className="mobile-language-card">
+              <div>
+                <p>Language</p>
+                <span>{localeLabels[locale].name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={openMobileLanguageSheet}
+                aria-haspopup="dialog"
+              >
+                {localeLabels[locale].code}
+              </button>
+            </div>
+
             <a
               href="#designer"
               className="mobile-menu-primary"
@@ -5580,9 +5693,61 @@ function Header({
             >
               {t('nav.start')}
             </a>
-          </div>
-        )}
-      </nav>
+          </section>
+        </div>
+      )}
+
+      {mobileLanguageOpen && (
+        <div
+          className="mobile-language-backdrop"
+          onClick={closeMobileLanguageSheet}
+          role="presentation"
+        >
+          <section
+            className="mobile-language-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-language-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mobile-language-heading">
+              <div>
+                <p>Language</p>
+                <h2 id="mobile-language-title">Choose language</h2>
+              </div>
+              <button
+                type="button"
+                className="mobile-menu-close"
+                onClick={closeMobileLanguageSheet}
+                aria-label="Close language selector"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mobile-language-options">
+              {locales.map((item) => {
+                const active = item === locale;
+
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    className={active ? 'mobile-language-active' : ''}
+                    onClick={() => switchLocale(item)}
+                  >
+                    <span>{localeLabels[item].name}</span>
+                    <strong>
+                      {localeLabels[item].code}
+                      {active ? <span aria-hidden="true"> ✓</span> : null}
+                    </strong>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
     </header>
   );
 }
@@ -5611,7 +5776,7 @@ function LanguageSwitcher({
   };
 
   return (
-    <div style={languageSwitcher}>
+    <div className="desktop-language-switcher" style={languageSwitcher}>
       <button
         type="button"
         aria-label={t('nav.language')}
@@ -8566,32 +8731,102 @@ function GlobalVisualStyles() {
           display: none;
         }
 
-        .mobile-menu-panel {
-          position: absolute;
-          top: calc(100% + 10px);
-          left: 16px;
-          right: 16px;
-          z-index: 70;
-          padding: 12px;
-          border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 24px;
+        .mobile-menu-backdrop,
+        .mobile-language-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 180;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 18px;
+          padding-bottom: max(18px, calc(18px + env(safe-area-inset-bottom)));
           background:
-            radial-gradient(circle at 12% 8%, rgba(0,255,136,0.14), transparent 36%),
-            rgba(4,9,10,0.96);
-          box-shadow: 0 24px 80px rgba(0,0,0,0.52);
-          backdrop-filter: blur(18px);
+            radial-gradient(circle at 50% 100%, rgba(0, 255, 180, 0.13), transparent 42%),
+            rgba(0, 0, 0, 0.58);
+          backdrop-filter: blur(10px);
+        }
+
+        .mobile-language-backdrop {
+          z-index: 190;
+        }
+
+        .mobile-menu-sheet,
+        .mobile-language-sheet {
+          width: min(100%, 480px);
+          max-height: min(720px, calc(100dvh - 28px));
+          overflow-y: auto;
+          border: 1px solid rgba(140, 255, 220, 0.18);
+          border-radius: 30px 30px 24px 24px;
+          background:
+            radial-gradient(circle at 16% 0%, rgba(0,255,136,0.16), transparent 34%),
+            radial-gradient(circle at 92% 14%, rgba(0,200,255,0.14), transparent 34%),
+            rgba(4, 10, 11, 0.96);
+          box-shadow:
+            0 34px 100px rgba(0,0,0,0.58),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+          backdrop-filter: blur(22px);
+        }
+
+        .mobile-menu-heading,
+        .mobile-language-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 20px 20px 14px;
+        }
+
+        .mobile-menu-heading p,
+        .mobile-language-heading p {
+          margin: 0 0 4px;
+          color: #18ff9a;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .mobile-menu-heading h2,
+        .mobile-language-heading h2 {
+          margin: 0;
+          color: #f7fff9;
+          font-size: 22px;
+          letter-spacing: 0;
+        }
+
+        .mobile-menu-close {
+          width: 40px;
+          height: 40px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          border: 1px solid rgba(255,255,255,0.14);
+          border-radius: 999px;
+          color: #f7fff9;
+          background: rgba(255,255,255,0.06);
+          font: inherit;
+          font-size: 20px;
+          cursor: pointer;
+        }
+
+        .mobile-menu-panel {
+          position: static;
+          padding: 12px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+          border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
         .mobile-menu-panel a {
-          min-height: 46px;
+          min-height: 50px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 14px;
+          padding: 0 12px;
           border-radius: 16px;
           color: rgba(246,255,249,0.84);
           text-decoration: none;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 850;
         }
 
@@ -8600,12 +8835,104 @@ function GlobalVisualStyles() {
           color: #9dffc4;
         }
 
-        .mobile-menu-panel .mobile-menu-primary {
-          margin-top: 6px;
+        .mobile-language-card {
+          margin: 12px;
+          padding: 12px;
+          min-height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 20px;
+          background: rgba(255,255,255,0.045);
+        }
+
+        .mobile-language-card p {
+          margin: 0 0 4px;
+          color: rgba(246,255,249,0.52);
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .mobile-language-card span {
+          color: #f7fff9;
+          font-size: 15px;
+          font-weight: 850;
+        }
+
+        .mobile-language-card button {
+          min-width: 58px;
+          min-height: 40px;
+          border: 1px solid rgba(0,255,170,0.24);
+          border-radius: 999px;
+          color: #9dffc4;
+          background:
+            linear-gradient(135deg, rgba(0,255,136,0.16), rgba(0,200,255,0.10));
+          font: inherit;
+          font-size: 13px;
+          font-weight: 950;
+          cursor: pointer;
+        }
+
+        .mobile-menu-primary {
+          min-height: 50px;
+          margin: 0 12px 14px;
+          display: flex;
+          align-items: center;
           justify-content: center;
+          border-radius: 18px;
           color: #06100a;
+          text-decoration: none;
+          font-size: 15px;
+          font-weight: 950;
           background: linear-gradient(135deg,#00ff88,#00c8ff);
           box-shadow: 0 16px 46px rgba(0,200,255,0.18);
+        }
+
+        .mobile-language-options {
+          display: grid;
+          gap: 8px;
+          padding: 0 14px 16px;
+        }
+
+        .mobile-language-options button {
+          min-height: 54px;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 18px;
+          padding: 0 14px;
+          color: rgba(246,255,249,0.84);
+          background: rgba(255,255,255,0.045);
+          font: inherit;
+          cursor: pointer;
+        }
+
+        .mobile-language-options button span {
+          font-weight: 850;
+        }
+
+        .mobile-language-options button strong {
+          color: rgba(246,255,249,0.58);
+          font-size: 13px;
+          letter-spacing: 0.08em;
+        }
+
+        .mobile-language-options .mobile-language-active {
+          border-color: rgba(0,255,170,0.34);
+          background:
+            linear-gradient(135deg, rgba(0,255,136,0.16), rgba(0,200,255,0.10));
+          color: #f7fff9;
+        }
+
+        .mobile-language-options .mobile-language-active strong {
+          color: #9dffc4;
         }
 
         .pricing-confidence-panel {
@@ -8960,6 +9287,10 @@ function GlobalVisualStyles() {
             display: none !important;
           }
 
+          .desktop-language-switcher {
+            display: none !important;
+          }
+
           .mobile-menu-button {
             display: inline-flex !important;
             align-items: center;
@@ -9012,6 +9343,10 @@ function GlobalVisualStyles() {
         @media (max-width: 640px) {
           html {
             scroll-padding-top: 92px;
+          }
+
+          .site-header {
+            padding-top: env(safe-area-inset-top);
           }
 
           section[id] {
@@ -9073,6 +9408,7 @@ function GlobalVisualStyles() {
 
           .header-links {
             gap: 8px !important;
+            min-width: 0;
           }
 
           .header-brand {
