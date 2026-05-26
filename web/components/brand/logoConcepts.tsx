@@ -149,6 +149,47 @@ function ThreadSSignature({
   );
 }
 
+function ThreadNeedleSRefined({
+  tone = 'color',
+  variant = 'horizontal',
+  className,
+  title,
+}: LogoConceptArtworkProps) {
+  return (
+    <LogoCanvas tone={tone} variant={variant} className={className} title={title}>
+      <g className="refined-thread-needle">
+        <rect x="18" y="18" width="124" height="124" rx="34" className="refined-field" />
+        <path
+          d="M113 42H82C55 42 42 52 42 69C42 84 55 91 80 92H92C110 92 121 101 121 116C121 134 105 143 78 143H43"
+          className="refined-s-backbone"
+          pathLength="1"
+        />
+        <path
+          d="M111 45H81C59 45 49 54 49 68C49 80 60 86 81 87H93C115 87 128 99 128 116C128 137 110 148 78 148H45"
+          className="refined-s-highlight"
+          pathLength="1"
+        />
+        <path d="M80 13V147" className="refined-needle" />
+        <path d="M80 13C91 22 93 35 85 47C78 43 76 29 80 13Z" className="refined-needle-eye" />
+        <path d="M69 62C78 57 88 57 98 62" className="refined-stitch" pathLength="1" />
+        <path d="M60 112C75 104 95 104 112 112" className="refined-stitch lower" pathLength="1" />
+        <path d="M41 78C54 69 68 66 82 68" className="refined-inner-thread" pathLength="1" />
+      </g>
+      {variant === 'horizontal' && (
+        <g className="refined-lockup">
+          <text x="198" y="96" className="refined-word">
+            Stitchra
+          </text>
+          <path d="M203 115H421" className="refined-word-stitch" pathLength="1" />
+          <text x="201" y="132" className="refined-tagline">
+            AI embroidery studio
+          </text>
+        </g>
+      )}
+    </LogoCanvas>
+  );
+}
+
 function EmbroideryPatchSystem({
   tone = 'color',
   variant = 'horizontal',
@@ -383,6 +424,51 @@ export const premiumLogoConcepts: BrandLogoConcept[] = [
   },
 ];
 
+export const threadNeedleSRefinedConcept: BrandLogoConcept = {
+  id: 'thread-needle-s-refined',
+  name: 'Thread Needle S Refined',
+  shortName: 'Needle S',
+  direction: 'Imported candidate refinement',
+  description:
+    'A simplified vector reinterpretation of the external Thread Needle S candidate: strong S silhouette, centered needle and restrained stitch accents without raster texture.',
+  scores: {
+    memorability: 5,
+    premiumFeel: 5,
+    embroiderySuitability: 4,
+    smallSizeReadability: 4,
+    uniqueness: 5,
+    navbarReadability: 4,
+    appIconStrength: 5,
+    longTermPotential: 5,
+  },
+  details: {
+    coreIdea: 'Convert the strongest raster idea into an ownable Stitchra S that works as a full identity system.',
+    visualSignature: 'Bold thread-like S silhouette crossed by one vertical needle and a few controlled stitch accents.',
+    typographyDirection: 'Pair with a quiet premium wordmark so the S can lead while the name remains clear.',
+    embroiderySuitability: 'Good if the highlights and needle are reduced for one-color stitching and very small sizes.',
+    scalabilityNotes: 'Strongest in app icon, social avatar, patch and hero contexts; needs small-size needle simplification.',
+    riskNotes: 'If kept too close to the detailed JPG, it becomes texture-heavy and fragile. The production mark must stay simpler.',
+  },
+  critique: {
+    works: [
+      'Connects Stitchra directly to thread, embroidery and a recognizable S mark.',
+      'Has stronger brand memory than the earlier generic concept set.',
+      'Can become an app icon, patch mark and premium website signature.',
+    ],
+    fails: [
+      'The needle can disappear at favicon size unless it is thickened or simplified.',
+      'Too many interior stitch lines would make embroidery and one-color usage weaker.',
+      'The wordmark pairing still needs real type refinement before launch.',
+    ],
+    refine: [
+      'Test a 16px favicon variant with a shorter or thicker needle.',
+      'Draw a custom Stitchra wordmark that matches the S proportions.',
+      'Create embroidery production artwork with fewer highlights and clear stitch widths.',
+    ],
+  },
+  Artwork: ThreadNeedleSRefined,
+};
+
 export const roundOneExplorations = [
   'Thread-S Monogram',
   'Needle Loop Mark',
@@ -391,4 +477,3 @@ export const roundOneExplorations = [
   'AI Craft Mark',
   'Minimal Luxury Mark',
 ];
-

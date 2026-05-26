@@ -1,6 +1,9 @@
+import Image from 'next/image';
+
 import {
   premiumLogoConcepts,
   roundOneExplorations,
+  threadNeedleSRefinedConcept,
   type BrandConceptScores,
   type BrandLogoConcept,
 } from './logoConcepts';
@@ -69,6 +72,164 @@ function RoundOneSection() {
           <span key={name}>{name}</span>
         ))}
       </div>
+    </section>
+  );
+}
+
+function CandidateImage({
+  className,
+  sizes,
+}: {
+  className?: string;
+  sizes?: string;
+}) {
+  return (
+    <Image
+      src="/brand/candidates/logo01.jpg"
+      alt="External Thread Needle S logo candidate with embroidered S and vertical needle"
+      width={1792}
+      height={2304}
+      className={className}
+      sizes={sizes}
+      priority={false}
+    />
+  );
+}
+
+function RasterCandidatePreviews() {
+  return (
+    <div className="external-candidate-grid">
+      <div className="external-large-preview">
+        <span>Uploaded JPG candidate</span>
+        <CandidateImage className="candidate-large-image" sizes="(max-width: 900px) 100vw, 520px" />
+      </div>
+
+      <div className="external-raster-stack">
+        <div className="raster-surface raster-dark">
+          <span>Dark background preview</span>
+          <CandidateImage className="raster-logo-image" sizes="240px" />
+        </div>
+        <div className="raster-surface raster-light">
+          <span>Light background preview</span>
+          <CandidateImage className="raster-logo-image" sizes="240px" />
+        </div>
+        <div className="raster-surface raster-navbar">
+          <span>Navbar preview</span>
+          <div>
+            <CandidateImage className="raster-nav-image" sizes="80px" />
+            <strong>Stitchra</strong>
+            <button type="button">Start Designing</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="external-raster-contexts">
+        <div className="raster-favicons">
+          <span>Favicon scale</span>
+          {[16, 32, 64, 128].map((size) => (
+            <div key={size}>
+              <div style={{ width: size, height: size }}>
+                <CandidateImage className="raster-favicon-image" sizes={`${size}px`} />
+              </div>
+              <small>{size}px</small>
+            </div>
+          ))}
+        </div>
+        <div className="raster-app-icon">
+          <span>App icon preview</span>
+          <div>
+            <CandidateImage className="raster-app-image" sizes="128px" />
+          </div>
+        </div>
+        <div className="raster-label-preview">
+          <span>Patch / neck label preview</span>
+          <div>
+            <CandidateImage className="raster-label-image" sizes="72px" />
+            <strong>STITCHRA</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExternalCandidateCritique() {
+  const pros = [
+    'Strong S silhouette',
+    'Embroidery/thread identity',
+    'Needle detail fits Stitchra',
+    'Premium dark atelier feeling',
+    'Stronger than previous generic concepts',
+  ];
+  const cons = [
+    'Raster JPG, not vector',
+    'Background texture makes it unusable as final logo',
+    'Too detailed for small sizes',
+    'Thin needle may disappear at favicon size',
+    'Needs clean wordmark pairing',
+    'Must be simplified for embroidery and one-color use',
+  ];
+
+  return (
+    <div className="external-critique-grid">
+      <div>
+        <h4>Pros</h4>
+        <ul>
+          {pros.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h4>Cons</h4>
+        <ul>
+          {cons.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function RecommendationPanel() {
+  return (
+    <div className="recommendation-panel">
+      <span>Recommendation</span>
+      <p>
+        This is currently the strongest Stitchra direction because it connects the brand name to thread,
+        embroidery and a recognizable S mark. It should be refined into a vector identity system before
+        replacing the live logo.
+      </p>
+    </div>
+  );
+}
+
+function ExternalCandidateSection() {
+  return (
+    <section className="lab-section external-candidate-section" aria-labelledby="external-candidate-title">
+      <div className="section-heading">
+        <p>External candidate</p>
+        <h2 id="external-candidate-title">Thread Needle S</h2>
+      </div>
+      <p className="section-copy">
+        The imported DALL-E JPG is treated as directional inspiration only. The production path is the clean SVG
+        reinterpretation below, not the raster image or its textured background.
+      </p>
+
+      <RasterCandidatePreviews />
+      <ExternalCandidateCritique />
+      <RecommendationPanel />
+
+      <div className="section-heading refined-heading">
+        <p>Vector reinterpretation</p>
+        <h2>Thread Needle S Refined</h2>
+      </div>
+      <p className="section-copy">
+        A simplified original SVG system inspired by the candidate: strong S, centered needle, restrained stitch
+        detail and no raster texture.
+      </p>
+      <PremiumConceptCard concept={threadNeedleSRefinedConcept} index={0} />
     </section>
   );
 }
@@ -155,6 +316,22 @@ function ApplicationPreviews({ concept }: { concept: BrandLogoConcept }) {
         <div>
           <Artwork className="invoice-logo" />
           <p>Quote #ST-2048</p>
+        </div>
+      </div>
+
+      <div className="application-card footer-application">
+        <span>Footer preview</span>
+        <div>
+          <Artwork className="footer-logo" />
+          <small>AI embroidery T-shirt platform</small>
+        </div>
+      </div>
+
+      <div className="application-card email-application">
+        <span>Email header preview</span>
+        <div>
+          <Artwork className="email-logo" />
+          <p>We received your Stitchra quote request</p>
         </div>
       </div>
 
@@ -354,6 +531,7 @@ export default function StitchraBrandLab() {
       </section>
 
       <RoundOneSection />
+      <ExternalCandidateSection />
 
       <section className="lab-section premium-directions" aria-labelledby="round-two-title">
         <div className="section-heading">
@@ -411,7 +589,11 @@ const brandLabProStyles = `
   .primary-lockup span,
   .standalone-mark span,
   .score-total span,
-  .detail-panel span {
+  .detail-panel span,
+  .external-large-preview span,
+  .raster-surface span,
+  .external-raster-contexts span,
+  .recommendation-panel span {
     margin: 0;
     color: #69f5b1;
     font-size: 11px;
@@ -504,6 +686,219 @@ const brandLabProStyles = `
     display: flex;
     flex-wrap: wrap;
     gap: 9px;
+  }
+
+  .external-candidate-section {
+    background:
+      radial-gradient(circle at 12% 0%, rgba(147,255,35,0.11), transparent 34%),
+      linear-gradient(135deg, rgba(255,255,255,0.062), rgba(255,255,255,0.025)),
+      #070b09;
+  }
+
+  .external-candidate-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.78fr) minmax(240px, 0.46fr) minmax(280px, 0.58fr);
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .external-large-preview,
+  .raster-surface,
+  .external-raster-contexts > div,
+  .recommendation-panel,
+  .external-critique-grid > div {
+    border: 1px solid rgba(255,255,255,0.11);
+    background: rgba(255,255,255,0.045);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+
+  .external-large-preview {
+    display: grid;
+    gap: 14px;
+    border-radius: 28px;
+    padding: 18px;
+  }
+
+  .candidate-large-image {
+    width: 100%;
+    height: min(620px, 64vw);
+    object-fit: cover;
+    object-position: center;
+    border-radius: 22px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.34);
+  }
+
+  .external-raster-stack,
+  .external-raster-contexts {
+    display: grid;
+    gap: 14px;
+  }
+
+  .raster-surface,
+  .external-raster-contexts > div {
+    display: grid;
+    gap: 12px;
+    align-content: center;
+    border-radius: 24px;
+    padding: 16px;
+  }
+
+  .raster-light {
+    color: #111512;
+    background: #f4f0e8;
+  }
+
+  .raster-light span {
+    color: rgba(17,21,18,0.55);
+  }
+
+  .raster-logo-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 18px;
+  }
+
+  .raster-navbar > div {
+    display: grid;
+    grid-template-columns: 50px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 70px;
+    border-radius: 18px;
+    padding: 10px;
+    background: rgba(0,0,0,0.34);
+  }
+
+  .raster-navbar button {
+    border: 0;
+    border-radius: 999px;
+    padding: 9px 12px;
+    color: #07100b;
+    background: linear-gradient(135deg, #18ff9a, #00c8ff);
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .raster-nav-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 14px;
+  }
+
+  .raster-navbar strong {
+    min-width: 0;
+    font-size: 18px;
+    letter-spacing: -0.04em;
+  }
+
+  .raster-favicons {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .raster-favicons > span {
+    grid-column: 1 / -1;
+  }
+
+  .raster-favicons > div {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+  }
+
+  .raster-favicons > div > div {
+    overflow: hidden;
+    border-radius: 8px;
+    background: #0c110e;
+  }
+
+  .raster-favicon-image,
+  .raster-app-image,
+  .raster-label-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .raster-favicons small {
+    color: rgba(244,240,232,0.55);
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .raster-app-icon > div {
+    width: 132px;
+    height: 132px;
+    overflow: hidden;
+    border-radius: 30px;
+    background: #0c110e;
+  }
+
+  .raster-label-preview > div {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    min-height: 94px;
+    border-radius: 6px;
+    padding: 10px;
+    color: #111512;
+    background: #f4f0e8;
+  }
+
+  .raster-label-image {
+    border-radius: 4px;
+  }
+
+  .external-critique-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0;
+  }
+
+  .external-critique-grid > div,
+  .recommendation-panel {
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .external-critique-grid h4 {
+    margin: 0 0 10px;
+    font-size: 15px;
+  }
+
+  .external-critique-grid ul {
+    margin: 0;
+    padding-left: 18px;
+    color: rgba(244,240,232,0.72);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  .recommendation-panel {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 34px;
+    border-color: rgba(105,245,177,0.28);
+    background:
+      radial-gradient(circle at 0% 0%, rgba(105,245,177,0.14), transparent 44%),
+      rgba(255,255,255,0.055);
+  }
+
+  .recommendation-panel p {
+    max-width: 980px;
+    margin: 0;
+    color: rgba(244,240,232,0.82);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .refined-heading {
+    margin-top: 8px;
   }
 
   .premium-concepts {
@@ -830,6 +1225,30 @@ const brandLabProStyles = `
     font-weight: 850;
   }
 
+  .footer-application > div,
+  .email-application > div {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.28);
+  }
+
+  .footer-logo,
+  .email-logo {
+    width: 220px;
+    max-width: 100%;
+    height: 48px;
+  }
+
+  .footer-application small,
+  .email-application p {
+    margin: 0;
+    color: rgba(244,240,232,0.56);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
   .social-application > div {
     width: 96px;
     height: 96px;
@@ -1021,6 +1440,8 @@ const brandLabProStyles = `
   .label-mark,
   .patch-preview-mark,
   .invoice-logo,
+  .footer-logo,
+  .email-logo,
   .social-avatar-mark,
   .stamp-logo,
   .favicon-logo,
@@ -1030,14 +1451,16 @@ const brandLabProStyles = `
 
   svg[data-tone='color'] .pro-mark-field,
   svg[data-tone='color'] .signature-field,
-  svg[data-tone='color'] .grid-field {
+  svg[data-tone='color'] .grid-field,
+  svg[data-tone='color'] .refined-field {
     fill: rgba(105,245,177,0.08);
     stroke: rgba(105,245,177,0.44);
   }
 
   svg[data-tone='mono'] .pro-mark-field,
   svg[data-tone='mono'] .signature-field,
-  svg[data-tone='mono'] .grid-field {
+  svg[data-tone='mono'] .grid-field,
+  svg[data-tone='mono'] .refined-field {
     fill: none;
     stroke: currentColor;
   }
@@ -1045,7 +1468,9 @@ const brandLabProStyles = `
   .pro-heavy-thread,
   .signature-thread,
   .patch-thread,
-  .grid-thread {
+  .grid-thread,
+  .refined-s-backbone,
+  .refined-s-highlight {
     fill: none;
     stroke: currentColor;
     stroke-width: 9;
@@ -1057,6 +1482,9 @@ const brandLabProStyles = `
   svg[data-tone='color'] .signature-thread,
   svg[data-tone='color'] .patch-thread,
   svg[data-tone='color'] .grid-thread,
+  svg[data-tone='color'] .refined-s-backbone,
+  svg[data-tone='color'] .refined-s-highlight,
+  svg[data-tone='color'] .refined-word,
   svg[data-tone='color'] .pro-word,
   svg[data-tone='color'] .atelier-word {
     color: #f4f0e8;
@@ -1068,6 +1496,9 @@ const brandLabProStyles = `
   svg[data-tone='mono'] .signature-thread,
   svg[data-tone='mono'] .patch-thread,
   svg[data-tone='mono'] .grid-thread,
+  svg[data-tone='mono'] .refined-s-backbone,
+  svg[data-tone='mono'] .refined-s-highlight,
+  svg[data-tone='mono'] .refined-word,
   svg[data-tone='mono'] .pro-word,
   svg[data-tone='mono'] .atelier-word {
     color: currentColor;
@@ -1076,7 +1507,8 @@ const brandLabProStyles = `
   }
 
   .pro-word,
-  .atelier-word {
+  .atelier-word,
+  .refined-word {
     fill: currentColor;
     stroke: none;
     font-size: 68px;
@@ -1089,10 +1521,18 @@ const brandLabProStyles = `
     letter-spacing: -0.09em;
   }
 
+  .refined-word {
+    font-size: 70px;
+    letter-spacing: -0.07em;
+  }
+
   .pro-word-rule,
   .atelier-rule,
   .pro-micro-stitches,
-  .grid-top-rule {
+  .grid-top-rule,
+  .refined-word-stitch,
+  .refined-stitch,
+  .refined-inner-thread {
     fill: none;
     stroke: #69f5b1;
     stroke-width: 3;
@@ -1109,7 +1549,8 @@ const brandLabProStyles = `
   }
 
   .pro-needle,
-  .signature-needle {
+  .signature-needle,
+  .refined-needle {
     fill: none;
     stroke: #f4f0e8;
     stroke-width: 3.5;
@@ -1119,8 +1560,47 @@ const brandLabProStyles = `
   .pro-needle-eye,
   .signature-eye,
   .signature-endpoint,
-  .grid-node {
+  .grid-node,
+  .refined-needle-eye {
     fill: #69f5b1;
+  }
+
+  .refined-s-backbone {
+    stroke: rgba(3,6,4,0.94);
+    stroke-width: 28;
+  }
+
+  .refined-s-highlight {
+    stroke: #8cff1f;
+    stroke-width: 7;
+  }
+
+  .refined-needle {
+    stroke-width: 4.5;
+  }
+
+  .refined-needle-eye {
+    stroke: rgba(244,240,232,0.82);
+    stroke-width: 1;
+  }
+
+  .refined-stitch,
+  .refined-inner-thread,
+  .refined-word-stitch {
+    stroke-width: 3;
+    stroke-dasharray: 0.045 0.055;
+  }
+
+  .refined-inner-thread {
+    stroke: rgba(140,255,31,0.48);
+  }
+
+  .refined-tagline {
+    fill: rgba(244,240,232,0.58);
+    font-size: 14px;
+    font-weight: 850;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
   }
 
   .patch-outer {
@@ -1165,22 +1645,38 @@ const brandLabProStyles = `
   svg[data-tone='mono'] .atelier-rule,
   svg[data-tone='mono'] .pro-micro-stitches,
   svg[data-tone='mono'] .grid-top-rule,
+  svg[data-tone='mono'] .refined-word-stitch,
+  svg[data-tone='mono'] .refined-stitch,
+  svg[data-tone='mono'] .refined-inner-thread,
   svg[data-tone='mono'] .pro-needle,
-  svg[data-tone='mono'] .signature-needle {
+  svg[data-tone='mono'] .signature-needle,
+  svg[data-tone='mono'] .refined-needle {
     stroke: currentColor;
   }
 
   svg[data-tone='mono'] .pro-needle-eye,
   svg[data-tone='mono'] .signature-eye,
   svg[data-tone='mono'] .signature-endpoint,
-  svg[data-tone='mono'] .grid-node {
+  svg[data-tone='mono'] .grid-node,
+  svg[data-tone='mono'] .refined-needle-eye {
     fill: currentColor;
+  }
+
+  svg[data-tone='mono'] .refined-s-backbone {
+    stroke: currentColor;
+  }
+
+  svg[data-tone='mono'] .refined-s-highlight {
+    stroke: currentColor;
   }
 
   .surface-light svg[data-tone='color'] .pro-word,
   .surface-light svg[data-tone='color'] .atelier-word,
+  .surface-light svg[data-tone='color'] .refined-word,
   .surface-light svg[data-tone='color'] .pro-heavy-thread,
   .surface-light svg[data-tone='color'] .signature-thread,
+  .surface-light svg[data-tone='color'] .refined-s-backbone,
+  .surface-light svg[data-tone='color'] .refined-s-highlight,
   .surface-light svg[data-tone='color'] .grid-thread {
     fill: #111512;
     stroke: #0f6d46;
@@ -1259,4 +1755,3 @@ const brandLabProStyles = `
     }
   }
 `;
-
