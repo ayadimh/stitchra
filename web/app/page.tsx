@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import type {
   CSSProperties,
   FormEvent,
@@ -598,7 +599,21 @@ function formatPricingTier(value: string, t: Translator) {
 
 type HomeProps = {
   locale?: Locale;
+  entry?: 'home' | 'design';
 };
+
+const localeFlags: Record<Locale, string> = {
+  en: '🇬🇧',
+  de: '🇩🇪',
+  fr: '🇫🇷',
+  ar: '🇸🇦',
+  es: '🇪🇸',
+  ru: '🇷🇺',
+};
+
+function getLocaleDisplay(locale: Locale) {
+  return `${localeFlags[locale]} ${localeLabels[locale].name}`;
+}
 
 function useHtmlLocale(locale: Locale) {
   useEffect(() => {
@@ -696,10 +711,11 @@ function StartNewDesignDialog({
   );
 }
 
-export default function Home({ locale }: HomeProps = {}) {
+export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const activeLocale = resolveLocale(locale);
   const t = createTranslator(activeLocale);
   const dir = getLocaleDirection(activeLocale);
+  const localizedHomePath = activeLocale === 'en' ? '/' : `/${activeLocale}`;
 
   useHtmlLocale(activeLocale);
 
@@ -1235,9 +1251,14 @@ export default function Home({ locale }: HomeProps = {}) {
       }
 
       event.preventDefault();
+      if (entry !== 'home') {
+        window.location.assign(localizedHomePath);
+        return;
+      }
+
       scrollToHomeStart();
     },
-    [hasActiveDesignDraft, requestDesignReset, scrollToHomeStart]
+    [entry, hasActiveDesignDraft, localizedHomePath, requestDesignReset, scrollToHomeStart]
   );
 
   const continueRestoredDraft = useCallback(() => {
@@ -2670,6 +2691,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
   return (
     <main
+      className={`home-shell home-entry-${entry}`}
       lang={activeLocale}
       dir={dir}
       style={{
@@ -2727,16 +2749,20 @@ export default function Home({ locale }: HomeProps = {}) {
             Create a logo idea, preview it on fabric, and get a clear embroidery quote.
           </strong>
           <div className="mobile-launch-actions">
-            <a
-              href="#designer"
+            <Link
+              href="/design"
               className="mobile-launch-primary"
-              onClick={handleStartDesigningClick}
             >
               {t('nav.start')}
-            </a>
-            <a href="#mobile-explore" className="mobile-launch-secondary">
+            </Link>
+            <Link href="/explore" className="mobile-launch-secondary">
               Explore
-            </a>
+            </Link>
+          </div>
+          <div className="mobile-launch-trust" aria-label="Stitchra trust signals">
+            <span>AI concept</span>
+            <span>Fabric preview</span>
+            <span>Clear quote</span>
           </div>
         </div>
       </section>
@@ -2768,13 +2794,12 @@ export default function Home({ locale }: HomeProps = {}) {
           ))}
         </div>
 
-        <a
-          href="#designer"
+        <Link
+          href="/design"
           className="mobile-explore-cta"
-          onClick={handleStartDesigningClick}
         >
           {t('nav.start')}
-        </a>
+        </Link>
       </section>
 
       <section
@@ -5570,10 +5595,10 @@ export default function Home({ locale }: HomeProps = {}) {
           </a>
 
           <div style={footerLinks}>
-            <a href="#how" style={footerLink}>{t('footer.how')}</a>
-            <a href="#features" style={footerLink}>{t('footer.features')}</a>
-            <a href="#pricing" style={footerLink}>{t('footer.pricing')}</a>
-            <a href="#faq" style={footerLink}>{t('footer.faq')}</a>
+            <Link href="/how-it-works" style={footerLink}>{t('footer.how')}</Link>
+            <Link href="/features" style={footerLink}>{t('footer.features')}</Link>
+            <Link href="/pricing" style={footerLink}>{t('footer.pricing')}</Link>
+            <Link href="/faq" style={footerLink}>{t('footer.faq')}</Link>
             <a href="https://stitchra.com/impressum" style={footerLink}>{t('footer.impressum')}</a>
             <a href="https://stitchra.com/privacy" style={footerLink}>{t('footer.privacy')}</a>
             <a href="https://stitchra.com/contact" style={footerLink}>{t('footer.contact')}</a>
@@ -5599,11 +5624,13 @@ function Header({
 }) {
   const navItems = getNavItems(t);
   const mobileNavItems = [
-    { label: t('nav.how'), href: '#mobile-explore-how' },
-    { label: t('nav.pricing'), href: '#mobile-explore-pricing' },
-    { label: t('nav.gallery'), href: '#mobile-explore-gallery' },
-    { label: t('nav.features'), href: '#mobile-explore-features' },
-    { label: t('nav.faq'), href: '#mobile-explore-faq' },
+    { label: t('nav.start'), href: '/design' },
+    { label: 'Explore', href: '/explore' },
+    { label: t('nav.how'), href: '/how-it-works' },
+    { label: t('nav.features'), href: '/features' },
+    { label: t('nav.pricing'), href: '/pricing' },
+    { label: t('nav.gallery'), href: '/gallery' },
+    { label: t('nav.faq'), href: '/faq' },
     { label: t('footer.contact'), href: '/contact' },
   ];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -5743,12 +5770,20 @@ function Header({
 
           <a
             href="#designer"
-            className="lux-button"
+            className="lux-button desktop-start-link"
             style={primaryButton}
             onClick={onStartDesigning}
           >
             {t('nav.start')}
           </a>
+
+          <Link
+            href="/design"
+            className="lux-button mobile-start-link"
+            style={primaryButton}
+          >
+            {t('nav.start')}
+          </Link>
 
           <button
             type="button"
@@ -5795,41 +5830,40 @@ function Header({
 
             <nav className="mobile-menu-panel" aria-label="Mobile navigation">
               {mobileNavItems.map((item) => (
-                <a
+                <Link
                   key={item.label}
                   href={item.href}
                   onClick={closeMobileMenu}
                 >
                   <span>{item.label}</span>
                   <span aria-hidden="true">→</span>
-                </a>
+                </Link>
               ))}
             </nav>
 
             <div className="mobile-language-card">
               <div>
                 <p>Language</p>
-                <span>{localeLabels[locale].name}</span>
+                <span>{getLocaleDisplay(locale)}</span>
               </div>
               <button
                 type="button"
                 onClick={openMobileLanguageSheet}
                 aria-haspopup="dialog"
               >
-                {localeLabels[locale].code}
+                {localeFlags[locale]} {localeLabels[locale].code}
               </button>
             </div>
 
-            <a
-              href="#designer"
+            <Link
+              href="/design"
               className="mobile-menu-primary"
-              onClick={(event) => {
+              onClick={() => {
                 closeMobileMenu();
-                onStartDesigning(event);
               }}
             >
               {t('nav.start')}
-            </a>
+            </Link>
           </section>
         </div>
       )}
@@ -5873,7 +5907,7 @@ function Header({
                     className={active ? 'mobile-language-active' : ''}
                     onClick={() => switchLocale(item)}
                   >
-                    <span>{localeLabels[item].name}</span>
+                    <span>{getLocaleDisplay(item)}</span>
                     <strong>
                       {localeLabels[item].code}
                       {active ? <span aria-hidden="true"> ✓</span> : null}
@@ -5942,7 +5976,10 @@ function LanguageSwitcher({
             strokeWidth="1.7"
           />
         </svg>
-        <span>{localeLabels[locale].code}</span>
+        <span>
+          <span aria-hidden="true">{localeFlags[locale]}</span>{' '}
+          {localeLabels[locale].code}
+        </span>
       </button>
 
       {open && (
@@ -5954,8 +5991,11 @@ function LanguageSwitcher({
               onClick={() => switchLocale(item)}
               style={languageOption(item === locale)}
             >
-              <span>{localeLabels[item].name}</span>
-              <strong>{localeLabels[item].code}</strong>
+              <span>{getLocaleDisplay(item)}</span>
+              <strong>
+                {localeLabels[item].code}
+                {item === locale ? <span aria-hidden="true"> ✓</span> : null}
+              </strong>
             </button>
           ))}
         </div>
@@ -8871,8 +8911,19 @@ function GlobalVisualStyles() {
         }
 
         .mobile-menu-panel,
-        .mobile-menu-button {
+        .mobile-menu-button,
+        .mobile-start-link {
           display: none;
+        }
+
+        .home-entry-design .desktop-home-section,
+        .home-entry-design .mobile-app-launch,
+        .home-entry-design .mobile-explore-hub {
+          display: none !important;
+        }
+
+        .home-entry-design .designer-section {
+          padding-top: calc(118px + env(safe-area-inset-top)) !important;
         }
 
         .mobile-menu-backdrop,
@@ -9435,6 +9486,14 @@ function GlobalVisualStyles() {
             display: none !important;
           }
 
+          .desktop-start-link {
+            display: none !important;
+          }
+
+          .mobile-start-link {
+            display: inline-flex !important;
+          }
+
           .mobile-menu-button {
             display: inline-flex !important;
             align-items: center;
@@ -9532,6 +9591,15 @@ function GlobalVisualStyles() {
             display: block;
           }
 
+          .home-entry-home .mobile-explore-hub,
+          .home-entry-home .designer-section {
+            display: none !important;
+          }
+
+          .home-entry-design .designer-section {
+            display: block !important;
+          }
+
           .mobile-app-launch {
             min-height: 100svh;
             padding: calc(96px + env(safe-area-inset-top)) 16px 28px;
@@ -9611,6 +9679,27 @@ function GlobalVisualStyles() {
             display: grid;
             gap: 12px;
             margin-top: 10px;
+          }
+
+          .mobile-launch-trust {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+          }
+
+          .mobile-launch-trust span {
+            min-height: 30px;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 999px;
+            color: rgba(246,255,249,0.72);
+            background: rgba(255,255,255,0.045);
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 850;
           }
 
           .mobile-launch-primary,

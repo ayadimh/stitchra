@@ -288,7 +288,13 @@ function clearSavedLauncherPosition() {
 }
 
 function clearResetAgentQueryFlag() {
-  const url = new URL(window.location.href);
+  let url: URL;
+
+  try {
+    url = new URL(window.location.href);
+  } catch {
+    return;
+  }
 
   if (url.searchParams.get("resetAgent") !== "1") {
     return;
@@ -300,7 +306,11 @@ function clearResetAgentQueryFlag() {
   const nextSearch = url.searchParams.toString();
   const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${url.hash}`;
 
-  window.history.replaceState(null, "", nextUrl || "/");
+  try {
+    window.history.replaceState(null, "", nextUrl || "/");
+  } catch {
+    // Query cleanup is only a recovery convenience. The saved position is already cleared.
+  }
 }
 
 function isLauncherRectVisible(element: HTMLElement | null) {
