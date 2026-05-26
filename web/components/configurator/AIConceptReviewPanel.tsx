@@ -45,6 +45,18 @@ type AIConceptReviewPanelProps = {
   onSwitchToUpload: () => void;
 };
 
+const REFINEMENT_SUGGESTIONS = [
+  'Make it simpler',
+  'Reduce colors',
+  'Make it more playful',
+  'Make it more premium',
+  'Remove text',
+  'Add outline',
+] as const;
+
+const SAFER_ORIGINAL_REQUEST =
+  'Make the concept more original and avoid recognizable protected characters, brands or mascots.';
+
 export default function AIConceptReviewPanel({
   concepts,
   selectedConceptId,
@@ -65,6 +77,8 @@ export default function AIConceptReviewPanel({
   const [isSuggestingChanges, setIsSuggestingChanges] = useState(false);
   const [changeRequest, setChangeRequest] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [previewVariant, setPreviewVariant] =
+    useState<'original' | 'cleaned'>('cleaned');
   const selectedConcept = useMemo(() => {
     return (
       concepts.find((concept) => concept.id === selectedConceptId) ??
@@ -79,9 +93,11 @@ export default function AIConceptReviewPanel({
 
   const canApplyChanges = changeRequest.trim().length > 0 && !isGenerating;
   const isActiveConcept = activeConceptId === selectedConcept.id;
-  const displayImage =
-    selectedConcept.cleanedImageDataUrl ?? selectedConcept.imageDataUrl;
   const hasCleanedImage = Boolean(selectedConcept.cleanedImageDataUrl);
+  const displayImage =
+    hasCleanedImage && previewVariant === 'cleaned'
+      ? selectedConcept.cleanedImageDataUrl ?? selectedConcept.imageDataUrl
+      : selectedConcept.imageDataUrl;
 
   return (
     <section className="ai-concept-review" aria-labelledby="ai-concept-review-title">
@@ -90,6 +106,21 @@ export default function AIConceptReviewPanel({
         <h3 id="ai-concept-review-title">Review your AI concept</h3>
         <p>Check the design clearly before placing it on the T-shirt.</p>
       </div>
+
+      {hasCleanedImage && (
+        <div className="ai-concept-variant-toggle" aria-label="AI concept preview version">
+          {(['original', 'cleaned'] as const).map((variant) => (
+            <button
+              key={variant}
+              type="button"
+              className={previewVariant === variant ? 'ai-concept-variant-active' : ''}
+              onClick={() => setPreviewVariant(variant)}
+            >
+              {variant === 'original' ? 'Original' : 'Cleaned'}
+            </button>
+          ))}
+        </div>
+      )}
 
       <button
         type="button"
@@ -155,6 +186,7 @@ export default function AIConceptReviewPanel({
         >
           pollinations.ai
         </a>
+        . Do not enter private personal data in design prompts.
       </p>
 
       <div className="ai-readiness-box" aria-label="Embroidery readiness summary">
@@ -193,7 +225,7 @@ export default function AIConceptReviewPanel({
           onClick={onGenerateAnother}
           disabled={isGenerating}
         >
-          {isGeneratingVariation ? 'Generating new variation...' : 'Generate another'}
+          {isGeneratingVariation ? 'Generating new direction...' : 'Generate another direction'}
         </button>
         <button
           type="button"
@@ -212,8 +244,41 @@ export default function AIConceptReviewPanel({
       </div>
 
       <p className="ai-variation-helper">
-        Generate another creates a different visual direction for the same idea.
+        Generate another direction creates a different visual direction for the same idea.
       </p>
+
+      <div className="ai-refinement-strip">
+        <span>Refine direction</span>
+        <div className="ai-refinement-chip-row" aria-label="Suggested refinements">
+          {REFINEMENT_SUGGESTIONS.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => {
+                setChangeRequest(suggestion);
+                setIsSuggestingChanges(true);
+              }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ai-output-safety-box">
+        <p>
+          Please make sure this concept does not resemble a protected brand, logo,
+          character or celebrity. Stitchra may reject risky artwork before production.
+        </p>
+        <button
+          type="button"
+          className="ai-concept-link"
+          onClick={() => onApplyChanges(SAFER_ORIGINAL_REQUEST, selectedConcept)}
+          disabled={isGenerating}
+        >
+          Generate safer original version
+        </button>
+      </div>
 
       {backgroundCleanupStatus && (
         <p className={hasCleanedImage ? 'ai-cleanup-status-success' : 'ai-cleanup-status'}>
@@ -314,7 +379,7 @@ export default function AIConceptReviewPanel({
                 onClick={onGenerateAnother}
                 disabled={isGenerating}
               >
-                Generate another
+                Generate another direction
               </button>
               <button
                 type="button"

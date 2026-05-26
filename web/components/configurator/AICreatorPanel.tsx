@@ -107,6 +107,7 @@ export default function AICreatorPanel({
         >
           pollinations.ai
         </a>
+        . Do not enter private personal data in design prompts.
       </p>
 
       <button

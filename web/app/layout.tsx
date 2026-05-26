@@ -6,9 +6,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://stitchra.com"),
   applicationName: "Stitchra",
-  title: "Stitchra | AI Embroidery Platform",
+  title: "Stitchra | AI Embroidery T-Shirt Platform",
   description:
-    "Design, preview and request custom embroidered T-shirts with transparent pricing.",
+    "Upload logos, create AI concepts, preview embroidery placements and request clear T-shirt quotes.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Stitchra | AI Embroidery Platform",
+    title: "Stitchra | AI Embroidery T-Shirt Platform",
     description:
-      "Design, preview and request custom embroidered T-shirts with transparent pricing.",
+      "Upload logos, create AI concepts, preview embroidery placements and request clear T-shirt quotes.",
     url: "https://stitchra.com",
     siteName: "Stitchra",
     type: "website",
@@ -51,9 +51,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Stitchra | AI Embroidery Platform",
+    title: "Stitchra | AI Embroidery T-Shirt Platform",
     description:
-      "Design, preview and request custom embroidered T-shirts with transparent pricing.",
+      "Upload logos, create AI concepts, preview embroidery placements and request clear T-shirt quotes.",
     images: ["/stitchra-og.png"],
   },
 };

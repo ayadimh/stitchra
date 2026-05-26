@@ -7,6 +7,7 @@ import {
   isStudioRequest,
   listOrders,
   notifyTeamOfNewOrderRequest,
+  sendCustomerOrderRequestConfirmation,
   validatePublicOrderFields,
   type CreateOrderInput,
 } from '@/lib/orders';
@@ -114,7 +115,10 @@ export async function POST(request: Request) {
       );
     }
 
-    await notifyTeamOfNewOrderRequest(order);
+    const [, customerConfirmation] = await Promise.all([
+      notifyTeamOfNewOrderRequest(order),
+      sendCustomerOrderRequestConfirmation(order),
+    ]);
 
     return NextResponse.json(
       {
@@ -124,6 +128,7 @@ export async function POST(request: Request) {
           status: order.status,
         },
         message: 'Order request received.',
+        customerConfirmationSent: customerConfirmation.ok,
       },
       { status: 201 }
     );

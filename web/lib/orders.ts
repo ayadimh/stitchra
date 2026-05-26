@@ -1643,6 +1643,112 @@ function buildTeamOrderRequestHtml(
   `;
 }
 
+function buildCustomerOrderRequestText(order: OrderRecord) {
+  const priceLine =
+    order.customer_price_eur !== null && !order.manual_quote
+      ? `Current estimate: €${order.customer_price_eur}`
+      : 'Current estimate: Studio review';
+
+  return [
+    `Hi ${order.customer_name},`,
+    '',
+    'We received your Stitchra quote request.',
+    '',
+    `Placement: ${formatPlacement(order.placement)}`,
+    `Shirt color: ${formatOrderValue(order.shirt_color)}`,
+    `Quantity: ${order.quantity ?? 'Not specified'}`,
+    priceLine,
+    '',
+    'What happens next:',
+    '1. Stitchra reviews the artwork and embroidery feasibility.',
+    '2. We prepare a final offer or ask for changes if needed.',
+    '3. You can accept, decline or request changes before production.',
+    '',
+    'AI-generated concepts and on-shirt previews are visual previews only. Final stitch-ready artwork is reviewed by Stitchra before production.',
+    'Please do not send card or payment details by email. Payment happens only through the secure payment flow when a final offer is ready.',
+    '',
+    'Support: orders@stitchra.com',
+  ].join('\n');
+}
+
+function buildCustomerOrderRequestHtml(order: OrderRecord) {
+  const priceLine =
+    order.customer_price_eur !== null && !order.manual_quote
+      ? `€${order.customer_price_eur}`
+      : 'Studio review';
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.55;">
+      <p style="margin: 0 0 14px 0;">Hi ${escapeHtml(order.customer_name)},</p>
+      <p style="margin: 0 0 14px 0; font-weight: 700;">We received your Stitchra quote request.</p>
+      <table style="border-collapse: collapse; margin: 0 0 16px 0;">
+        <tr><td style="padding: 3px 14px 3px 0; color: #4b5563;">Placement</td><td style="padding: 3px 0;">${escapeHtml(formatPlacement(order.placement))}</td></tr>
+        <tr><td style="padding: 3px 14px 3px 0; color: #4b5563;">Shirt color</td><td style="padding: 3px 0;">${escapeHtml(formatOrderValue(order.shirt_color))}</td></tr>
+        <tr><td style="padding: 3px 14px 3px 0; color: #4b5563;">Quantity</td><td style="padding: 3px 0;">${escapeHtml(String(order.quantity ?? 'Not specified'))}</td></tr>
+        <tr><td style="padding: 3px 14px 3px 0; color: #4b5563;">Estimate</td><td style="padding: 3px 0;">${escapeHtml(priceLine)}</td></tr>
+      </table>
+      <p style="margin: 0 0 8px 0; font-weight: 700;">What happens next</p>
+      <ol style="margin: 0 0 16px 20px; padding: 0;">
+        <li>Stitchra reviews the artwork and embroidery feasibility.</li>
+        <li>We prepare a final offer or ask for changes if needed.</li>
+        <li>You can accept, decline or request changes before production.</li>
+      </ol>
+      <p style="margin: 0 0 14px 0;">AI-generated concepts and on-shirt previews are visual previews only. Final stitch-ready artwork is reviewed by Stitchra before production.</p>
+      <p style="margin: 0 0 14px 0;">Please do not send card or payment details by email. Payment happens only through the secure payment flow when a final offer is ready.</p>
+      <p style="margin: 0;">Support: <a href="mailto:orders@stitchra.com">orders@stitchra.com</a></p>
+    </div>
+  `;
+}
+
+export async function sendCustomerOrderRequestConfirmation(
+  order: OrderRecord
+) {
+  const missing = [
+    getResendApiKey() ? '' : 'RESEND_API_KEY',
+    getFromEmail() ? '' : 'FROM_EMAIL',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    const message = `Customer confirmation skipped. Missing ${missing.join(', ')}.`;
+    console.warn('[orders] Customer confirmation email skipped', {
+      orderId: order.id,
+      reason: message,
+    });
+
+    return {
+      ok: false,
+      message,
+    };
+  }
+
+  try {
+    await sendResendEmail({
+      to: order.customer_email,
+      subject: 'We received your Stitchra quote request',
+      text: buildCustomerOrderRequestText(order),
+      html: buildCustomerOrderRequestHtml(order),
+      replyTo: getReplyToEmail() || undefined,
+    });
+
+    return {
+      ok: true,
+      message: null,
+    };
+  } catch (error) {
+    const message = getOrderErrorMessage(error);
+
+    console.error('Customer confirmation email failed', {
+      orderId: order.id,
+      reason: message,
+    });
+
+    return {
+      ok: false,
+      message,
+    };
+  }
+}
+
 export async function notifyTeamOfNewOrderRequest(order: OrderRecord) {
   const missing = [
     getResendApiKey() ? '' : 'RESEND_API_KEY',

@@ -7,8 +7,10 @@ type UploadOwnDesignPanelProps = {
   canCleanBackground: boolean;
   isCleaningBackground: boolean;
   cleanupStatus: string;
+  errorMessage?: string;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onCleanBackground: () => void;
+  onViewOnShirt?: () => void;
 };
 
 export default function UploadOwnDesignPanel({
@@ -16,8 +18,10 @@ export default function UploadOwnDesignPanel({
   canCleanBackground,
   isCleaningBackground,
   cleanupStatus,
+  errorMessage,
   onFileChange,
   onCleanBackground,
+  onViewOnShirt,
 }: UploadOwnDesignPanelProps) {
   return (
     <section className="design-path-panel">
@@ -25,14 +29,14 @@ export default function UploadOwnDesignPanel({
         <span>Upload path</span>
         <h3>Bring your own design</h3>
         <p>
-          Upload your logo and see it live on the T-shirt before requesting a quote.
+          Upload PNG, JPG or SVG. We’ll preview it on the shirt and check whether it is suitable for embroidery.
         </p>
       </div>
 
       <label className="stitchra-upload-box">
         <input
           type="file"
-          accept="image/*"
+          accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"
           onChange={onFileChange}
         />
         <span className="stitchra-upload-icon" aria-hidden="true">
@@ -40,13 +44,29 @@ export default function UploadOwnDesignPanel({
         </span>
         <span className="stitchra-upload-button">Choose logo</span>
         <span className="stitchra-upload-copy">
-          {fileName ?? 'PNG, JPG or SVG recommended'}
+          {fileName ?? 'PNG, JPG or SVG · max 10 MB'}
         </span>
       </label>
+
+      <div className="upload-trust-row" aria-label="Accepted logo file types">
+        <span>PNG</span>
+        <span>JPG</span>
+        <span>SVG</span>
+        <span>Max 10 MB</span>
+      </div>
 
       {fileName && (
         <div className="upload-ready-row">
           <p className="upload-ready-status">Logo ready for preview</p>
+          {onViewOnShirt && (
+            <button
+              type="button"
+              className="upload-view-button"
+              onClick={onViewOnShirt}
+            >
+              View on shirt
+            </button>
+          )}
           {canCleanBackground && (
             <button
               type="button"
@@ -62,6 +82,10 @@ export default function UploadOwnDesignPanel({
 
       {cleanupStatus && (
         <p className="upload-cleanup-status">{cleanupStatus}</p>
+      )}
+
+      {errorMessage && (
+        <p className="upload-error-message">{errorMessage}</p>
       )}
     </section>
   );

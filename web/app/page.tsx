@@ -66,6 +66,13 @@ const API =
   'https://stitchra-production.up.railway.app';
 
 const PRACTICAL_THREAD_COLOR_LIMIT = 15;
+const MAX_LOGO_UPLOAD_BYTES = 10 * 1024 * 1024;
+const SUPPORTED_LOGO_EXTENSIONS = ['png', 'jpg', 'jpeg', 'svg'] as const;
+const SUPPORTED_LOGO_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/svg+xml',
+]);
 
 const homepageImages = {
   // Temporary launch assets from free commercial-use stock sources. Replace with original Stitchra production photos later.
@@ -223,6 +230,10 @@ type PublicApiErrorPayload = {
     customer_phone?: string;
     quantity?: string;
   };
+};
+
+type OrderCreateResponsePayload = PublicApiErrorPayload & {
+  customerConfirmationSent?: boolean;
 };
 
 function isPreviewDeploymentHost() {
@@ -391,6 +402,43 @@ function isSvgLogoFile(file: File | null) {
     file.type === 'image/svg+xml' ||
     file.name.toLowerCase().endsWith('.svg')
   );
+}
+
+function getFileExtension(filename: string) {
+  return filename.split('.').pop()?.toLowerCase() ?? '';
+}
+
+function isSupportedLogoFile(file: File) {
+  const extension = getFileExtension(file.name);
+
+  return (
+    SUPPORTED_LOGO_MIME_TYPES.has(file.type) ||
+    SUPPORTED_LOGO_EXTENSIONS.includes(
+      extension as (typeof SUPPORTED_LOGO_EXTENSIONS)[number]
+    )
+  );
+}
+
+function loadCanvasImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Preview image could not load.'));
+    image.src = src;
+  });
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+
+      reject(new Error('Preview image could not be exported.'));
+    }, 'image/png');
+  });
 }
 
 function getConceptDisplayImage(concept: AIConcept) {
@@ -564,6 +612,50 @@ function useHtmlLocale(locale: Locale) {
   }, [locale]);
 }
 
+type GuidedStudioStepId =
+  | 'start'
+  | 'create'
+  | 'review'
+  | 'place'
+  | 'price'
+  | 'request';
+
+type GuidedStudioStep = {
+  id: GuidedStudioStepId;
+  label: string;
+  status: 'complete' | 'active' | 'locked';
+};
+
+function GuidedStudioStepper({
+  steps,
+  onStepClick,
+}: {
+  steps: GuidedStudioStep[];
+  onStepClick: (stepId: GuidedStudioStepId) => void;
+}) {
+  return (
+    <nav className="guided-studio-stepper" aria-label="Guided design progress">
+      {steps.map((step, index) => {
+        const interactive = step.status !== 'locked';
+
+        return (
+          <button
+            key={step.id}
+            type="button"
+            className={`guided-studio-step guided-studio-step-${step.status}`}
+            onClick={() => onStepClick(step.id)}
+            disabled={!interactive}
+            aria-current={step.status === 'active' ? 'step' : undefined}
+          >
+            <span>{index + 1}</span>
+            {step.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function Home({ locale }: HomeProps = {}) {
   const activeLocale = resolveLocale(locale);
   const t = createTranslator(activeLocale);
@@ -578,9 +670,12 @@ export default function Home({ locale }: HomeProps = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
+  const studioRootRef = useRef<HTMLDivElement | null>(null);
   const shirtViewerRef = useRef<HTMLDivElement | null>(null);
+  const aiReviewRef = useRef<HTMLDivElement | null>(null);
   const placementControlsRef = useRef<HTMLDivElement | null>(null);
   const priceActionRef = useRef<HTMLDivElement | null>(null);
+  const orderRequestRef = useRef<HTMLDivElement | null>(null);
   const viewerHintTimeoutRef = useRef<number | null>(null);
   const [logoAspectRatio, setLogoAspectRatio] = useState(70 / 45);
   const [logoPlacementConfig, setLogoPlacementConfig] =
@@ -612,6 +707,8 @@ export default function Home({ locale }: HomeProps = {}) {
   const [isCleaningBackground, setIsCleaningBackground] = useState(false);
   const [backgroundCleanupStatus, setBackgroundCleanupStatus] = useState('');
   const [designAddedToastOpen, setDesignAddedToastOpen] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [previewExportStatus, setPreviewExportStatus] = useState('');
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [logoAnalysis, setLogoAnalysis] =
@@ -634,6 +731,9 @@ export default function Home({ locale }: HomeProps = {}) {
     useState<OrderFormErrors>({});
   const [orderStatus, setOrderStatus] = useState('');
   const [orderError, setOrderError] = useState('');
+  const [orderSuccess, setOrderSuccess] = useState<{
+    customerConfirmationSent: boolean;
+  } | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationIntent, setGenerationIntent] =
@@ -690,6 +790,7 @@ export default function Home({ locale }: HomeProps = {}) {
       designPreparation?.recommendations[0] ??
       'Use bold shapes and clear placement for best stitch quality.',
   };
+
   const processSteps = getProcessSteps(activeLocale);
   const features = getFeatures(activeLocale);
   const galleryItems = getGalleryItems(activeLocale);
@@ -872,6 +973,36 @@ export default function Home({ locale }: HomeProps = {}) {
     }
   }, []);
 
+  const scrollToStudioRoot = useCallback(() => {
+    const target = studioRootRef.current;
+
+    if (target) {
+      scrollElementToViewportCenter(target);
+    }
+  }, []);
+
+  const scrollToAiReview = useCallback(() => {
+    const target = aiReviewRef.current;
+
+    if (target) {
+      scrollElementToViewportCenter(target);
+      return;
+    }
+
+    scrollToStudioRoot();
+  }, [scrollToStudioRoot]);
+
+  const scrollToOrderRequest = useCallback(() => {
+    const target = orderRequestRef.current;
+
+    if (target) {
+      scrollElementToViewportCenter(target);
+      return;
+    }
+
+    scrollToPriceAction();
+  }, [scrollToPriceAction]);
+
   const handleStartDesigningClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
@@ -919,12 +1050,15 @@ export default function Home({ locale }: HomeProps = {}) {
     setLogoPrompt('');
     setStatus('');
     setError('');
+    setUploadError('');
+    setPreviewExportStatus('');
     setBackgroundCleanupStatus('');
     setGenerationIntent(null);
     setDesignAddedToastOpen(false);
     setOrderOpen(false);
     setOrderStatus('');
     setOrderError('');
+    setOrderSuccess(null);
     setOrderFieldErrors({});
     setShowDraftRecovery(false);
     setDraftImageNeedsUpload(false);
@@ -1004,6 +1138,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
       if (detail.action === 'openUploadOwnDesign') {
         setDesignStartMode('upload');
+        setUploadError('');
         setBackgroundCleanupStatus('');
       }
 
@@ -1312,7 +1447,7 @@ export default function Home({ locale }: HomeProps = {}) {
   ) => {
     const selectedFile = event.target.files?.[0] ?? null;
 
-    setFile(selectedFile);
+    setUploadError('');
     setEstimate(null);
     setLogoAnalysis(null);
     setDesignPreparation(null);
@@ -1322,8 +1457,10 @@ export default function Home({ locale }: HomeProps = {}) {
     setStatus('');
     setError('');
     setBackgroundCleanupStatus('');
+    setOrderSuccess(null);
 
     if (!selectedFile) {
+      setFile(null);
       if (previewObjectUrlRef.current) {
         URL.revokeObjectURL(previewObjectUrlRef.current);
         previewObjectUrlRef.current = null;
@@ -1331,6 +1468,20 @@ export default function Home({ locale }: HomeProps = {}) {
       setPreview(null);
       return;
     }
+
+    if (!isSupportedLogoFile(selectedFile)) {
+      event.currentTarget.value = '';
+      setUploadError('Unsupported file type. Please upload PNG, JPG or SVG.');
+      return;
+    }
+
+    if (selectedFile.size > MAX_LOGO_UPLOAD_BYTES) {
+      event.currentTarget.value = '';
+      setUploadError('This file is too large. Please upload a logo under 10 MB.');
+      return;
+    }
+
+    setFile(selectedFile);
 
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
@@ -1717,6 +1868,7 @@ export default function Home({ locale }: HomeProps = {}) {
   const estimatePrice = async () => {
     setError('');
     setStatus('');
+    setOrderSuccess(null);
 
     if (!file) {
       setError(t('status.uploadLogoFirst'));
@@ -1960,7 +2112,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
       const payload = (await response
         .json()
-        .catch(() => ({}))) as PublicApiErrorPayload;
+        .catch(() => ({}))) as OrderCreateResponsePayload;
 
       if (!response.ok) {
         if (payload.errors) {
@@ -1982,6 +2134,9 @@ export default function Home({ locale }: HomeProps = {}) {
       }
 
       setOrderStatus(t('status.requestSent'));
+      setOrderSuccess({
+        customerConfirmationSent: Boolean(payload.customerConfirmationSent),
+      });
       setOrderFieldErrors({});
       setOrderOpen(false);
     } catch (error) {
@@ -2010,6 +2165,273 @@ export default function Home({ locale }: HomeProps = {}) {
       delete next[field];
       return next;
     });
+  };
+
+  const createPreviewExportBlob = async () => {
+    if (!preview) {
+      throw new Error('Upload or create a design before exporting the preview.');
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 900;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      throw new Error('Preview export is not available in this browser.');
+    }
+
+    const shirtFill = teeColor === 'black' ? '#070809' : '#f3efe7';
+    const shirtStroke =
+      teeColor === 'black'
+        ? 'rgba(255,255,255,0.18)'
+        : 'rgba(20,25,24,0.16)';
+
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#061611');
+    gradient.addColorStop(0.55, '#061014');
+    gradient.addColorStop(1, '#020304');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.strokeStyle = 'rgba(0,255,180,0.12)';
+    context.lineWidth = 1;
+    for (let x = 80; x < canvas.width; x += 120) {
+      context.beginPath();
+      context.moveTo(x, 0);
+      context.lineTo(x, canvas.height);
+      context.stroke();
+    }
+    for (let y = 80; y < canvas.height; y += 120) {
+      context.beginPath();
+      context.moveTo(0, y);
+      context.lineTo(canvas.width, y);
+      context.stroke();
+    }
+
+    context.save();
+    context.translate(600, 450);
+    context.fillStyle = shirtFill;
+    context.strokeStyle = shirtStroke;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.moveTo(-230, -210);
+    context.lineTo(-390, -110);
+    context.lineTo(-315, 95);
+    context.lineTo(-205, 50);
+    context.lineTo(-190, 300);
+    context.lineTo(190, 300);
+    context.lineTo(205, 50);
+    context.lineTo(315, 95);
+    context.lineTo(390, -110);
+    context.lineTo(230, -210);
+    context.quadraticCurveTo(145, -255, 78, -215);
+    context.quadraticCurveTo(0, -175, -78, -215);
+    context.quadraticCurveTo(-145, -255, -230, -210);
+    context.closePath();
+    context.fill();
+    context.stroke();
+
+    context.globalCompositeOperation = 'destination-out';
+    context.beginPath();
+    context.ellipse(0, -202, 82, 44, 0, 0, Math.PI * 2);
+    context.fill();
+    context.globalCompositeOperation = 'source-over';
+    context.strokeStyle = teeColor === 'black' ? '#101314' : '#d8d2c8';
+    context.lineWidth = 10;
+    context.beginPath();
+    context.ellipse(0, -202, 82, 44, 0, 0, Math.PI * 2);
+    context.stroke();
+
+    const logoImage = await loadCanvasImage(preview);
+    const logoMaxWidth = 260;
+    const logoMaxHeight = 190;
+    const logoRatio =
+      logoImage.naturalWidth > 0 && logoImage.naturalHeight > 0
+        ? logoImage.naturalWidth / logoImage.naturalHeight
+        : logoAspectRatio;
+    const logoWidth =
+      logoRatio >= logoMaxWidth / logoMaxHeight
+        ? logoMaxWidth
+        : logoMaxHeight * logoRatio;
+    const logoHeight = logoWidth / logoRatio;
+    context.shadowColor =
+      teeColor === 'black'
+        ? 'rgba(255,255,255,0.55)'
+        : 'rgba(0,255,180,0.28)';
+    context.shadowBlur = 18;
+    context.drawImage(
+      logoImage,
+      -logoWidth / 2,
+      -logoHeight / 2 + 18,
+      logoWidth,
+      logoHeight
+    );
+    context.restore();
+
+    context.fillStyle = 'rgba(245,247,248,0.9)';
+    context.font = '700 34px Arial, Helvetica, sans-serif';
+    context.fillText('Stitchra preview', 82, 90);
+    context.fillStyle = 'rgba(245,247,248,0.62)';
+    context.font = '22px Arial, Helvetica, sans-serif';
+    context.fillText(`${selectedZone.label} · ${teeColor} tee`, 82, 128);
+
+    return canvasToPngBlob(canvas);
+  };
+
+  const downloadPreview = async () => {
+    setPreviewExportStatus('');
+
+    try {
+      const blob = await createPreviewExportBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'stitchra-preview.png';
+      link.click();
+      URL.revokeObjectURL(url);
+      setPreviewExportStatus('Preview downloaded.');
+    } catch (downloadError) {
+      setPreviewExportStatus(
+        downloadError instanceof Error
+          ? downloadError.message
+          : 'Preview export is not available right now.'
+      );
+    }
+  };
+
+  const sharePreview = async () => {
+    setPreviewExportStatus('');
+
+    try {
+      const blob = await createPreviewExportBlob();
+      const fileToShare = new File([blob], 'stitchra-preview.png', {
+        type: 'image/png',
+      });
+
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [fileToShare] }) &&
+        typeof navigator.share === 'function'
+      ) {
+        await navigator.share({
+          title: 'Stitchra preview',
+          text: 'My Stitchra embroidery preview',
+          files: [fileToShare],
+        });
+        setPreviewExportStatus('Preview shared.');
+        return;
+      }
+
+      await downloadPreview();
+    } catch (shareError) {
+      setPreviewExportStatus(
+        shareError instanceof Error
+          ? shareError.message
+          : 'Sharing is not available on this browser.'
+      );
+    }
+  };
+
+  const currentStudioStep: GuidedStudioStepId = orderSuccess
+    ? 'request'
+    : publicQuote
+      ? 'price'
+      : preview
+        ? 'place'
+        : designStartMode === 'ai' && aiConcepts.length > 0
+          ? 'review'
+          : designStartMode !== 'choice'
+            ? 'create'
+            : 'start';
+
+  const guidedStudioSteps: GuidedStudioStep[] = [
+    {
+      id: 'start',
+      label: 'Start',
+      status: currentStudioStep === 'start' ? 'active' : 'complete',
+    },
+    {
+      id: 'create',
+      label: 'Create / Upload',
+      status:
+        currentStudioStep === 'create'
+          ? 'active'
+          : designStartMode !== 'choice' || preview || aiConcepts.length > 0
+            ? 'complete'
+            : 'locked',
+    },
+    {
+      id: 'review',
+      label: 'Review',
+      status:
+        currentStudioStep === 'review'
+          ? 'active'
+          : aiConcepts.length > 0 || preview
+            ? 'complete'
+            : 'locked',
+    },
+    {
+      id: 'place',
+      label: 'Place',
+      status:
+        currentStudioStep === 'place'
+          ? 'active'
+          : preview
+            ? 'complete'
+            : 'locked',
+    },
+    {
+      id: 'price',
+      label: 'Price',
+      status:
+        currentStudioStep === 'price'
+          ? 'active'
+          : publicQuote
+            ? 'complete'
+            : 'locked',
+    },
+    {
+      id: 'request',
+      label: 'Request',
+      status:
+        currentStudioStep === 'request'
+          ? 'active'
+          : orderSuccess
+            ? 'complete'
+            : 'locked',
+    },
+  ];
+
+  const handleGuidedStepClick = (stepId: GuidedStudioStepId) => {
+    const step = guidedStudioSteps.find((item) => item.id === stepId);
+
+    if (!step || step.status === 'locked') {
+      return;
+    }
+
+    if (stepId === 'start' || stepId === 'create') {
+      scrollToStudioRoot();
+      return;
+    }
+
+    if (stepId === 'review') {
+      scrollToAiReview();
+      return;
+    }
+
+    if (stepId === 'place') {
+      focusShirtViewer(undefined, true);
+      return;
+    }
+
+    if (stepId === 'price') {
+      scrollToPriceAction();
+      return;
+    }
+
+    scrollToOrderRequest();
   };
 
   return (
@@ -3439,6 +3861,7 @@ export default function Home({ locale }: HomeProps = {}) {
 
       <section
         id="designer"
+        ref={studioRootRef}
         className="designer-section showroom-section"
         style={{
           padding: '112px 24px 128px',
@@ -3447,6 +3870,13 @@ export default function Home({ locale }: HomeProps = {}) {
           minHeight: '100vh',
         }}
       >
+        <div className="guided-studio-stepper-wrap">
+          <GuidedStudioStepper
+            steps={guidedStudioSteps}
+            onStepClick={handleGuidedStepClick}
+          />
+        </div>
+
         <div
           className="designer-grid showroom-grid"
           style={{
@@ -3510,6 +3940,7 @@ export default function Home({ locale }: HomeProps = {}) {
                 onSelectMode={(mode) => {
                   setDesignStartMode(mode);
                   setError('');
+                  setUploadError('');
                   setStatus('');
                   setBackgroundCleanupStatus('');
 
@@ -3529,8 +3960,10 @@ export default function Home({ locale }: HomeProps = {}) {
                   canCleanBackground={Boolean(file) && !isSvgLogoFile(file)}
                   isCleaningBackground={isCleaningBackground}
                   cleanupStatus={backgroundCleanupStatus}
+                  errorMessage={uploadError}
                   onFileChange={onFile}
                   onCleanBackground={() => void cleanUploadedLogoBackground()}
+                  onViewOnShirt={() => focusShirtViewer(undefined, true)}
                 />
               )}
 
@@ -3552,36 +3985,40 @@ export default function Home({ locale }: HomeProps = {}) {
                     onSwitchToUpload={() => {
                       setDesignStartMode('upload');
                       setError('');
+                      setUploadError('');
                       setStatus('');
                       setBackgroundCleanupStatus('');
                     }}
                   />
-                  <AIConceptReviewPanel
-                    concepts={aiConcepts}
-                    selectedConceptId={selectedAiConcept?.id ?? null}
-                    activeConceptId={activeAiConceptId}
-                    styleHints={aiStyleHints}
-                    readiness={aiConceptReadiness}
-                    isGenerating={isGenerating}
-                    isGeneratingVariation={generationIntent === 'new'}
-                    isCleaningBackground={isCleaningBackground}
-                    backgroundCleanupStatus={backgroundCleanupStatus}
-                    onSelectConcept={setSelectedAiConceptId}
-                    onUseConcept={(concept) => void acceptAiConcept(concept)}
-                    onCleanBackground={(concept) =>
-                      void cleanAiConceptBackground(concept)
-                    }
-                    onGenerateAnother={generateLogo}
-                    onApplyChanges={(changeRequest, concept) =>
-                      void applyAiConceptChanges(changeRequest, concept)
-                    }
-                    onSwitchToUpload={() => {
-                      setDesignStartMode('upload');
-                      setError('');
-                      setStatus('');
-                      setBackgroundCleanupStatus('');
-                    }}
-                  />
+                  <div ref={aiReviewRef}>
+                    <AIConceptReviewPanel
+                      concepts={aiConcepts}
+                      selectedConceptId={selectedAiConcept?.id ?? null}
+                      activeConceptId={activeAiConceptId}
+                      styleHints={aiStyleHints}
+                      readiness={aiConceptReadiness}
+                      isGenerating={isGenerating}
+                      isGeneratingVariation={generationIntent === 'new'}
+                      isCleaningBackground={isCleaningBackground}
+                      backgroundCleanupStatus={backgroundCleanupStatus}
+                      onSelectConcept={setSelectedAiConceptId}
+                      onUseConcept={(concept) => void acceptAiConcept(concept)}
+                      onCleanBackground={(concept) =>
+                        void cleanAiConceptBackground(concept)
+                      }
+                      onGenerateAnother={generateLogo}
+                      onApplyChanges={(changeRequest, concept) =>
+                        void applyAiConceptChanges(changeRequest, concept)
+                      }
+                      onSwitchToUpload={() => {
+                        setDesignStartMode('upload');
+                        setError('');
+                        setUploadError('');
+                        setStatus('');
+                        setBackgroundCleanupStatus('');
+                      }}
+                    />
+                  </div>
                 </>
               )}
 
@@ -4121,25 +4558,32 @@ export default function Home({ locale }: HomeProps = {}) {
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOrderOpen((open) => !open);
-                      setOrderError('');
-                      setOrderStatus('');
-                    }}
-                    className="lux-button"
-                    style={{
-                      ...primaryButton,
-                      border: 'none',
-                      width: '100%',
-                      marginTop: 12,
-                    }}
-                  >
-                    {t('designer.requestOrder')}
-                  </button>
+                  <p className="pricing-trust-note">
+                    Final offer is confirmed before production. Studio review is
+                    quality control, not a failure.
+                  </p>
 
-                  {orderOpen && (
+                  <div ref={orderRequestRef} className="order-request-anchor">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderOpen((open) => !open);
+                        setOrderError('');
+                        setOrderStatus('');
+                        setOrderSuccess(null);
+                      }}
+                      className="lux-button"
+                      style={{
+                        ...primaryButton,
+                        border: 'none',
+                        width: '100%',
+                        marginTop: 12,
+                      }}
+                    >
+                      {t('designer.requestOrder')}
+                    </button>
+
+                    {orderOpen && (
                     <form
                       noValidate
                       onSubmit={(event) => void requestOrder(event)}
@@ -4316,19 +4760,50 @@ export default function Home({ locale }: HomeProps = {}) {
                         <div style={formError}>{orderError}</div>
                       )}
                     </form>
-                  )}
+                    )}
 
-                  {orderStatus && (
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: '#9dffc4',
-                        marginTop: 10,
-                      }}
-                    >
-                      {orderStatus}
-                    </div>
-                  )}
+                    {orderSuccess && (
+                      <div className="order-success-panel">
+                        <span>Request sent</span>
+                        <h3>We’ll review your design and prepare your offer.</h3>
+                        {orderSuccess.customerConfirmationSent && (
+                          <p className="order-success-email">
+                            Confirmation email sent.
+                          </p>
+                        )}
+                        <ol>
+                          <li>Studio checks artwork</li>
+                          <li>You receive an offer</li>
+                          <li>You accept or request changes</li>
+                          <li>Payment and production follow</li>
+                        </ol>
+                        <div className="order-success-actions">
+                          <button type="button" onClick={() => focusShirtViewer(undefined, true)}>
+                            Back to design
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void resetDesignDraftState()}
+                          >
+                            Start new design
+                          </button>
+                          <a href="mailto:orders@stitchra.com">Contact support</a>
+                        </div>
+                      </div>
+                    )}
+
+                    {orderStatus && !orderSuccess && (
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: '#9dffc4',
+                          marginTop: 10,
+                        }}
+                      >
+                        {orderStatus}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
                 </>
@@ -4391,12 +4866,21 @@ export default function Home({ locale }: HomeProps = {}) {
                 <button type="button" onClick={scrollToPriceAction}>
                   Check price
                 </button>
+                <button type="button" onClick={() => void downloadPreview()}>
+                  Download preview
+                </button>
+                <button type="button" onClick={() => void sharePreview()}>
+                  Share design
+                </button>
                 <button
                   type="button"
                   onClick={() => void resetDesignDraftState()}
                 >
                   Start new design
                 </button>
+                {previewExportStatus && (
+                  <small>{previewExportStatus}</small>
+                )}
               </div>
             )}
           </div>
@@ -5483,6 +5967,7 @@ function GlobalVisualStyles() {
         }
 
         .stitchra-upload-box {
+          position: relative;
           width: 100%;
           min-height: 116px;
           display: grid;
@@ -5578,6 +6063,26 @@ function GlobalVisualStyles() {
           overflow-wrap: anywhere;
         }
 
+        .upload-trust-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: -6px;
+        }
+
+        .upload-trust-row span {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.10);
+          color: rgba(245,247,248,0.64);
+          background: rgba(255,255,255,0.035);
+          font-size: 11px;
+          font-weight: 850;
+        }
+
         .upload-ready-status {
           margin: 0;
           width: fit-content;
@@ -5617,6 +6122,20 @@ function GlobalVisualStyles() {
             background 160ms ease;
         }
 
+        .upload-view-button {
+          min-height: 34px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 0;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          box-shadow: 0 10px 26px rgba(0,215,255,0.14);
+        }
+
         .upload-clean-button:hover {
           transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
@@ -5634,6 +6153,93 @@ function GlobalVisualStyles() {
           color: rgba(157,255,196,0.78);
           font-size: 12px;
           line-height: 1.45;
+        }
+
+        .upload-error-message {
+          margin: 0;
+          color: #ffb4b4;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .guided-studio-stepper-wrap {
+          max-width: 1160px;
+          margin: 0 auto 20px;
+          scroll-margin-top: 132px;
+        }
+
+        .guided-studio-stepper {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding: 8px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background:
+            radial-gradient(circle at 8% 20%, rgba(0,255,136,0.12), transparent 32%),
+            rgba(5,10,11,0.70);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.06),
+            0 20px 60px rgba(0,0,0,0.24);
+          scrollbar-width: none;
+        }
+
+        .guided-studio-stepper::-webkit-scrollbar {
+          display: none;
+        }
+
+        .guided-studio-step {
+          flex: 1 0 auto;
+          min-height: 40px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 13px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.10);
+          color: rgba(245,247,248,0.64);
+          background: rgba(255,255,255,0.035);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          white-space: nowrap;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            color 160ms ease,
+            background 160ms ease;
+        }
+
+        .guided-studio-step span {
+          width: 22px;
+          height: 22px;
+          display: inline-grid;
+          place-items: center;
+          border-radius: 999px;
+          color: #06100a;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font-size: 11px;
+        }
+
+        .guided-studio-step-complete:hover {
+          transform: translateY(-1px);
+          border-color: rgba(0,215,255,0.34);
+          color: #dffcff;
+          background: rgba(0,215,255,0.07);
+        }
+
+        .guided-studio-step-active {
+          border-color: rgba(24,255,154,0.45);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.10);
+          box-shadow: 0 0 30px rgba(0,255,136,0.08);
+        }
+
+        .guided-studio-step-locked {
+          opacity: 0.48;
+          cursor: not-allowed;
         }
 
         .design-start-panel,
@@ -6248,6 +6854,35 @@ function GlobalVisualStyles() {
           line-height: 1.58;
         }
 
+        .ai-concept-variant-toggle {
+          width: fit-content;
+          display: inline-flex;
+          gap: 6px;
+          padding: 5px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(255,255,255,0.04);
+        }
+
+        .ai-concept-variant-toggle button {
+          min-height: 30px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid transparent;
+          color: rgba(245,247,248,0.64);
+          background: transparent;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .ai-concept-variant-toggle .ai-concept-variant-active {
+          border-color: rgba(24,255,154,0.38);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.10);
+        }
+
         .ai-concept-brief {
           display: grid;
           grid-template-columns: minmax(0, 7fr) minmax(180px, 4fr);
@@ -6491,6 +7126,74 @@ function GlobalVisualStyles() {
           transform: none;
         }
 
+        .ai-output-safety-box {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          justify-content: space-between;
+          padding: 13px 14px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,224,131,0.18);
+          background:
+            radial-gradient(circle at 8% 0%, rgba(255,224,131,0.11), transparent 34%),
+            rgba(255,255,255,0.035);
+        }
+
+        .ai-output-safety-box p {
+          margin: 0;
+          color: rgba(245,247,248,0.68);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .ai-refinement-chip-row {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+          scrollbar-width: none;
+        }
+
+        .ai-refinement-strip {
+          display: grid;
+          gap: 8px;
+          padding: 13px 14px;
+          border-radius: 20px;
+          border: 1px solid rgba(0,215,255,0.12);
+          background: rgba(255,255,255,0.035);
+        }
+
+        .ai-refinement-strip > span {
+          color: #00d7ff;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .ai-refinement-chip-row::-webkit-scrollbar {
+          display: none;
+        }
+
+        .ai-refinement-chip-row button {
+          flex: 0 0 auto;
+          min-height: 32px;
+          border-radius: 999px;
+          border: 1px solid rgba(0,215,255,0.16);
+          color: rgba(246,255,249,0.80);
+          background: rgba(255,255,255,0.045);
+          padding: 0 11px;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 850;
+          cursor: pointer;
+        }
+
+        .ai-refinement-chip-row button:hover {
+          border-color: rgba(24,255,154,0.38);
+          color: #9dffc4;
+        }
+
         .ai-concept-change-box {
           display: grid;
           gap: 10px;
@@ -6632,8 +7335,85 @@ function GlobalVisualStyles() {
 
         .quote-action-anchor,
         .guided-placement-panel,
-        .showroom-viewer-anchor {
+        .showroom-viewer-anchor,
+        .order-request-anchor {
           scroll-margin-top: 124px;
+        }
+
+        .pricing-trust-note {
+          margin: 12px 0 0;
+          color: rgba(245,247,248,0.60);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .order-success-panel {
+          display: grid;
+          gap: 12px;
+          margin-top: 12px;
+          padding: 18px;
+          border-radius: 24px;
+          border: 1px solid rgba(24,255,154,0.24);
+          background:
+            radial-gradient(circle at 14% 8%, rgba(0,255,136,0.16), transparent 34%),
+            radial-gradient(circle at 86% 82%, rgba(0,215,255,0.11), transparent 34%),
+            rgba(255,255,255,0.045);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .order-success-panel > span,
+        .order-success-email {
+          width: fit-content;
+          min-height: 30px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 11px;
+          border-radius: 999px;
+          color: #071110;
+          background: linear-gradient(135deg, #18ff9a, #00c8ff);
+          font-size: 11px;
+          font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .order-success-panel h3 {
+          margin: 0;
+          color: #f6fff9;
+          font-size: 18px;
+          line-height: 1.25;
+        }
+
+        .order-success-panel ol {
+          margin: 0;
+          padding-left: 20px;
+          color: rgba(245,247,248,0.70);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .order-success-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 9px;
+        }
+
+        .order-success-actions button,
+        .order-success-actions a {
+          min-height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(246,255,249,0.84);
+          background: rgba(255,255,255,0.05);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          text-decoration: none;
+          cursor: pointer;
         }
 
         .guided-section-header {
@@ -6748,6 +7528,14 @@ function GlobalVisualStyles() {
           border-color: rgba(24,255,154,0.38);
           color: #9dffc4;
           background: rgba(24,255,154,0.08);
+        }
+
+        .design-next-step-row small {
+          flex-basis: 100%;
+          color: rgba(157,255,196,0.72);
+          font-size: 11px;
+          font-weight: 850;
+          text-align: center;
         }
 
         .design-added-toast {
