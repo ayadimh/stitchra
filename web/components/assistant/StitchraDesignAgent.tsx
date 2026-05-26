@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { usePathname } from "next/navigation";
 
 type ChatMessage = {
@@ -24,6 +31,20 @@ type StitchraDesignActionDetail = {
 };
 
 type SendStatus = "idle" | "streaming";
+type LauncherPosition = {
+  x: number;
+  y: number;
+};
+type LauncherDragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  moved: boolean;
+};
 
 const SUGGESTED_PROMPTS = [
   "Help me choose logo placement",
@@ -47,6 +68,12 @@ const PUBLIC_ROUTE_EXCLUSIONS = [
 const LOCALE_SEGMENTS = new Set(["en", "de", "fr", "ar", "es", "ru"]);
 const CLIENT_MAX_INPUT_CHARS = 1200;
 const CLIENT_MAX_MESSAGES = 6;
+const MOBILE_LAUNCHER_POSITION_KEY = "stitchra-agent-launcher-position-v1";
+const MOBILE_DRAG_QUERY = "(max-width: 680px) and (pointer: coarse)";
+const MOBILE_EDGE_PADDING = 12;
+const MOBILE_TOP_SAFE_PADDING = 16;
+const MOBILE_BOTTOM_RESERVED = 96;
+const MOBILE_DRAG_THRESHOLD = 7;
 const TEMPORARILY_UNAVAILABLE_MESSAGE =
   "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
 
@@ -141,22 +168,211 @@ function shouldShowArtworkActions(latestUserMessage: string) {
   );
 }
 
+function getViewportSize() {
+  const visualViewport = window.visualViewport;
+
+  return {
+    width: visualViewport?.width ?? window.innerWidth,
+    height: visualViewport?.height ?? window.innerHeight,
+  };
+}
+
+function clampLauncherPosition(
+  position: LauncherPosition,
+  size: { width: number; height: number },
+) {
+  const viewport = getViewportSize();
+  const minX = MOBILE_EDGE_PADDING;
+  const minY = MOBILE_TOP_SAFE_PADDING;
+  const maxX = Math.max(
+    minX,
+    viewport.width - size.width - MOBILE_EDGE_PADDING,
+  );
+  const maxY = Math.max(
+    minY,
+    viewport.height - size.height - MOBILE_BOTTOM_RESERVED,
+  );
+
+  return {
+    x: Math.min(Math.max(position.x, minX), maxX),
+    y: Math.min(Math.max(position.y, minY), maxY),
+  };
+}
+
+function getDefaultLauncherPosition(size: { width: number; height: number }) {
+  const viewport = getViewportSize();
+
+  return clampLauncherPosition(
+    {
+      x: viewport.width - size.width - MOBILE_EDGE_PADDING,
+      y: viewport.height - size.height - MOBILE_BOTTOM_RESERVED,
+    },
+    size,
+  );
+}
+
+function loadSavedLauncherPosition() {
+  try {
+    const raw = window.localStorage.getItem(MOBILE_LAUNCHER_POSITION_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<LauncherPosition>;
+    if (typeof parsed.x !== "number" || typeof parsed.y !== "number") {
+      return null;
+    }
+
+    return {
+      x: parsed.x,
+      y: parsed.y,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveLauncherPosition(position: LauncherPosition) {
+  try {
+    window.localStorage.setItem(
+      MOBILE_LAUNCHER_POSITION_KEY,
+      JSON.stringify(position),
+    );
+  } catch {
+    // The launcher still works when storage is unavailable.
+  }
+}
+
+function clearSavedLauncherPosition() {
+  try {
+    window.localStorage.removeItem(MOBILE_LAUNCHER_POSITION_KEY);
+  } catch {
+    // Ignore storage failures; the current session can still reset visually.
+  }
+}
+
 export default function StitchraDesignAgent() {
   const pathname = usePathname() ?? "/";
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [status, setStatus] = useState<SendStatus>("idle");
+  const [isMobileDraggable, setIsMobileDraggable] = useState(false);
+  const [launcherPosition, setLauncherPosition] =
+    useState<LauncherPosition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
+  const launcherPositionRef = useRef<LauncherPosition | null>(null);
+  const pendingLauncherPositionRef = useRef<LauncherPosition | null>(null);
+  const launcherAnimationFrameRef = useRef<number | null>(null);
+  const launcherDragRef = useRef<LauncherDragState | null>(null);
+  const suppressLauncherClickRef = useRef(false);
 
   const isHidden = useMemo(() => shouldHideAgent(pathname), [pathname]);
+
+  const applyLauncherPosition = (position: LauncherPosition) => {
+    launcherPositionRef.current = position;
+    setLauncherPosition(position);
+  };
+
+  const getLauncherSize = () => {
+    const rect = launcherRef.current?.getBoundingClientRect();
+
+    return {
+      width: rect?.width ?? 48,
+      height: rect?.height ?? 48,
+    };
+  };
+
+  const resetLauncherPosition = () => {
+    if (!isMobileDraggable) {
+      return;
+    }
+
+    const nextPosition = getDefaultLauncherPosition(getLauncherSize());
+    clearSavedLauncherPosition();
+    applyLauncherPosition(nextPosition);
+  };
 
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      if (launcherAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(launcherAnimationFrameRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_DRAG_QUERY);
+
+    const updateMobileMode = () => {
+      setIsMobileDraggable(query.matches);
+      if (!query.matches) {
+        setLauncherPosition(null);
+        launcherPositionRef.current = null;
+        launcherDragRef.current = null;
+      }
+    };
+
+    updateMobileMode();
+    query.addEventListener("change", updateMobileMode);
+
+    return () => {
+      query.removeEventListener("change", updateMobileMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileDraggable || isHidden) {
+      return undefined;
+    }
+
+    const initializePosition = () => {
+      const size = getLauncherSize();
+      const savedPosition = loadSavedLauncherPosition();
+      const nextPosition = savedPosition
+        ? clampLauncherPosition(savedPosition, size)
+        : getDefaultLauncherPosition(size);
+
+      applyLauncherPosition(nextPosition);
+      if (savedPosition) {
+        saveLauncherPosition(nextPosition);
+      }
+    };
+
+    const frame = window.requestAnimationFrame(initializePosition);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [isHidden, isMobileDraggable]);
+
+  useEffect(() => {
+    if (!isMobileDraggable || isHidden) {
+      return undefined;
+    }
+
+    const clampToViewport = () => {
+      const currentPosition =
+        launcherPositionRef.current ?? getDefaultLauncherPosition(getLauncherSize());
+      const nextPosition = clampLauncherPosition(currentPosition, getLauncherSize());
+
+      applyLauncherPosition(nextPosition);
+      saveLauncherPosition(nextPosition);
+    };
+
+    window.addEventListener("resize", clampToViewport);
+    window.visualViewport?.addEventListener("resize", clampToViewport);
+    window.visualViewport?.addEventListener("scroll", clampToViewport);
+
+    return () => {
+      window.removeEventListener("resize", clampToViewport);
+      window.visualViewport?.removeEventListener("resize", clampToViewport);
+      window.visualViewport?.removeEventListener("scroll", clampToViewport);
+    };
+  }, [isHidden, isMobileDraggable]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -313,9 +529,142 @@ export default function StitchraDesignAgent() {
   const latestUserMessage = getLatestUserMessage(messages);
   const suggestedArtworkPrompt = getSuggestedArtworkPrompt(latestUserMessage);
   const showArtworkActions = shouldShowArtworkActions(latestUserMessage);
+  const agentClassName = [
+    "stitchra-ai-agent",
+    isOpen ? "stitchra-ai-agent-open" : "",
+    isMobileDraggable ? "stitchra-ai-agent-mobile-drag" : "",
+    launcherPosition ? "stitchra-ai-agent-positioned" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const agentStyle =
+    launcherPosition && isMobileDraggable
+      ? ({
+          "--stitchra-agent-launcher-x": `${launcherPosition.x}px`,
+          "--stitchra-agent-launcher-y": `${launcherPosition.y}px`,
+        } as CSSProperties)
+      : undefined;
+
+  const moveLauncher = (position: LauncherPosition) => {
+    pendingLauncherPositionRef.current = position;
+
+    if (launcherAnimationFrameRef.current !== null) {
+      return;
+    }
+
+    launcherAnimationFrameRef.current = window.requestAnimationFrame(() => {
+      launcherAnimationFrameRef.current = null;
+      const nextPosition = pendingLauncherPositionRef.current;
+      if (!nextPosition) {
+        return;
+      }
+
+      applyLauncherPosition(nextPosition);
+    });
+  };
+
+  const handleLauncherPointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (!isMobileDraggable || event.pointerType !== "touch") {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const currentPosition = launcherPositionRef.current ?? {
+      x: rect.left,
+      y: rect.top,
+    };
+
+    launcherDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - currentPosition.x,
+      offsetY: event.clientY - currentPosition.y,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+    };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleLauncherPointerMove = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    const drag = launcherDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const distanceX = event.clientX - drag.startX;
+    const distanceY = event.clientY - drag.startY;
+    const moved =
+      drag.moved ||
+      Math.hypot(distanceX, distanceY) >= MOBILE_DRAG_THRESHOLD;
+
+    if (!moved) {
+      return;
+    }
+
+    drag.moved = true;
+    event.preventDefault();
+
+    moveLauncher(
+      clampLauncherPosition(
+        {
+          x: event.clientX - drag.offsetX,
+          y: event.clientY - drag.offsetY,
+        },
+        {
+          width: drag.width,
+          height: drag.height,
+        },
+      ),
+    );
+  };
+
+  const finishLauncherDrag = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    const drag = launcherDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    launcherDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (!drag.moved) {
+      return;
+    }
+
+    const finalPosition =
+      pendingLauncherPositionRef.current ??
+      launcherPositionRef.current ??
+      getDefaultLauncherPosition({
+        width: drag.width,
+        height: drag.height,
+      });
+
+    const clampedPosition = clampLauncherPosition(finalPosition, {
+      width: drag.width,
+      height: drag.height,
+    });
+
+    applyLauncherPosition(clampedPosition);
+    saveLauncherPosition(clampedPosition);
+    suppressLauncherClickRef.current = true;
+    window.setTimeout(() => {
+      suppressLauncherClickRef.current = false;
+    }, 0);
+  };
 
   return (
-    <div className="stitchra-ai-agent" aria-live="polite">
+    <div className={agentClassName} style={agentStyle} aria-live="polite">
       {isOpen ? (
         <section
           className="stitchra-ai-panel"
@@ -436,6 +785,11 @@ export default function StitchraDesignAgent() {
             <button type="button" onClick={scrollToDesigner}>
               Continue to Quote
             </button>
+            {isMobileDraggable ? (
+              <button type="button" onClick={resetLauncherPosition}>
+                Reset bubble
+              </button>
+            ) : null}
           </div>
 
           <form
@@ -481,11 +835,23 @@ export default function StitchraDesignAgent() {
       ) : null}
 
       <button
+        ref={launcherRef}
         type="button"
         className="stitchra-ai-launcher"
-        onClick={() => setIsOpen((current) => !current)}
+        onPointerDown={handleLauncherPointerDown}
+        onPointerMove={handleLauncherPointerMove}
+        onPointerUp={finishLauncherDrag}
+        onPointerCancel={finishLauncherDrag}
+        onClick={(event) => {
+          if (suppressLauncherClickRef.current) {
+            event.preventDefault();
+            return;
+          }
+
+          setIsOpen((current) => !current);
+        }}
         aria-expanded={isOpen}
-        aria-label="Open Stitchra AI Design Agent"
+        aria-label="Open Stitchra AI Design Agent. Drag on mobile to move."
       >
         <span aria-hidden="true">S</span>
         <strong>Design Agent</strong>
@@ -747,6 +1113,8 @@ export default function StitchraDesignAgent() {
           padding: 8px 18px 8px 8px;
           box-shadow: 0 20px 60px rgba(0, 225, 190, 0.28);
           transition: transform 160ms ease, box-shadow 160ms ease;
+          user-select: none;
+          -webkit-user-select: none;
         }
 
         .stitchra-ai-launcher span {
@@ -775,16 +1143,51 @@ export default function StitchraDesignAgent() {
             left: 12px;
           }
 
+          .stitchra-ai-agent-mobile-drag {
+            inset: 0;
+            right: auto;
+            bottom: auto;
+            left: 0;
+            pointer-events: none;
+          }
+
           .stitchra-ai-panel {
             width: 100%;
             max-height: calc(100dvh - 118px);
             border-radius: 24px;
           }
 
+          .stitchra-ai-agent-mobile-drag .stitchra-ai-panel {
+            position: fixed;
+            left: 12px;
+            right: 12px;
+            bottom: max(14px, env(safe-area-inset-bottom));
+            width: auto;
+            max-height: calc(100dvh - 92px);
+            margin-bottom: 0;
+            pointer-events: auto;
+          }
+
           .stitchra-ai-launcher {
+            position: fixed;
+            right: 12px;
+            bottom: max(82px, calc(14px + env(safe-area-inset-bottom)));
             min-height: 48px;
             padding: 6px 12px 6px 6px;
             margin-left: auto;
+            touch-action: none;
+            will-change: transform, left, top;
+          }
+
+          .stitchra-ai-agent-positioned .stitchra-ai-launcher {
+            left: var(--stitchra-agent-launcher-x);
+            top: var(--stitchra-agent-launcher-y);
+            right: auto;
+            bottom: auto;
+          }
+
+          .stitchra-ai-agent-open.stitchra-ai-agent-mobile-drag .stitchra-ai-launcher {
+            display: none;
           }
 
           .stitchra-ai-launcher span {
