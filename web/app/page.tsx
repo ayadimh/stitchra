@@ -810,6 +810,23 @@ export default function Home({ locale }: HomeProps = {}) {
     placementZoneId,
     logoAspectRatio
   );
+  const logoSizeQuickActions = [
+    {
+      label: 'Small',
+      widthMm: Math.min(
+        maxLogoWidthMm,
+        Math.max(20, selectedZone.defaultWidthMm * 0.72)
+      ),
+    },
+    {
+      label: 'Medium',
+      widthMm: Math.min(maxLogoWidthMm, selectedZone.defaultWidthMm),
+    },
+    {
+      label: 'Large',
+      widthMm: maxLogoWidthMm,
+    },
+  ];
   const capabilityPreview = evaluateMachineCapability({
     zoneId: placementZoneId,
     widthMm: logoPlacementConfig.logo_width_mm,
@@ -4412,6 +4429,34 @@ export default function Home({ locale }: HomeProps = {}) {
                     style={rangeInput}
                   />
                 </label>
+                <div
+                  className="logo-size-quick-row"
+                  aria-label="Quick logo size"
+                >
+                  {logoSizeQuickActions.map((action) => {
+                    const active =
+                      Math.abs(
+                        logoPlacementConfig.logo_width_mm - action.widthMm
+                      ) < 2;
+
+                    return (
+                      <button
+                        key={action.label}
+                        type="button"
+                        className={active ? 'logo-size-quick-active' : ''}
+                        onClick={() =>
+                          updateLogoPlacementConfig({
+                            ...logoPlacementConfig,
+                            logo_width_mm: action.widthMm,
+                            logo_height_mm: action.widthMm / logoAspectRatio,
+                          })
+                        }
+                      >
+                        {action.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <p style={configuratorHint}>
                   Logo size stays within safe embroidery limits.
                 </p>
@@ -5424,6 +5469,8 @@ function Header({
   onStartDesigning: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const navItems = getNavItems(t);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <header
@@ -5480,6 +5527,7 @@ function Header({
             <a
               key={item.label}
               href={item.href}
+              className="desktop-nav-link"
               style={navLink}
             >
               {item.label}
@@ -5496,7 +5544,44 @@ function Header({
           >
             {t('nav.start')}
           </a>
+
+          <button
+            type="button"
+            className="mobile-menu-button"
+            aria-label={
+              mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'
+            }
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((current) => !current)}
+            style={mobileMenuButton}
+          >
+            {mobileMenuOpen ? 'Close' : 'Menu'}
+          </button>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="mobile-menu-panel" aria-label="Mobile navigation">
+            {navItems.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                onClick={closeMobileMenu}
+              >
+                {item.label}
+              </a>
+            ))}
+            <a
+              href="#designer"
+              className="mobile-menu-primary"
+              onClick={(event) => {
+                closeMobileMenu();
+                onStartDesigning(event);
+              }}
+            >
+              {t('nav.start')}
+            </a>
+          </div>
+        )}
       </nav>
     </header>
   );
@@ -6082,12 +6167,22 @@ function GlobalVisualStyles() {
         html {
           scroll-behavior: smooth;
           scroll-padding-top: 112px;
+          max-width: 100%;
+        }
+
+        body {
+          max-width: 100%;
+          overflow-x: clip;
         }
 
         *,
         *::before,
         *::after {
           box-sizing: border-box;
+        }
+
+        main {
+          overflow-x: clip;
         }
 
         section[id] {
@@ -7648,6 +7743,38 @@ function GlobalVisualStyles() {
           background: rgba(24,255,154,0.10);
         }
 
+        .logo-size-quick-row {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: -2px;
+        }
+
+        .logo-size-quick-row button {
+          min-height: 38px;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 999px;
+          color: rgba(246,255,249,0.80);
+          background: rgba(255,255,255,0.045);
+          font: inherit;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          transition:
+            transform 160ms ease,
+            border-color 160ms ease,
+            color 160ms ease,
+            background 160ms ease;
+        }
+
+        .logo-size-quick-row button:hover,
+        .logo-size-quick-row .logo-size-quick-active {
+          transform: translateY(-1px);
+          border-color: rgba(24,255,154,0.38);
+          color: #9dffc4;
+          background: rgba(24,255,154,0.10);
+        }
+
         .showroom-viewer-anchor {
           order: 1;
           min-width: 0;
@@ -8434,6 +8561,53 @@ function GlobalVisualStyles() {
           width: 100%;
         }
 
+        .mobile-menu-panel,
+        .mobile-menu-button {
+          display: none;
+        }
+
+        .mobile-menu-panel {
+          position: absolute;
+          top: calc(100% + 10px);
+          left: 16px;
+          right: 16px;
+          z-index: 70;
+          padding: 12px;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 24px;
+          background:
+            radial-gradient(circle at 12% 8%, rgba(0,255,136,0.14), transparent 36%),
+            rgba(4,9,10,0.96);
+          box-shadow: 0 24px 80px rgba(0,0,0,0.52);
+          backdrop-filter: blur(18px);
+        }
+
+        .mobile-menu-panel a {
+          min-height: 46px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 14px;
+          border-radius: 16px;
+          color: rgba(246,255,249,0.84);
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 850;
+        }
+
+        .mobile-menu-panel a:hover {
+          background: rgba(255,255,255,0.06);
+          color: #9dffc4;
+        }
+
+        .mobile-menu-panel .mobile-menu-primary {
+          margin-top: 6px;
+          justify-content: center;
+          color: #06100a;
+          background: linear-gradient(135deg,#00ff88,#00c8ff);
+          box-shadow: 0 16px 46px rgba(0,200,255,0.18);
+        }
+
         .pricing-confidence-panel {
           overflow: hidden;
           position: relative;
@@ -8782,8 +8956,19 @@ function GlobalVisualStyles() {
         }
 
         @media (max-width: 900px) {
-          .header-links a:not(.lux-button) {
+          .header-links .desktop-nav-link {
             display: none !important;
+          }
+
+          .mobile-menu-button {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .mobile-menu-panel {
+            display: grid;
+            gap: 4px;
           }
 
           .header-brand {
@@ -8884,6 +9069,10 @@ function GlobalVisualStyles() {
             padding: 0 15px !important;
             font-size: 13px !important;
             white-space: nowrap;
+          }
+
+          .header-links {
+            gap: 8px !important;
           }
 
           .header-brand {
@@ -9039,8 +9228,13 @@ function GlobalVisualStyles() {
           }
 
           .designer-preview-card {
-            min-height: 560px !important;
+            min-height: min(620px, calc(100svh - 110px)) !important;
             border-radius: 28px !important;
+          }
+
+          .showroom-viewer-anchor .shirt-placement-preview-card,
+          .showroom-grid .shirt-placement-preview-card {
+            min-height: min(620px, calc(100svh - 110px)) !important;
           }
 
           .designer-preview-label {
@@ -9054,8 +9248,18 @@ function GlobalVisualStyles() {
 
           .designer-preview-torso {
             top: 54px !important;
-            width: min(360px, 112%) !important;
-            height: 500px !important;
+            width: min(390px, 122%) !important;
+            height: min(520px, calc(100svh - 154px)) !important;
+          }
+
+          .showroom-controls-card {
+            margin: 16px auto 0 !important;
+          }
+
+          .glow-card::before {
+            inset: -24px;
+            opacity: 0.10;
+            filter: blur(28px);
           }
 
           .craft-copy-panel {
@@ -10326,6 +10530,20 @@ const navLink: CSSProperties = {
   cursor: 'pointer',
   textDecoration: 'none',
   fontWeight: 650,
+};
+
+const mobileMenuButton: CSSProperties = {
+  display: 'none',
+  minHeight: 44,
+  border: '1px solid rgba(255,255,255,0.14)',
+  borderRadius: 14,
+  padding: '0 12px',
+  background: 'rgba(255,255,255,0.055)',
+  color: '#f5f7f8',
+  font: 'inherit',
+  fontSize: 13,
+  fontWeight: 900,
+  cursor: 'pointer',
 };
 
 const languageSwitcher: CSSProperties = {

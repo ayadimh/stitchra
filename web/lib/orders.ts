@@ -135,6 +135,11 @@ export type OrderDesignConfig = {
   logo_offset_y?: number;
   side?: string;
   shirt_color?: string;
+  custom_placement?: boolean;
+  custom_placement_side?: string;
+  custom_placement_frame?: number;
+  custom_placement_x?: number;
+  custom_placement_y?: number;
 };
 
 export type CreateOrderInput = {
@@ -174,6 +179,7 @@ export type PublicOrderRecord = {
   logo_preview_url: string | null;
   placement: string;
   shirt_color: string;
+  design_config: OrderDesignConfig | null;
   quantity: number | null;
   customer_price_eur: number | null;
   revised_price_eur: number | null;
@@ -193,6 +199,7 @@ const publicOrderSelect = [
   'logo_preview_url',
   'placement',
   'shirt_color',
+  'design_config',
   'quantity',
   'customer_price_eur',
   'revised_price_eur',
@@ -214,6 +221,7 @@ const publicOrderSelectFallbacks = [
     'logo_preview_url',
     'placement',
     'shirt_color',
+    'design_config',
     'quantity',
     'customer_price_eur',
     'revised_price_eur',
@@ -449,6 +457,14 @@ function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
     config.shirt_color = source.shirt_color;
   }
 
+  if (typeof source.custom_placement === 'boolean') {
+    config.custom_placement = source.custom_placement;
+  }
+
+  if (typeof source.custom_placement_side === 'string') {
+    config.custom_placement_side = source.custom_placement_side;
+  }
+
   for (const key of [
     'logo_position_x',
     'logo_position_y',
@@ -457,6 +473,9 @@ function parseOrderDesignConfig(value: unknown): OrderDesignConfig | null {
     'logo_scale',
     'logo_offset_x',
     'logo_offset_y',
+    'custom_placement_frame',
+    'custom_placement_x',
+    'custom_placement_y',
   ] as const) {
     const parsedValue = parseNumber(source[key]);
 
@@ -717,6 +736,7 @@ function parsePublicOrder(row: SupabaseOrderRow): PublicOrderRecord {
       : null,
     placement: row.placement ? String(row.placement) : 'left_chest',
     shirt_color: row.shirt_color ? String(row.shirt_color) : 'black',
+    design_config: parseOrderDesignConfig(row.design_config),
     quantity:
       row.quantity === null || row.quantity === undefined
         ? null

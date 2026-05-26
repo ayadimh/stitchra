@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
-import { OrderMannequinPreview } from '@/components/OrderMannequinPreview';
 import StitchraLogo from '@/components/brand/StitchraLogo';
+import PublicShirtPreview from '@/components/configurator/PublicShirtPreview';
 import { formatPlacementLabel } from '@/lib/embroideryZones';
 import type {
   CustomerDecision,
@@ -291,10 +291,12 @@ export function OrderResponseClient({
               {formatPlacement(order.placement)}
             </span>
           </div>
-          <OrderMannequinPreview
+          <PublicShirtPreview
             logoUrl={order.logo_preview_url}
             shirtColor={order.shirt_color}
             placement={order.placement}
+            designConfig={order.design_config}
+            minHeight={520}
           />
           <p style={captionText}>
             Preview is illustrative. Final embroidery may vary slightly
@@ -736,6 +738,12 @@ function OfferPageStyles() {
           box-shadow: none;
         }
 
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: clip;
+        }
+
         .offer-main-grid {
           grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
         }
@@ -751,6 +759,10 @@ function OfferPageStyles() {
             width: 100%;
             justify-content: center;
           }
+
+          .offer-main-grid {
+            gap: 16px !important;
+          }
         }
       `}
     </style>
@@ -759,7 +771,8 @@ function OfferPageStyles() {
 
 const pageShell: CSSProperties = {
   minHeight: '100vh',
-  padding: '32px clamp(16px, 4vw, 64px) 28px',
+  padding:
+    'max(24px, env(safe-area-inset-top)) clamp(14px, 4vw, 64px) max(88px, calc(28px + env(safe-area-inset-bottom)))',
   background:
     'radial-gradient(circle at 18% 10%, rgba(0,255,136,0.14), transparent 28%), radial-gradient(circle at 86% 16%, rgba(0,200,255,0.12), transparent 30%), radial-gradient(circle at 50% 92%, rgba(0,255,240,0.08), transparent 36%), #050607',
   color: '#f5f7f8',

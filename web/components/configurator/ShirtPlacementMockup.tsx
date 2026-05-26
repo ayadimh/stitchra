@@ -663,10 +663,13 @@ export default function ShirtPlacementMockup({
     const moved = Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4;
 
     if (has360Viewer) {
-      setCurrentFrame(
+      const nextFrame =
         normalizeFrame(
           viewerDrag.startFrame + Math.round(deltaX / ROTATE_FRAME_THRESHOLD)
-        )
+        );
+
+      setCurrentFrame((current) =>
+        current === nextFrame ? current : nextFrame
       );
     }
 
@@ -1034,6 +1037,8 @@ const stage: CSSProperties = {
   isolation: 'isolate',
   perspective: 1100,
   transition: 'background 180ms ease, box-shadow 180ms ease',
+  touchAction: 'pan-y',
+  userSelect: 'none',
 };
 
 const gridOverlay: CSSProperties = {

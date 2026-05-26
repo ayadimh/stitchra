@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { CSSProperties } from 'react';
+import PublicShirtPreview from '@/components/configurator/PublicShirtPreview';
 import { formatPlacementLabel } from '@/lib/embroideryZones';
 import {
   getPublicOrderByToken,
@@ -123,7 +124,8 @@ export default async function PaymentPage({
 
   return (
     <main style={pageShell}>
-      <section style={layout}>
+      <PaymentPageStyles />
+      <section className="payment-layout" style={layout}>
         <div style={summaryPanel}>
           <p style={eyebrow}>Secure payment</p>
           <h1 style={title}>Secure payment</h1>
@@ -184,21 +186,14 @@ export default async function PaymentPage({
             </span>
           </div>
 
-          {order.logo_preview_url ? (
-            <div style={previewFrame}>
-              <div
-                aria-label="Logo preview"
-                style={{
-                  ...logoPreview,
-                  backgroundImage: `url(${order.logo_preview_url})`,
-                }}
-              />
-            </div>
-          ) : (
-            <div style={previewFrame}>
-              <span style={mutedText}>No logo preview available</span>
-            </div>
-          )}
+          <PublicShirtPreview
+            logoUrl={order.logo_preview_url}
+            shirtColor={order.shirt_color}
+            placement={order.placement}
+            designConfig={order.design_config}
+            minHeight={360}
+            compact
+          />
 
           <div style={detailGrid}>
             <Detail
@@ -231,6 +226,26 @@ export default async function PaymentPage({
   );
 }
 
+function PaymentPageStyles() {
+  return (
+    <style>
+      {`
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: clip;
+        }
+
+        @media (max-width: 760px) {
+          .payment-layout {
+            gap: 16px !important;
+          }
+        }
+      `}
+    </style>
+  );
+}
+
 function Detail({
   label,
   value,
@@ -248,7 +263,8 @@ function Detail({
 
 const pageShell: CSSProperties = {
   minHeight: '100vh',
-  padding: '40px clamp(18px, 4vw, 64px)',
+  padding:
+    'max(24px, env(safe-area-inset-top)) clamp(14px, 4vw, 64px) max(88px, calc(28px + env(safe-area-inset-bottom)))',
   background:
     'radial-gradient(circle at 20% 12%, rgba(0,255,136,0.13), transparent 28%), radial-gradient(circle at 85% 24%, rgba(0,200,255,0.10), transparent 30%), #050607',
   color: '#f5f7f8',
@@ -387,26 +403,6 @@ function decisionBadge(decision: CustomerDecision): CSSProperties {
     color,
   };
 }
-
-const previewFrame: CSSProperties = {
-  minHeight: 300,
-  borderRadius: 22,
-  border: '1px solid rgba(255,255,255,0.10)',
-  display: 'grid',
-  placeItems: 'center',
-  background:
-    'linear-gradient(135deg, rgba(8,14,13,0.95), rgba(24,30,27,0.95))',
-  boxShadow: 'inset 0 0 70px rgba(0,0,0,0.35)',
-};
-
-const logoPreview: CSSProperties = {
-  width: 'min(260px, 70%)',
-  aspectRatio: '3 / 2',
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'center',
-  backgroundSize: 'contain',
-  filter: 'drop-shadow(0 10px 22px rgba(0,0,0,0.4))',
-};
 
 const detailGrid: CSSProperties = {
   display: 'grid',

@@ -771,18 +771,29 @@ export default function StitchraDesignAgent() {
         @media (max-width: 680px) {
           .stitchra-ai-agent {
             right: 12px;
-            bottom: 12px;
+            bottom: max(82px, calc(14px + env(safe-area-inset-bottom)));
             left: 12px;
           }
 
           .stitchra-ai-panel {
             width: 100%;
-            max-height: calc(100dvh - 92px);
+            max-height: calc(100dvh - 118px);
             border-radius: 24px;
           }
 
           .stitchra-ai-launcher {
+            min-height: 48px;
+            padding: 6px 12px 6px 6px;
             margin-left: auto;
+          }
+
+          .stitchra-ai-launcher span {
+            width: 36px;
+            height: 36px;
+          }
+
+          .stitchra-ai-launcher strong {
+            display: none;
           }
 
           .stitchra-ai-actions,
