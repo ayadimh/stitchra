@@ -6,6 +6,7 @@ import type {
   CSSProperties,
   FormEvent,
   MouseEvent,
+  RefObject,
   ReactNode,
 } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -634,6 +635,13 @@ type GuidedStudioStepId =
   | 'place'
   | 'price'
   | 'request';
+type MobileDesignStepId =
+  | 'choose'
+  | 'create'
+  | 'review'
+  | 'place'
+  | 'price'
+  | 'request';
 
 type GuidedStudioStep = {
   id: GuidedStudioStepId;
@@ -661,6 +669,55 @@ function GuidedStudioStepper({
             onClick={() => onStepClick(step.id)}
             disabled={!interactive}
             aria-current={step.status === 'active' ? 'step' : undefined}
+          >
+            <span>{index + 1}</span>
+            {step.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function MobileDesignStepper({
+  currentStep,
+  completedSteps,
+  onStepClick,
+}: {
+  currentStep: MobileDesignStepId;
+  completedSteps: Set<MobileDesignStepId>;
+  onStepClick: (stepId: MobileDesignStepId) => void;
+}) {
+  const steps: Array<{ id: MobileDesignStepId; label: string }> = [
+    { id: 'choose', label: 'Choose' },
+    { id: 'create', label: 'Create / Upload' },
+    { id: 'review', label: 'Review' },
+    { id: 'place', label: 'Place' },
+    { id: 'price', label: 'Price' },
+    { id: 'request', label: 'Request' },
+  ];
+
+  return (
+    <nav className="mobile-design-stepper" aria-label="Mobile design progress">
+      {steps.map((step, index) => {
+        const isActive = currentStep === step.id;
+        const isComplete = completedSteps.has(step.id);
+        const isReachable = isActive || isComplete;
+
+        return (
+          <button
+            key={step.id}
+            type="button"
+            className={[
+              'mobile-design-step-chip',
+              isActive ? 'mobile-design-step-active' : '',
+              isComplete ? 'mobile-design-step-complete' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            disabled={!isReachable}
+            aria-current={isActive ? 'step' : undefined}
+            onClick={() => onStepClick(step.id)}
           >
             <span>{index + 1}</span>
             {step.label}
@@ -728,6 +785,14 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const previewObjectUrlRef = useRef<string | null>(null);
   const studioRootRef = useRef<HTMLDivElement | null>(null);
   const shirtViewerRef = useRef<HTMLDivElement | null>(null);
+  const mobileWizardRootRef = useRef<HTMLDivElement | null>(null);
+  const mobileShirtViewerRef = useRef<HTMLDivElement | null>(null);
+  const mobileUploadPanelRef = useRef<HTMLDivElement | null>(null);
+  const mobileAiCreatorRef = useRef<HTMLDivElement | null>(null);
+  const mobileAiReviewRef = useRef<HTMLDivElement | null>(null);
+  const mobilePlacementControlsRef = useRef<HTMLDivElement | null>(null);
+  const mobilePriceActionRef = useRef<HTMLDivElement | null>(null);
+  const mobileOrderRequestRef = useRef<HTMLDivElement | null>(null);
   const uploadPanelRef = useRef<HTMLDivElement | null>(null);
   const aiCreatorRef = useRef<HTMLDivElement | null>(null);
   const aiReviewRef = useRef<HTMLDivElement | null>(null);
@@ -748,6 +813,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const [logoFocusPulseKey, setLogoFocusPulseKey] = useState(0);
   const [designStartMode, setDesignStartMode] =
     useState<DesignStartMode>('choice');
+  const [mobileDesignStep, setMobileDesignStep] =
+    useState<MobileDesignStepId>('choose');
   const [hasGeneratedAiConcept, setHasGeneratedAiConcept] =
     useState(false);
   const [aiConcepts, setAiConcepts] = useState<AIConcept[]>([]);
@@ -1017,8 +1084,31 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     setOrderError('');
   };
 
+  const isMobileDesignViewport = useCallback(() => {
+    return (
+      entry === 'design' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 768px)').matches
+    );
+  }, [entry]);
+
+  const getDesignScrollTarget = useCallback(
+    (
+      mobileRef: RefObject<HTMLElement | null>,
+      desktopRef: RefObject<HTMLElement | null>
+    ) => {
+      return isMobileDesignViewport()
+        ? mobileRef.current ?? desktopRef.current
+        : desktopRef.current ?? mobileRef.current;
+    },
+    [isMobileDesignViewport]
+  );
+
   const focusShirtViewer = useCallback((hint?: string, force = false) => {
-    const viewer = shirtViewerRef.current;
+    const viewer = getDesignScrollTarget(
+      mobileShirtViewerRef,
+      shirtViewerRef
+    );
 
     if (viewer) {
       const rect = viewer.getBoundingClientRect();
@@ -1046,34 +1136,46 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     }
 
     setLogoFocusPulseKey((current) => current + 1);
-  }, []);
+  }, [getDesignScrollTarget]);
 
   const scrollToPriceAction = useCallback(() => {
-    const target = priceActionRef.current;
+    const target = getDesignScrollTarget(
+      mobilePriceActionRef,
+      priceActionRef
+    );
 
     if (target) {
       scrollElementToViewportCenter(target);
     }
-  }, []);
+  }, [getDesignScrollTarget]);
 
   const scrollToPlacementControls = useCallback(() => {
-    const target = placementControlsRef.current;
+    const target = getDesignScrollTarget(
+      mobilePlacementControlsRef,
+      placementControlsRef
+    );
 
     if (target) {
       scrollElementToViewportCenter(target);
     }
-  }, []);
+  }, [getDesignScrollTarget]);
 
   const scrollToStudioRoot = useCallback(() => {
-    const target = studioRootRef.current;
+    const target = getDesignScrollTarget(
+      mobileWizardRootRef,
+      studioRootRef
+    );
 
     if (target) {
       scrollElementToViewportCenter(target);
     }
-  }, []);
+  }, [getDesignScrollTarget]);
 
   const scrollToAiReview = useCallback(() => {
-    const target = aiReviewRef.current;
+    const target = getDesignScrollTarget(
+      mobileAiReviewRef,
+      aiReviewRef
+    );
 
     if (target) {
       scrollElementToViewportCenter(target);
@@ -1081,10 +1183,13 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     }
 
     scrollToStudioRoot();
-  }, [scrollToStudioRoot]);
+  }, [getDesignScrollTarget, scrollToStudioRoot]);
 
   const scrollToOrderRequest = useCallback(() => {
-    const target = orderRequestRef.current;
+    const target = getDesignScrollTarget(
+      mobileOrderRequestRef,
+      orderRequestRef
+    );
 
     if (target) {
       scrollElementToViewportCenter(target);
@@ -1092,7 +1197,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     }
 
     scrollToPriceAction();
-  }, [scrollToPriceAction]);
+  }, [getDesignScrollTarget, scrollToPriceAction]);
 
   const scrollToUploadPanel = useCallback(() => {
     setDesignStartMode('upload');
@@ -1103,13 +1208,15 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     setEmptyDesignHelperOpen(false);
 
     window.setTimeout(() => {
-      const target = uploadPanelRef.current ?? studioRootRef.current;
+      const target =
+        getDesignScrollTarget(mobileUploadPanelRef, uploadPanelRef) ??
+        getDesignScrollTarget(mobileWizardRootRef, studioRootRef);
 
       if (target) {
         scrollElementToViewportCenter(target);
       }
     }, 0);
-  }, []);
+  }, [getDesignScrollTarget]);
 
   const scrollToAiCreator = useCallback(() => {
     setDesignStartMode('ai');
@@ -1120,7 +1227,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     setEmptyDesignHelperOpen(false);
 
     window.setTimeout(() => {
-      const target = aiCreatorRef.current ?? studioRootRef.current;
+      const target =
+        getDesignScrollTarget(mobileAiCreatorRef, aiCreatorRef) ??
+        getDesignScrollTarget(mobileWizardRootRef, studioRootRef);
 
       if (target) {
         scrollElementToViewportCenter(target);
@@ -1128,7 +1237,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
       document.getElementById('stitchra-ai-idea-input')?.focus();
     }, 0);
-  }, []);
+  }, [getDesignScrollTarget]);
 
   const showEmptyDesignHelper = useCallback(() => {
     if (preview) {
@@ -1192,6 +1301,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     setViewerHint('');
     setLogoFocusPulseKey((current) => current + 1);
     setDesignStartMode('choice');
+    setMobileDesignStep('choose');
     setHasGeneratedAiConcept(false);
     setAiConcepts([]);
     setSelectedAiConceptId(null);
@@ -1309,6 +1419,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
       if (detail.action === 'openAICreator') {
         setDesignStartMode('ai');
+        setMobileDesignStep('create');
         window.setTimeout(() => {
           document.getElementById('stitchra-ai-idea-input')?.focus();
         }, 0);
@@ -1319,6 +1430,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         detail.action === 'generateArtworkFromSuggestion'
       ) {
         setDesignStartMode('ai');
+        setMobileDesignStep('create');
         setLogoPrompt((detail.prompt ?? '').slice(0, 400));
         setDesignPreparation(null);
         window.setTimeout(() => {
@@ -1333,12 +1445,14 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
       if (detail.action === 'openUploadOwnDesign') {
         setDesignStartMode('upload');
+        setMobileDesignStep('create');
         setUploadError('');
         setBackgroundCleanupStatus('');
       }
 
       if (detail.action === 'setPlacement' && detail.placement) {
         updatePlacement(detail.placement);
+        setMobileDesignStep('place');
       }
 
       if (detail.action === 'setShirtColor' && detail.shirtColor) {
@@ -1494,6 +1608,17 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             draft.designStartMode ||
             draft.estimateSummary
         )
+      );
+      setMobileDesignStep(
+        draft.estimateSummary
+          ? 'price'
+          : activeLogoBlob
+            ? 'place'
+            : restoredConcepts.length > 0
+              ? 'review'
+              : draft.designStartMode || draft.ideaPrompt.trim()
+                ? 'create'
+                : 'choose'
       );
       setDraftSaveStatus('Draft saved');
       hasHydratedDraftRef.current = true;
@@ -1695,6 +1820,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
     await applyLogoPreview(previewUrl);
     setEmptyDesignHelperOpen(false);
+    setMobileDesignStep('review');
     setDesignAddedToastOpen(true);
     focusShirtViewer('Logo added. Click the shirt to reposition it.', true);
     setIsAnalyzing(true);
@@ -1879,6 +2005,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       });
       setHasGeneratedAiConcept(true);
       setDesignStartMode('ai');
+      setMobileDesignStep('review');
 
       setStatus(
         retriedForDuplicate
@@ -1937,6 +2064,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setOrderStatus('');
       setOrderError('');
       setDesignStartMode('ai');
+      setMobileDesignStep('place');
       setDesignAddedToastOpen(true);
       focusShirtViewer('Design added. Click the shirt to reposition it.', true);
       setStatus(
@@ -2201,6 +2329,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setEstimate(pricedEstimate);
       setOrderStatus('');
       setOrderError('');
+      setMobileDesignStep('price');
 
       setStatus(
         customerQuote.manual_quote
@@ -2335,6 +2464,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setOrderSuccess({
         customerConfirmationSent: Boolean(payload.customerConfirmationSent),
       });
+      setMobileDesignStep('request');
       setOrderFieldErrors({});
       setOrderOpen(false);
     } catch (error) {
@@ -2688,6 +2818,79 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     price: 'Check the customer-facing estimate before you request an offer.',
     request: 'Send the design request so Stitchra can prepare the final offer.',
   };
+  const mobileDesignSteps: MobileDesignStepId[] = [
+    'choose',
+    'create',
+    'review',
+    'place',
+    'price',
+    'request',
+  ];
+  const mobileDesignStepLabels: Record<MobileDesignStepId, string> = {
+    choose: 'Choose',
+    create: 'Create / Upload',
+    review: 'Review',
+    place: 'Place',
+    price: 'Price',
+    request: 'Request',
+  };
+  const mobileDesignStepHelp: Record<MobileDesignStepId, string> = {
+    choose: 'Choose whether to upload your logo or create a new concept with AI.',
+    create: 'Add your artwork first. Upload a file or describe an original idea.',
+    review: 'Inspect the artwork clearly before placing it on the shirt.',
+    place: 'Tap the shirt, choose placement and adjust the logo size.',
+    price: 'Prepare a customer-facing estimate before requesting an offer.',
+    request: 'Send your request so Stitchra can review the artwork.',
+  };
+  const mobileCompletedSteps = new Set<MobileDesignStepId>();
+
+  if (designStartMode !== 'choice' || preview || aiConcepts.length > 0) {
+    mobileCompletedSteps.add('choose');
+  }
+
+  if (preview || aiConcepts.length > 0 || logoPrompt.trim()) {
+    mobileCompletedSteps.add('create');
+  }
+
+  if (preview) {
+    mobileCompletedSteps.add('review');
+    mobileCompletedSteps.add('place');
+  }
+
+  if (publicQuote) {
+    mobileCompletedSteps.add('price');
+  }
+
+  if (orderSuccess) {
+    mobileCompletedSteps.add('request');
+  }
+
+  const mobileDesignStepIndex = Math.max(
+    0,
+    mobileDesignSteps.indexOf(mobileDesignStep)
+  );
+  const goToMobileDesignStep = (stepId: MobileDesignStepId) => {
+    if (stepId === mobileDesignStep || mobileCompletedSteps.has(stepId)) {
+      setMobileDesignStep(stepId);
+    }
+  };
+  const chooseMobileDesignMode = (
+    mode: Exclude<DesignStartMode, 'choice'>
+  ) => {
+    setDesignStartMode(mode);
+    setMobileDesignStep('create');
+    setError('');
+    setUploadError('');
+    setStatus('');
+    setBackgroundCleanupStatus('');
+    setEmptyDesignHelperOpen(false);
+
+    if (mode === 'ai') {
+      window.setTimeout(() => {
+        document.getElementById('stitchra-ai-idea-input')?.focus();
+      }, 0);
+    }
+  };
 
   return (
     <main
@@ -2800,6 +3003,748 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         >
           {t('nav.start')}
         </Link>
+      </section>
+
+      <section
+        ref={mobileWizardRootRef}
+        className="mobile-design-wizard"
+        aria-label="Stitchra mobile design wizard"
+      >
+        <div className="mobile-design-wizard-shell">
+          <div className="mobile-design-wizard-head">
+            <span>
+              Step {mobileDesignStepIndex + 1} of {mobileDesignSteps.length}
+            </span>
+            <h1>{mobileDesignStepLabels[mobileDesignStep]}</h1>
+            <p>{mobileDesignStepHelp[mobileDesignStep]}</p>
+          </div>
+
+          <MobileDesignStepper
+            currentStep={mobileDesignStep}
+            completedSteps={mobileCompletedSteps}
+            onStepClick={goToMobileDesignStep}
+          />
+
+          {showDraftRecovery && (
+            <DraftRecoveryBanner
+              lastSavedAt={restoredDraftAt}
+              saveStatus={draftSaveStatus}
+              imageNeedsUpload={draftImageNeedsUpload}
+              onContinue={() => {
+                continueRestoredDraft();
+                setMobileDesignStep(
+                  publicQuote
+                    ? 'price'
+                    : preview
+                      ? 'place'
+                      : aiConcepts.length > 0
+                        ? 'review'
+                        : designStartMode !== 'choice'
+                          ? 'create'
+                          : 'choose'
+                );
+              }}
+              onStartNew={() => void resetDesignDraftState()}
+            />
+          )}
+
+          <div className="mobile-design-step-panel">
+            {mobileDesignStep === 'choose' && (
+              <>
+                <DesignStartOptions
+                  selectedMode={designStartMode}
+                  onSelectMode={chooseMobileDesignMode}
+                />
+                <div className="mobile-design-inline-actions">
+                  <button
+                    type="button"
+                    className="mobile-design-secondary-action"
+                    onClick={() => {
+                      setDesignStartMode('upload');
+                      setMobileDesignStep('create');
+                    }}
+                  >
+                    Upload logo
+                  </button>
+                  <button
+                    type="button"
+                    className="mobile-design-primary-action"
+                    onClick={() => {
+                      setDesignStartMode('ai');
+                      setMobileDesignStep('create');
+                    }}
+                  >
+                    Create with AI
+                  </button>
+                </div>
+              </>
+            )}
+
+            {mobileDesignStep === 'create' && (
+              <div className="mobile-design-create-stack">
+                {designStartMode === 'choice' && (
+                  <DesignStartOptions
+                    selectedMode={designStartMode}
+                    onSelectMode={chooseMobileDesignMode}
+                  />
+                )}
+
+                {designStartMode === 'upload' && (
+                  <div ref={mobileUploadPanelRef}>
+                    <UploadOwnDesignPanel
+                      fileName={file?.name ?? null}
+                      canCleanBackground={Boolean(file) && !isSvgLogoFile(file)}
+                      isCleaningBackground={isCleaningBackground}
+                      cleanupStatus={backgroundCleanupStatus}
+                      errorMessage={uploadError}
+                      onFileChange={onFile}
+                      onCleanBackground={() => void cleanUploadedLogoBackground()}
+                      onViewOnShirt={() => setMobileDesignStep('place')}
+                    />
+                    <div className="mobile-design-inline-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => setMobileDesignStep('choose')}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        disabled={!preview}
+                        onClick={() => setMobileDesignStep('review')}
+                      >
+                        Continue to Review
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {designStartMode === 'ai' && (
+                  <div ref={mobileAiCreatorRef}>
+                    <AICreatorPanel
+                      prompt={logoPrompt}
+                      selectedStyleHints={aiStyleHints}
+                      isGenerating={isGenerating}
+                      hasGeneratedConcept={hasGeneratedAiConcept}
+                      onPromptChange={(value) => {
+                        setLogoPrompt(value);
+                        setDesignPreparation(null);
+                        setError('');
+                        setStatus('');
+                      }}
+                      onToggleStyleHint={toggleAiStyleHint}
+                      onGenerate={generateLogo}
+                      onSwitchToUpload={() => {
+                        setDesignStartMode('upload');
+                        setMobileDesignStep('create');
+                      }}
+                    />
+                    <div className="mobile-design-inline-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => setMobileDesignStep('choose')}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        disabled={aiConcepts.length === 0}
+                        onClick={() => setMobileDesignStep('review')}
+                      >
+                        Continue to Review
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {(status || error) && (
+                  <p className={error ? 'mobile-design-error' : 'mobile-design-status'}>
+                    {error || status}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {mobileDesignStep === 'review' && (
+              <div ref={mobileAiReviewRef} className="mobile-design-review-stack">
+                {selectedAiConcept ? (
+                  <AIConceptReviewPanel
+                    concepts={aiConcepts}
+                    selectedConceptId={selectedAiConcept?.id ?? null}
+                    activeConceptId={activeAiConceptId}
+                    styleHints={aiStyleHints}
+                    readiness={aiConceptReadiness}
+                    isGenerating={isGenerating}
+                    isGeneratingVariation={generationIntent === 'new'}
+                    isCleaningBackground={isCleaningBackground}
+                    backgroundCleanupStatus={backgroundCleanupStatus}
+                    onSelectConcept={setSelectedAiConceptId}
+                    onUseConcept={(concept) => {
+                      void acceptAiConcept(concept).then(() => {
+                        setMobileDesignStep('place');
+                      });
+                    }}
+                    onCleanBackground={(concept) =>
+                      void cleanAiConceptBackground(concept)
+                    }
+                    onGenerateAnother={generateLogo}
+                    onApplyChanges={(changeRequest, concept) =>
+                      void applyAiConceptChanges(changeRequest, concept)
+                    }
+                    onSwitchToUpload={() => {
+                      setDesignStartMode('upload');
+                      setMobileDesignStep('create');
+                    }}
+                  />
+                ) : preview ? (
+                  <section className="mobile-upload-review-card">
+                    <div>
+                      <span>Uploaded design</span>
+                      <h2>Review your logo</h2>
+                      <p>
+                        Check the file before placing it on the T-shirt. You can
+                        clean the background when it is a PNG or JPG.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="mobile-upload-review-stage"
+                      onClick={() => setMobileDesignStep('place')}
+                    >
+                      {/* Native img is used for local object URLs and generated data URLs. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={preview} alt="Uploaded logo preview" />
+                    </button>
+                    <div className="mobile-design-inline-actions">
+                      {file && !isSvgLogoFile(file) && (
+                        <button
+                          type="button"
+                          className="mobile-design-secondary-action"
+                          onClick={() => void cleanUploadedLogoBackground()}
+                          disabled={isCleaningBackground}
+                        >
+                          {isCleaningBackground ? 'Cleaning...' : 'Clean background'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        onClick={() => setMobileDesignStep('place')}
+                      >
+                        Use this design
+                      </button>
+                    </div>
+                    {backgroundCleanupStatus && (
+                      <p className="mobile-design-status">{backgroundCleanupStatus}</p>
+                    )}
+                  </section>
+                ) : (
+                  <section className="mobile-empty-design-card">
+                    <h2>Add your design first</h2>
+                    <p>Upload your logo or create an AI concept before review.</p>
+                    <div className="mobile-design-inline-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => {
+                          setDesignStartMode('upload');
+                          setMobileDesignStep('create');
+                        }}
+                      >
+                        Upload logo
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        onClick={() => {
+                          setDesignStartMode('ai');
+                          setMobileDesignStep('create');
+                        }}
+                      >
+                        Create with AI
+                      </button>
+                    </div>
+                  </section>
+                )}
+              </div>
+            )}
+
+            {mobileDesignStep === 'place' && (
+              <div className="mobile-design-place-stack">
+                <div ref={mobileShirtViewerRef} className="mobile-design-viewer-card">
+                  <ShirtPlacementMockup
+                    key={`mobile-${placementZoneId}-${placementGroup}`}
+                    logoUrl={preview}
+                    shirtColor={teeColor}
+                    placementZone={placementZoneId}
+                    config={logoPlacementConfig}
+                    logoAspectRatio={logoAspectRatio}
+                    onConfigChange={updateLogoPlacementConfig}
+                    customPlacement={customLogoPlacement}
+                    onCustomPlacementChange={updateCustomLogoPlacement}
+                    viewerGroup={placementGroup}
+                    focusPulseKey={logoFocusPulseKey}
+                    showEmptyStateHelper={!preview && emptyDesignHelperOpen}
+                    onEmptyDesignClick={showEmptyDesignHelper}
+                    onStartUpload={() => {
+                      setDesignStartMode('upload');
+                      setMobileDesignStep('create');
+                    }}
+                    onStartAi={() => {
+                      setDesignStartMode('ai');
+                      setMobileDesignStep('create');
+                    }}
+                    guidanceHint={
+                      viewerHint ||
+                      (preview
+                        ? 'Tap the shirt to place your logo.'
+                        : 'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.')
+                    }
+                  />
+                </div>
+
+                {!preview ? (
+                  <section className="mobile-empty-design-card">
+                    <h2>Add your design first</h2>
+                    <p>Upload your logo or create an AI concept, then place it on the shirt.</p>
+                    <div className="mobile-design-inline-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => {
+                          setDesignStartMode('upload');
+                          setMobileDesignStep('create');
+                        }}
+                      >
+                        Upload logo
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        onClick={() => {
+                          setDesignStartMode('ai');
+                          setMobileDesignStep('create');
+                        }}
+                      >
+                        Create with AI
+                      </button>
+                    </div>
+                  </section>
+                ) : (
+                  <>
+                    <div ref={mobilePlacementControlsRef} className="mobile-placement-card">
+                      <div className="guided-section-header">
+                        <span>Placement</span>
+                        <h3>Place your logo</h3>
+                        <p>Pick a preset or tap directly on the shirt.</p>
+                      </div>
+
+                      <div className="placement-mode-row">
+                        <button
+                          type="button"
+                          className={placementMode === 'preset' ? 'placement-mode-active' : ''}
+                          onClick={() => {
+                            setPlacementMode('preset');
+                            setCustomLogoPlacement(null);
+                            setViewerHint('');
+                          }}
+                        >
+                          Preset
+                        </button>
+                        <button
+                          type="button"
+                          className={placementMode === 'custom' ? 'placement-mode-active' : ''}
+                          onClick={() => {
+                            setPlacementMode('custom');
+                            focusShirtViewer('Tap the shirt where you want the logo.', true);
+                          }}
+                        >
+                          Place it yourself
+                        </button>
+                      </div>
+
+                      <select
+                        className="placement-mobile-select"
+                        value={placement}
+                        onChange={(event) =>
+                          updatePlacement(event.target.value as Placement)
+                        }
+                        style={input}
+                        aria-label="Choose embroidery placement"
+                      >
+                        {placementGroups.map((group) => (
+                          <optgroup key={group.id} label={group.label}>
+                            {group.zones.map((zoneId) => {
+                              const zone = getEmbroideryZone(zoneId);
+
+                              return (
+                                <option key={zoneId} value={zoneId}>
+                                  {zone.label}
+                                </option>
+                              );
+                            })}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mobile-placement-card">
+                      <div className="guided-section-header">
+                        <span>Garment</span>
+                        <h3>Choose shirt color</h3>
+                      </div>
+                      <div className="mobile-shirt-color-row">
+                        {(['black', 'white'] as const).map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={teeColor === color ? 'mobile-shirt-color-active' : ''}
+                            onClick={() => updateShirtColor(color)}
+                          >
+                            <span data-color={color} />
+                            {color === 'black' ? 'Black tee' : 'White tee'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mobile-placement-card">
+                      <div className="guided-section-header">
+                        <span>Size</span>
+                        <h3>{formatLogoSize(logoPlacementConfig)}</h3>
+                        <p>Logo size stays within safe embroidery limits.</p>
+                      </div>
+                      <input
+                        type="range"
+                        min="20"
+                        max={Math.round(maxLogoWidthMm)}
+                        step="1"
+                        value={Math.round(logoPlacementConfig.logo_width_mm)}
+                        onChange={(event) => {
+                          const widthMm = Number(event.target.value);
+
+                          updateLogoPlacementConfig({
+                            ...logoPlacementConfig,
+                            logo_width_mm: widthMm,
+                            logo_height_mm: widthMm / logoAspectRatio,
+                          });
+                        }}
+                        style={rangeInput}
+                        aria-label="Logo size"
+                      />
+                      <div className="logo-size-quick-row">
+                        {logoSizeQuickActions.map((action) => (
+                          <button
+                            key={action.label}
+                            type="button"
+                            onClick={() =>
+                              updateLogoPlacementConfig({
+                                ...logoPlacementConfig,
+                                logo_width_mm: action.widthMm,
+                                logo_height_mm: action.widthMm / logoAspectRatio,
+                              })
+                            }
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                      {capabilityPreview.message && (
+                        <p className="mobile-design-warning">
+                          {capabilityPreview.blocked
+                            ? capabilityPreview.message
+                            : 'Studio review recommended for clean stitch quality.'}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mobile-design-inline-actions mobile-design-sticky-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => setMobileDesignStep('review')}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        onClick={() => setMobileDesignStep('price')}
+                      >
+                        Continue to Price
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {mobileDesignStep === 'price' && (
+              <div ref={mobilePriceActionRef} className="mobile-price-step">
+                <section className="mobile-price-card">
+                  <span>Price</span>
+                  <h2>Get clear price</h2>
+                  <p>
+                    Your estimate uses placement, logo size, colors, coverage and artwork detail.
+                    Final offer is confirmed before production.
+                  </p>
+                  <button
+                    type="button"
+                    className="mobile-design-primary-action"
+                    onClick={estimatePrice}
+                    disabled={isEstimating || isAnalyzing || !file}
+                  >
+                    {isAnalyzing
+                      ? 'Preparing logo...'
+                      : isEstimating
+                        ? 'Preparing your quote...'
+                        : 'Get clear price'}
+                  </button>
+                  {!file && (
+                    <p className="mobile-design-error">Add your design before checking price.</p>
+                  )}
+                  {(status || error) && (
+                    <p className={error ? 'mobile-design-error' : 'mobile-design-status'}>
+                      {error || status}
+                    </p>
+                  )}
+                </section>
+
+                {publicQuote && (
+                  <>
+                    <div className="mobile-price-metrics">
+                      <Metric
+                        label="Stitches"
+                        value={publicQuote.stitches.toLocaleString()}
+                      />
+                      <Metric label="Colors" value={publicQuote.colors} />
+                      <Metric
+                        label="Coverage"
+                        value={`${(publicQuote.coverage * 100).toFixed(1)}%`}
+                      />
+                      <Metric
+                        label="Price"
+                        value={
+                          publicQuote.manual_quote
+                            ? 'Studio review'
+                            : `€${publicQuote.price_eur}`
+                        }
+                      />
+                    </div>
+                    <section className="mobile-price-card">
+                      <strong>
+                        {publicQuote.manual_quote
+                          ? 'Studio review recommended'
+                          : 'Clear starting price'}
+                      </strong>
+                      <p>
+                        {publicQuote.manual_quote
+                          ? 'Studio review helps keep stitch quality clean for detailed artwork.'
+                          : 'This design qualifies for a customer-facing estimate.'}
+                      </p>
+                      <small>Final offer is confirmed before production.</small>
+                    </section>
+                    <div className="mobile-design-inline-actions mobile-design-sticky-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => setMobileDesignStep('place')}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-design-primary-action"
+                        onClick={() => {
+                          setOrderOpen(true);
+                          setMobileDesignStep('request');
+                        }}
+                      >
+                        Continue to Request
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {mobileDesignStep === 'request' && (
+              <div ref={mobileOrderRequestRef} className="mobile-request-step">
+                {orderSuccess ? (
+                  <div className="order-success-panel mobile-request-success">
+                    <span>Request sent</span>
+                    <h3>We’ll review your design and prepare your offer.</h3>
+                    {orderSuccess.customerConfirmationSent && (
+                      <p className="order-success-email">
+                        Confirmation email sent.
+                      </p>
+                    )}
+                    <ol>
+                      <li>Studio checks artwork</li>
+                      <li>You receive an offer</li>
+                      <li>You accept or request changes</li>
+                      <li>Payment and production follow</li>
+                    </ol>
+                    <div className="order-success-actions">
+                      <button type="button" onClick={() => setMobileDesignStep('place')}>
+                        Back to design
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void resetDesignDraftState()}
+                      >
+                        Start new design
+                      </button>
+                      <a href="mailto:orders@stitchra.com">Contact support</a>
+                    </div>
+                  </div>
+                ) : publicQuote ? (
+                  <form
+                    noValidate
+                    onSubmit={(event) => void requestOrder(event)}
+                    className="mobile-request-form"
+                  >
+                    <div className="mobile-request-summary">
+                      <span>Request summary</span>
+                      <strong>{selectedZone.label}</strong>
+                      <p>
+                        {teeColor === 'black' ? 'Black tee' : 'White tee'} ·{' '}
+                        {formatLogoSize(logoPlacementConfig)} ·{' '}
+                        {publicQuote.manual_quote
+                          ? 'Studio review'
+                          : `€${publicQuote.price_eur}`}
+                      </p>
+                    </div>
+
+                    <input
+                      value={orderForm.name}
+                      onChange={(event) =>
+                        updateOrderFormField('name', event.target.value)
+                      }
+                      placeholder="Your name"
+                      aria-label="Your name"
+                      aria-invalid={Boolean(orderFieldErrors.name)}
+                      style={{
+                        ...input,
+                        ...(orderFieldErrors.name ? invalidInput : {}),
+                      }}
+                    />
+                    {orderFieldErrors.name && (
+                      <span style={fieldError}>{orderFieldErrors.name}</span>
+                    )}
+
+                    <input
+                      value={orderForm.email}
+                      onChange={(event) =>
+                        updateOrderFormField('email', event.target.value)
+                      }
+                      placeholder="Email"
+                      aria-label="Email"
+                      type="email"
+                      autoComplete="email"
+                      aria-invalid={Boolean(orderFieldErrors.email)}
+                      style={{
+                        ...input,
+                        ...(orderFieldErrors.email ? invalidInput : {}),
+                      }}
+                    />
+                    {orderFieldErrors.email && (
+                      <span style={fieldError}>{orderFieldErrors.email}</span>
+                    )}
+
+                    <input
+                      value={orderForm.phone}
+                      onChange={(event) =>
+                        updateOrderFormField('phone', event.target.value)
+                      }
+                      placeholder="Phone optional"
+                      aria-label="Phone optional"
+                      aria-invalid={Boolean(orderFieldErrors.phone)}
+                      style={{
+                        ...input,
+                        ...(orderFieldErrors.phone ? invalidInput : {}),
+                      }}
+                    />
+                    {orderFieldErrors.phone && (
+                      <span style={fieldError}>{orderFieldErrors.phone}</span>
+                    )}
+
+                    <input
+                      value={orderForm.quantity}
+                      onChange={(event) =>
+                        updateOrderFormField('quantity', event.target.value)
+                      }
+                      placeholder="Quantity"
+                      aria-label="Quantity"
+                      type="number"
+                      min="1"
+                      step="1"
+                      aria-invalid={Boolean(orderFieldErrors.quantity)}
+                      style={{
+                        ...input,
+                        ...(orderFieldErrors.quantity ? invalidInput : {}),
+                      }}
+                    />
+                    {orderFieldErrors.quantity && (
+                      <span style={fieldError}>{orderFieldErrors.quantity}</span>
+                    )}
+
+                    <textarea
+                      value={orderForm.note}
+                      onChange={(event) =>
+                        updateOrderFormField('note', event.target.value)
+                      }
+                      placeholder="Note optional"
+                      aria-label="Order note optional"
+                      rows={3}
+                      style={{
+                        ...input,
+                        resize: 'vertical',
+                      }}
+                    />
+
+                    <div className="mobile-design-inline-actions mobile-design-sticky-actions">
+                      <button
+                        type="button"
+                        className="mobile-design-secondary-action"
+                        onClick={() => setMobileDesignStep('price')}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="submit"
+                        className="mobile-design-primary-action"
+                        disabled={isRequestingOrder}
+                      >
+                        {isRequestingOrder ? 'Sending request...' : 'Request order'}
+                      </button>
+                    </div>
+                    {orderError && <p className="mobile-design-error">{orderError}</p>}
+                    {orderStatus && !orderSuccess && (
+                      <p className="mobile-design-status">{orderStatus}</p>
+                    )}
+                  </form>
+                ) : (
+                  <section className="mobile-empty-design-card">
+                    <h2>Check price first</h2>
+                    <p>Prepare a clear price before requesting an offer.</p>
+                    <button
+                      type="button"
+                      className="mobile-design-primary-action"
+                      onClick={() => setMobileDesignStep('price')}
+                    >
+                      Go to Price
+                    </button>
+                  </section>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       <section
@@ -8906,6 +9851,7 @@ function GlobalVisualStyles() {
 
         .mobile-app-launch,
         .mobile-explore-hub,
+        .mobile-design-wizard,
         .mobile-wizard-status {
           display: none;
         }
@@ -9596,8 +10542,327 @@ function GlobalVisualStyles() {
             display: none !important;
           }
 
-          .home-entry-design .designer-section {
+          .home-entry-design .mobile-design-wizard {
             display: block !important;
+          }
+
+          .home-entry-design .designer-section {
+            display: none !important;
+          }
+
+          .mobile-design-wizard {
+            min-height: 100svh;
+            padding: calc(92px + env(safe-area-inset-top)) 12px calc(118px + env(safe-area-inset-bottom));
+            position: relative;
+            z-index: 1;
+          }
+
+          .mobile-design-wizard-shell {
+            max-width: 520px;
+            margin: 0 auto;
+            display: grid;
+            gap: 12px;
+          }
+
+          .mobile-design-wizard-head {
+            display: grid;
+            gap: 6px;
+            padding: 18px;
+            border: 1px solid rgba(140,255,220,0.16);
+            border-radius: 24px;
+            background:
+              radial-gradient(circle at 12% 0%, rgba(0,255,136,0.12), transparent 34%),
+              rgba(255,255,255,0.045);
+          }
+
+          .mobile-design-wizard-head span,
+          .mobile-price-card span,
+          .mobile-upload-review-card span,
+          .mobile-request-summary span {
+            color: #18ff9a;
+            font-size: 11px;
+            font-weight: 950;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+          }
+
+          .mobile-design-wizard-head h1,
+          .mobile-price-card h2,
+          .mobile-upload-review-card h2,
+          .mobile-empty-design-card h2 {
+            margin: 0;
+            color: #f7fff9;
+            font-size: 28px;
+            line-height: 1.05;
+            letter-spacing: 0;
+          }
+
+          .mobile-design-wizard-head p,
+          .mobile-price-card p,
+          .mobile-upload-review-card p,
+          .mobile-empty-design-card p,
+          .mobile-request-summary p {
+            margin: 0;
+            color: rgba(246,255,249,0.66);
+            font-size: 14.5px;
+            line-height: 1.5;
+          }
+
+          .mobile-design-stepper {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 2px 2px 8px;
+            scrollbar-width: none;
+          }
+
+          .mobile-design-stepper::-webkit-scrollbar {
+            display: none;
+          }
+
+          .mobile-design-step-chip {
+            min-height: 38px;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 999px;
+            color: rgba(246,255,249,0.58);
+            background: rgba(255,255,255,0.045);
+            padding: 0 12px 0 8px;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 900;
+          }
+
+          .mobile-design-step-chip span {
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            color: #06100a;
+            background: rgba(246,255,249,0.48);
+            font-size: 11px;
+          }
+
+          .mobile-design-step-chip:disabled {
+            opacity: 0.52;
+          }
+
+          .mobile-design-step-active,
+          .mobile-design-step-complete {
+            border-color: rgba(0,255,170,0.30);
+            color: #f7fff9;
+            background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,200,255,0.09));
+          }
+
+          .mobile-design-step-active span,
+          .mobile-design-step-complete span {
+            background: linear-gradient(135deg, #00ff88, #00c8ff);
+          }
+
+          .mobile-design-step-panel,
+          .mobile-design-create-stack,
+          .mobile-design-review-stack,
+          .mobile-design-place-stack,
+          .mobile-price-step,
+          .mobile-request-step {
+            display: grid;
+            gap: 12px;
+            min-width: 0;
+          }
+
+          .mobile-design-step-panel .design-start-panel,
+          .mobile-design-step-panel .design-path-panel,
+          .mobile-design-step-panel .ai-concept-review {
+            border-radius: 26px;
+          }
+
+          .mobile-design-inline-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .mobile-design-primary-action,
+          .mobile-design-secondary-action {
+            min-height: 52px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            padding: 0 14px;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 950;
+            text-decoration: none;
+          }
+
+          .mobile-design-primary-action {
+            border: 0;
+            color: #06100a;
+            background: linear-gradient(135deg, #00ff88, #00c8ff);
+            box-shadow: 0 18px 48px rgba(0,200,255,0.20);
+          }
+
+          .mobile-design-secondary-action {
+            border: 1px solid rgba(255,255,255,0.14);
+            color: #f7fff9;
+            background: rgba(255,255,255,0.055);
+          }
+
+          .mobile-design-primary-action:disabled,
+          .mobile-design-secondary-action:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+          }
+
+          .mobile-design-sticky-actions {
+            position: sticky;
+            bottom: max(10px, env(safe-area-inset-bottom));
+            z-index: 24;
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 22px;
+            background: rgba(4,10,11,0.86);
+            backdrop-filter: blur(14px);
+          }
+
+          .mobile-design-status,
+          .mobile-design-error,
+          .mobile-design-warning {
+            margin: 0;
+            border-radius: 16px;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.45;
+          }
+
+          .mobile-design-status {
+            color: #9dffc4;
+            background: rgba(0,255,136,0.07);
+          }
+
+          .mobile-design-error {
+            color: #ffb4b4;
+            background: rgba(255,80,80,0.08);
+          }
+
+          .mobile-design-warning {
+            color: #ffe083;
+            background: rgba(255,224,131,0.08);
+          }
+
+          .mobile-upload-review-card,
+          .mobile-empty-design-card,
+          .mobile-placement-card,
+          .mobile-price-card,
+          .mobile-request-summary,
+          .mobile-request-form {
+            display: grid;
+            gap: 12px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 24px;
+            background: rgba(255,255,255,0.045);
+            padding: 16px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+          }
+
+          .mobile-upload-review-stage {
+            min-height: 260px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(140,255,220,0.14);
+            border-radius: 22px;
+            background:
+              linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25% 50%, rgba(255,255,255,0.04) 50% 75%, transparent 75%),
+              rgba(0,0,0,0.22);
+            background-size: 22px 22px;
+            padding: 18px;
+          }
+
+          .mobile-upload-review-stage img {
+            max-width: min(100%, 280px);
+            max-height: 240px;
+            object-fit: contain;
+            filter: drop-shadow(0 16px 32px rgba(0,0,0,0.34));
+          }
+
+          .mobile-design-viewer-card {
+            min-width: 0;
+          }
+
+          .mobile-design-viewer-card .shirt-placement-viewer {
+            min-height: min(620px, calc(100svh - 170px));
+          }
+
+          .mobile-shirt-color-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .mobile-shirt-color-row button {
+            min-height: 52px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            color: #f7fff9;
+            background: rgba(255,255,255,0.045);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 900;
+          }
+
+          .mobile-shirt-color-row span {
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+          }
+
+          .mobile-shirt-color-row span[data-color="black"] {
+            background: #050607;
+            border: 1px solid rgba(255,255,255,0.22);
+          }
+
+          .mobile-shirt-color-row span[data-color="white"] {
+            background: #f5f1e8;
+            border: 1px solid rgba(0,0,0,0.18);
+          }
+
+          .mobile-shirt-color-active {
+            border-color: rgba(0,255,136,0.70) !important;
+            background: rgba(0,255,136,0.10) !important;
+          }
+
+          .mobile-price-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .mobile-price-card strong,
+          .mobile-request-summary strong {
+            color: #f7fff9;
+            font-size: 20px;
+          }
+
+          .mobile-price-card small {
+            color: rgba(157,255,196,0.74);
+            line-height: 1.45;
+          }
+
+          .mobile-request-form {
+            gap: 10px;
+          }
+
+          .mobile-request-success {
+            margin-top: 0;
           }
 
           .mobile-app-launch {
