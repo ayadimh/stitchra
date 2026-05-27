@@ -278,6 +278,7 @@ const emailPattern =
   /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const phonePattern = /^[+\d\s()-]+$/;
 const publicSiteUrl = 'https://stitchra.com';
+const emailBrandIconUrl = `${publicSiteUrl}/brand/exports/icons/icon-192.png`;
 
 function getResendApiKey() {
   return process.env.RESEND_API_KEY?.trim() ?? '';
@@ -1432,7 +1433,7 @@ function buildCustomerOfferHtml(input: {
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
                       <tr>
                         <td width="42" valign="top" style="padding: 0 12px 0 0;">
-                          <span style="display: inline-block; width: 38px; height: 38px; border-radius: 13px; background-color: #0e1d19; border: 1px solid #245448; color: #8ff5bd; font-size: 20px; line-height: 38px; text-align: center; font-weight: 800;">S</span>
+                          <img src="${emailBrandIconUrl}" width="38" height="38" alt="Stitchra" style="display: block; width: 38px; height: 38px; border: 0; border-radius: 13px;" />
                         </td>
                         <td valign="top">
                           <p style="margin: 0; color: #f5fffb; font-size: 16px; line-height: 21px; font-weight: 800;">Stitchra Studio</p>
@@ -1699,6 +1700,17 @@ function buildCustomerOrderRequestHtml(order: OrderRecord) {
 
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.55;">
+      <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 0 18px 0;">
+        <tr>
+          <td width="44" style="padding: 0 10px 0 0;">
+            <img src="${emailBrandIconUrl}" width="34" height="34" alt="Stitchra" style="display: block; width: 34px; height: 34px; border: 0; border-radius: 12px;" />
+          </td>
+          <td>
+            <p style="margin: 0; font-weight: 800; color: #111827;">Stitchra</p>
+            <p style="margin: 2px 0 0 0; color: #4b5563; font-size: 12px;">AI embroidery studio</p>
+          </td>
+        </tr>
+      </table>
       <p style="margin: 0 0 14px 0;">Hi ${escapeHtml(order.customer_name)},</p>
       <p style="margin: 0 0 14px 0; font-weight: 700;">We received your Stitchra quote request.</p>
       <table style="border-collapse: collapse; margin: 0 0 16px 0;">

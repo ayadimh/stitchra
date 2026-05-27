@@ -42,12 +42,19 @@ export async function generateMetadata({
       url: `https://stitchra.com/${locale}`,
       siteName: 'Stitchra',
       type: 'website',
-      images: ['/stitchra-og.png'],
+      images: [
+        {
+          url: '/brand/exports/social/stitchra-og.png',
+          width: 1200,
+          height: 630,
+          alt: 'Stitchra AI Embroidery T-Shirt Platform',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       ...metadata,
-      images: ['/stitchra-og.png'],
+      images: ['/brand/exports/social/stitchra-twitter.png'],
     },
   };
 }

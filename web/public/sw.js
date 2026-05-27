@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stitchra-pwa-v1';
+const CACHE_NAME = 'stitchra-pwa-v2';
 const OFFLINE_URL = '/offline.html';
 const SAFE_SHELL_PATHS = new Set([
   '/',
@@ -20,13 +20,15 @@ const PRIVATE_PREFIXES = [
 ];
 const PRECACHE_URLS = [
   OFFLINE_URL,
-  '/icons/stitchra-icon-192.png',
-  '/icons/stitchra-icon-512.png',
-  '/icons/stitchra-maskable-512.png',
-  '/apple-touch-icon.png',
-  '/stitchra-og.png',
-  '/stitchra-mark.svg',
-  '/stitchra-wordmark.svg',
+  '/brand/exports/icons/favicon.svg',
+  '/brand/exports/icons/favicon-16x16.png',
+  '/brand/exports/icons/favicon-32x32.png',
+  '/brand/exports/icons/apple-touch-icon.png',
+  '/brand/exports/icons/icon-192.png',
+  '/brand/exports/icons/icon-512.png',
+  '/brand/exports/social/stitchra-og.png',
+  '/brand/master/stitchra-thread-needle-icon.svg',
+  '/brand/master/stitchra-horizontal.svg',
   '/mockups/shirts/shirt-front-white.png',
   '/mockups/shirts/shirt-back-white.png',
   '/mockups/shirts/shirt-front-black.png',
@@ -43,6 +45,8 @@ function isCacheableStaticAsset(pathname) {
   return (
     pathname.startsWith('/_next/static/') ||
     pathname.startsWith('/icons/') ||
+    pathname.startsWith('/brand/master/') ||
+    pathname.startsWith('/brand/exports/') ||
     pathname.startsWith('/mockups/shirts/') ||
     pathname === '/icon.svg' ||
     pathname === '/apple-touch-icon.png' ||

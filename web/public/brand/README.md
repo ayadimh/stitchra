@@ -89,7 +89,7 @@ When approved, update:
 
 ## Current status
 
-These files are asset preparation and preview assets only. The live website logo, favicon, manifest icons, Open Graph image, email logo, and Studio logo are intentionally unchanged.
+These files are the prepared Thread Needle S brand system. The approved global rollout now uses the SVG/PNG exports for live logo components, favicon metadata, manifest icons, Open Graph metadata, email header branding and Studio visual branding.
 
 Production-ready candidates:
 

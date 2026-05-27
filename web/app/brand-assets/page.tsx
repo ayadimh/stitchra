@@ -124,9 +124,9 @@ export default function BrandAssetsPage() {
       <style>{brandAssetsStyles}</style>
 
       <section className="brand-assets-hero">
-        <p>Preview only</p>
+        <p>Installed globally</p>
         <h1>Stitchra Brand Assets</h1>
-        <span>Thread Needle S asset pipeline. The live website logo has not been changed.</span>
+        <span>Thread Needle S asset pipeline. The approved identity is now wired into live brand surfaces.</span>
       </section>
 
       <section className="asset-section" aria-labelledby="inspection-title">
@@ -146,10 +146,10 @@ export default function BrandAssetsPage() {
             </ul>
           </article>
           <article>
-            <h3>Still not live</h3>
+            <h3>Installed globally</h3>
             <ul>
-              <li>Live navbar, footer, favicon, manifest icons and OG metadata are unchanged.</li>
-              <li>Final hand-refined vector polish is still recommended before rollout.</li>
+              <li>Live navbar, mobile header, footer, favicon, manifest icons and OG metadata use these assets.</li>
+              <li>Final hand-refined vector polish is still recommended for a future refinement pass.</li>
               <li>Real device favicon/app icon QA is still required.</li>
               <li>Logo reveal animation is prepared but not implemented.</li>
             </ul>
@@ -316,11 +316,11 @@ export default function BrandAssetsPage() {
       <section className="asset-section final-note" aria-labelledby="status-title">
         <div>
           <p>Rollout status</p>
-          <h2 id="status-title">Export-ready, not applied globally.</h2>
+          <h2 id="status-title">Installed globally.</h2>
         </div>
         <p>
-          The live navbar logo, favicon, manifest icons, Open Graph image, footer, email header and Studio logo are
-          intentionally unchanged. These PNG exports are prepared so a future approved rollout can happen cleanly.
+          The live navbar logo, mobile header, favicon references, manifest icons, Open Graph image, footer branding and
+          Studio visual mark now use the Thread Needle S identity. The JPG reference remains reference-only.
         </p>
       </section>
     </main>

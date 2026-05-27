@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import StitchraLogo from '@/components/brand/StitchraLogo';
 import { formatPlacementLabel } from '@/lib/embroideryZones';
 import {
   calculatePricing,
@@ -1985,7 +1986,9 @@ export default function StudioPage() {
       <main className="studio-page" style={pageShell}>
         <StudioInteractionStyles />
         <section style={gateCard}>
-          <div style={brandMark}>S</div>
+          <div style={brandMark}>
+            <StitchraLogo compact markOnly size={64} title="Stitchra Studio" />
+          </div>
           <p style={eyebrow}>Private studio</p>
           <h1 style={gateTitle}>Stitchra quote dashboard</h1>
           <p style={mutedText}>
@@ -2033,9 +2036,12 @@ export default function StudioPage() {
         </div>
       )}
       <header style={studioHeader}>
-        <div>
-          <p style={eyebrow}>Private studio</p>
-          <h1 style={studioTitle}>Quote command center</h1>
+        <div style={studioBrandGroup}>
+          <StitchraLogo compact markOnly size={50} title="Stitchra Studio" />
+          <div>
+            <p style={eyebrow}>Private studio</p>
+            <h1 style={studioTitle}>Quote command center</h1>
+          </div>
         </div>
         <div style={headerActions}>
           <button
@@ -4532,12 +4538,14 @@ const brandMark: CSSProperties = {
   height: 64,
   display: 'grid',
   placeItems: 'center',
-  borderRadius: 22,
-  background: 'linear-gradient(135deg, #00ff88, #00c8ff)',
-  color: '#03100d',
-  fontSize: 34,
-  fontWeight: 950,
+  color: '#8cff1f',
   marginBottom: 22,
+};
+
+const studioBrandGroup: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 14,
 };
 
 const gateCard: CSSProperties = {

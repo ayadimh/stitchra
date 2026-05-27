@@ -14,19 +14,19 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['design', 'shopping', 'productivity'],
     icons: [
       {
-        src: '/icons/stitchra-icon-192.png',
+        src: '/brand/exports/icons/icon-192.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/stitchra-icon-512.png',
+        src: '/brand/exports/icons/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/stitchra-maskable-512.png',
+        src: '/brand/exports/icons/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

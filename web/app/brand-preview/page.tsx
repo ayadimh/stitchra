@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import StitchraLogo from '@/components/brand/StitchraLogo';
+import StitchraLogo, { LegacyStitchraLogo } from '@/components/brand/StitchraLogo';
 import StitchraThreadNeedleLogo from '@/components/brand/StitchraThreadNeedleLogo';
 
 export const metadata: Metadata = {
@@ -28,30 +28,30 @@ export default function BrandPreviewPage() {
       <style>{brandPreviewStyles}</style>
 
       <section className="brand-preview-hero">
-        <p>Preview only</p>
+        <p>Selected identity</p>
         <h1>Thread Needle S Preview</h1>
-        <span>The live logo has not been replaced yet.</span>
+        <span>The Thread Needle S identity has been selected and applied to live Stitchra brand surfaces.</span>
       </section>
 
       <section className="preview-section current-vs-candidate" aria-labelledby="current-vs-candidate-title">
         <div className="section-heading">
-          <p>Current vs candidate</p>
-          <h2 id="current-vs-candidate-title">A realistic decision view before rollout.</h2>
+          <p>Legacy vs applied</p>
+          <h2 id="current-vs-candidate-title">The selected identity is now the live direction.</h2>
         </div>
         <div className="comparison-grid">
           <article>
-            <span>Current live logo</span>
+            <span>Legacy fallback logo</span>
             <div className="comparison-surface">
-              <StitchraLogo size={62} showSubtitle />
+              <LegacyStitchraLogo size={62} showSubtitle />
             </div>
-            <p>Recognizable from the current site, but still leans more neon-tech than premium embroidery label.</p>
+            <p>Preserved in code as a rollback reference, but no longer the primary live brand direction.</p>
           </article>
           <article className="candidate-comparison">
-            <span>Thread Needle S Refined</span>
+            <span>Applied Thread Needle S identity</span>
             <div className="comparison-surface">
-              <StitchraThreadNeedleLogo size={330} />
+              <StitchraLogo size={220} />
             </div>
-            <p>Stronger S ownership, clearer thread/needle story and better app-icon potential.</p>
+            <p>Installed for navbar, mobile header, footer, favicon metadata, PWA manifest, Open Graph and Studio visual branding.</p>
           </article>
         </div>
       </section>
@@ -203,7 +203,7 @@ export default function BrandPreviewPage() {
       <section className="preview-section decision-section" aria-labelledby="decision-title">
         <div className="section-heading">
           <p>Decision checklist</p>
-          <h2 id="decision-title">Approval criteria before global replacement.</h2>
+          <h2 id="decision-title">Post-rollout QA criteria.</h2>
         </div>
         <div className="decision-grid">
           {checklistItems.map((item) => (
@@ -214,8 +214,8 @@ export default function BrandPreviewPage() {
           ))}
         </div>
         <div className="recommendation-note">
-          This preview is for final visual decision only. If approved, the next step is applying the Thread Needle
-          S identity across navbar, favicon, app icon, footer, email, Studio and Open Graph assets.
+          This page remains noindex as a QA surface. The Thread Needle S identity is applied globally, while legacy
+          fallback code remains available for rollback if needed.
         </div>
       </section>
     </main>
