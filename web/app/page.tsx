@@ -199,6 +199,10 @@ function createClientId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function getCurrentTimestamp() {
+  return Date.now();
+}
+
 type StitchraDesignActionDetail = {
   action?:
     | 'openAICreator'
@@ -782,10 +786,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const publicCopy = getPublicI18nCopy(activeLocale);
   const dir = getLocaleDirection(activeLocale);
   const localizedHomePath = localizedPath(activeLocale, '/');
-  const localize = useCallback(
-    (path: string) => localizedPath(activeLocale, path),
-    [activeLocale]
-  );
+  const localize = (path: string) => localizedPath(activeLocale, path);
 
   useHtmlLocale(activeLocale);
 
@@ -1253,7 +1254,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     }, 0);
   }, [getDesignScrollTarget]);
 
-  const showEmptyDesignHelper = useCallback(() => {
+  const showEmptyDesignHelper = () => {
     if (preview) {
       return;
     }
@@ -1269,7 +1270,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setViewerHint('');
       viewerHintTimeoutRef.current = null;
     }, 5200);
-  }, [preview, publicCopy.designWizard.place.guidanceEmpty]);
+  };
 
   const handleStartDesigningClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
@@ -1364,33 +1365,30 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     requestDesignReset();
   }, [requestDesignReset]);
 
-  const handleBrandResetClick = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>) => {
-      if (hasActiveDesignDraft) {
-        event.preventDefault();
-        requestDesignReset();
-        return;
-      }
-
+  const handleBrandResetClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (hasActiveDesignDraft) {
       event.preventDefault();
-      if (entry !== 'home') {
-        window.location.assign(localizedHomePath);
-        return;
-      }
+      requestDesignReset();
+      return;
+    }
 
-      scrollToHomeStart();
-    },
-    [entry, hasActiveDesignDraft, localizedHomePath, requestDesignReset, scrollToHomeStart]
-  );
+    event.preventDefault();
+    if (entry !== 'home') {
+      window.location.assign(localizedHomePath);
+      return;
+    }
 
-  const continueRestoredDraft = useCallback(() => {
+    scrollToHomeStart();
+  };
+
+  const continueRestoredDraft = () => {
     setShowDraftRecovery(false);
     focusShirtViewer(
       preview
         ? publicCopy.common.designOnShirt
         : undefined
     );
-  }, [focusShirtViewer, preview, publicCopy.common.designOnShirt]);
+  };
 
   const toggleAiStyleHint = (styleHint: string) => {
     setAiStyleHints((current) =>
@@ -2145,7 +2143,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       const result = await removePlainImageBackground(
         getConceptDisplayImage(concept)
       );
-      const cleanedAt = Date.now();
+      const cleanedAt = getCurrentTimestamp();
 
       setAiConcepts((currentConcepts) =>
         currentConcepts.map((item) =>
@@ -6825,9 +6823,9 @@ function Header({
       <nav
         className="site-nav"
         style={{
-          maxWidth: 1280,
+          maxWidth: 1240,
           margin: '0 auto',
-          height: 86,
+          height: 78,
           display: 'flex',
           alignItems: 'center',
           justifyContent:
@@ -6847,14 +6845,14 @@ function Header({
             textDecoration: 'none',
           }}
         >
-          <StitchraLogo size={58} showSubtitle className="header-logo" />
+          <StitchraLogo compact size={46} showSubtitle={false} className="header-logo" />
         </a>
 
         <div
-          className="header-links"
+          className="desktop-nav-links"
           style={{
             display: 'flex',
-            gap: 26,
+            gap: 20,
             alignItems: 'center',
           }}
         >
@@ -6868,7 +6866,16 @@ function Header({
               {item.label}
             </a>
           ))}
+        </div>
 
+        <div
+          className="header-actions"
+          style={{
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+          }}
+        >
           <LanguageSwitcher locale={locale} t={t} />
 
           <a
@@ -10004,6 +10011,40 @@ function GlobalVisualStyles() {
 
         .site-nav {
           width: 100%;
+          gap: clamp(18px, 2.4vw, 34px);
+        }
+
+        .header-brand {
+          flex: 0 0 auto;
+          min-width: 0;
+        }
+
+        .desktop-nav-links {
+          flex: 1 1 auto;
+          justify-content: center;
+          min-width: 0;
+          white-space: nowrap;
+        }
+
+        .desktop-nav-link {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          line-height: 1;
+        }
+
+        .header-actions {
+          flex: 0 0 auto;
+          justify-content: flex-end;
+          min-width: 0;
+        }
+
+        .desktop-language-switcher,
+        .desktop-start-link {
+          flex: 0 0 auto;
+        }
+
+        .desktop-start-link {
+          white-space: nowrap;
         }
 
         .mobile-app-launch,
@@ -10016,7 +10057,7 @@ function GlobalVisualStyles() {
         .mobile-menu-panel,
         .mobile-menu-button,
         .mobile-start-link {
-          display: none;
+          display: none !important;
         }
 
         .home-entry-design .desktop-home-section,
@@ -10627,8 +10668,8 @@ function GlobalVisualStyles() {
             inset 0 1px 0 rgba(255,255,255,0.10);
         }
 
-        @media (max-width: 900px) {
-          .header-links .desktop-nav-link {
+        @media (max-width: 1023px) {
+          .desktop-nav-links {
             display: none !important;
           }
 
@@ -10679,12 +10720,12 @@ function GlobalVisualStyles() {
             height: 46px !important;
           }
 
-          .header-links {
+          .header-actions {
             gap: 8px !important;
             min-width: 0;
           }
 
-          .header-links .lux-button {
+          .header-actions .lux-button {
             min-height: 44px !important;
             padding: 0 14px !important;
             border-radius: 14px !important;
@@ -11547,14 +11588,14 @@ function GlobalVisualStyles() {
             height: 46px !important;
           }
 
-          .header-links .lux-button {
+          .header-actions .lux-button {
             min-height: 46px !important;
             padding: 0 15px !important;
             font-size: 13px !important;
             white-space: nowrap;
           }
 
-          .header-links {
+          .header-actions {
             gap: 8px !important;
             min-width: 0;
           }

@@ -381,24 +381,18 @@ export default function StitchraDesignAgent() {
   const suppressLauncherClickRef = useRef(false);
 
   const isHidden = useMemo(() => shouldHideAgent(pathname), [pathname]);
-
-  useEffect(() => {
-    setMessages((currentMessages) => {
-      if (
-        currentMessages.length === 1 &&
-        currentMessages[0]?.id === "welcome"
-      ) {
-        return [
-          {
-            ...DEFAULT_WELCOME_MESSAGE,
-            content: copy.welcomeMessage,
-          },
-        ];
-      }
-
-      return currentMessages;
-    });
-  }, [copy.welcomeMessage]);
+  const visibleMessages = useMemo(
+    () =>
+      messages.map((message) =>
+        message.id === "welcome"
+          ? {
+              ...message,
+              content: copy.welcomeMessage,
+            }
+          : message,
+      ),
+    [copy.welcomeMessage, messages],
+  );
 
   const applyLauncherPosition = useCallback((position: LauncherPosition) => {
     const nextPosition = {
@@ -600,7 +594,7 @@ export default function StitchraDesignAgent() {
     const list = messageListRef.current;
     if (!list) return;
     list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
-  }, [isOpen, messages]);
+  }, [isOpen, visibleMessages]);
 
   if (isHidden) {
     return null;
@@ -937,7 +931,7 @@ export default function StitchraDesignAgent() {
           </div>
 
           <div className="stitchra-ai-messages" ref={messageListRef}>
-            {messages.map((message) => (
+            {visibleMessages.map((message) => (
               <article
                 key={message.id}
                 className={`stitchra-ai-message stitchra-ai-message-${message.role}`}
