@@ -27,6 +27,45 @@ export type AIConceptReadiness = {
   recommendation: string;
 };
 
+type AIConceptReviewCopy = {
+  badge: string;
+  title: string;
+  subtitle: string;
+  original: string;
+  cleaned: string;
+  fullPreviewAria: string;
+  transparentReady: string;
+  originalIdea: string;
+  styleDirection: string;
+  note: string;
+  providerCredit: string;
+  privateDataNote: string;
+  readinessLabel: string;
+  colorsTarget: string;
+  designAdded: string;
+  useThisDesign: string;
+  cleaning: string;
+  cleanBackground: string;
+  generatingNew: string;
+  generateAnother: string;
+  suggestChanges: string;
+  uploadInstead: string;
+  variationHelper: string;
+  refineDirection: string;
+  safety: string;
+  saferVersion: string;
+  changeLabel: string;
+  changePlaceholder: string;
+  applyChanges: string;
+  variation: string;
+  added: string;
+  modalAria: string;
+  closePreviewAria: string;
+  imageAlt: string;
+  largeImageAlt: string;
+  refinements: readonly string[];
+};
+
 type AIConceptReviewPanelProps = {
   concepts: AIConcept[];
   selectedConceptId: string | null;
@@ -37,6 +76,7 @@ type AIConceptReviewPanelProps = {
   isGeneratingVariation: boolean;
   isCleaningBackground: boolean;
   backgroundCleanupStatus: string;
+  copy?: Partial<AIConceptReviewCopy>;
   onSelectConcept: (conceptId: string) => void;
   onUseConcept: (concept: AIConcept) => void;
   onCleanBackground: (concept: AIConcept) => void;
@@ -57,6 +97,49 @@ const REFINEMENT_SUGGESTIONS = [
 const SAFER_ORIGINAL_REQUEST =
   'Make the concept more original and avoid recognizable protected characters, brands or mascots.';
 
+const defaultCopy: AIConceptReviewCopy = {
+  badge: 'AI concept',
+  title: 'Review your AI concept',
+  subtitle: 'Check the design clearly before placing it on the T-shirt.',
+  original: 'Original',
+  cleaned: 'Cleaned',
+  fullPreviewAria: 'Open AI concept full-size preview',
+  transparentReady: 'Transparent PNG ready',
+  originalIdea: 'Original idea',
+  styleDirection: 'Style direction',
+  note:
+    'The T-shirt preview shows placement and size. This concept preview shows the artwork clearly. Final stitch-ready artwork is reviewed by Stitchra before production.',
+  providerCredit: 'AI concept generation powered by',
+  privateDataNote: 'Do not enter private personal data in design prompts.',
+  readinessLabel: 'Embroidery-ready score',
+  colorsTarget: 'Colors target',
+  designAdded: 'Design added',
+  useThisDesign: 'Use this design',
+  cleaning: 'Cleaning...',
+  cleanBackground: 'Clean background',
+  generatingNew: 'Generating new direction...',
+  generateAnother: 'Generate another direction',
+  suggestChanges: 'Suggest changes',
+  uploadInstead: 'Upload my own logo instead',
+  variationHelper:
+    'Generate another direction creates a different visual direction for the same idea.',
+  refineDirection: 'Refine direction',
+  safety:
+    'Please make sure this concept does not resemble a protected brand, logo, character or celebrity. Stitchra may reject risky artwork before production.',
+  saferVersion: 'Generate safer original version',
+  changeLabel: 'Tell us what to change',
+  changePlaceholder:
+    'Example: make it more playful, fewer colors, bigger giraffe, remove text',
+  applyChanges: 'Apply changes',
+  variation: 'Variation',
+  added: 'Added',
+  modalAria: 'AI concept full-size preview',
+  closePreviewAria: 'Close AI concept preview',
+  imageAlt: 'Generated AI embroidery concept',
+  largeImageAlt: 'Generated AI embroidery concept large preview',
+  refinements: REFINEMENT_SUGGESTIONS,
+};
+
 export default function AIConceptReviewPanel({
   concepts,
   selectedConceptId,
@@ -67,6 +150,7 @@ export default function AIConceptReviewPanel({
   isGeneratingVariation,
   isCleaningBackground,
   backgroundCleanupStatus,
+  copy: copyOverrides,
   onSelectConcept,
   onUseConcept,
   onCleanBackground,
@@ -74,6 +158,7 @@ export default function AIConceptReviewPanel({
   onApplyChanges,
   onSwitchToUpload,
 }: AIConceptReviewPanelProps) {
+  const copy = { ...defaultCopy, ...copyOverrides };
   const [isSuggestingChanges, setIsSuggestingChanges] = useState(false);
   const [changeRequest, setChangeRequest] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -102,9 +187,9 @@ export default function AIConceptReviewPanel({
   return (
     <section className="ai-concept-review" aria-labelledby="ai-concept-review-title">
       <div className="ai-concept-review-header">
-        <span>AI concept</span>
-        <h3 id="ai-concept-review-title">Review your AI concept</h3>
-        <p>Check the design clearly before placing it on the T-shirt.</p>
+        <span>{copy.badge}</span>
+        <h3 id="ai-concept-review-title">{copy.title}</h3>
+        <p>{copy.subtitle}</p>
       </div>
 
       {hasCleanedImage && (
@@ -116,7 +201,7 @@ export default function AIConceptReviewPanel({
               className={previewVariant === variant ? 'ai-concept-variant-active' : ''}
               onClick={() => setPreviewVariant(variant)}
             >
-              {variant === 'original' ? 'Original' : 'Cleaned'}
+              {variant === 'original' ? copy.original : copy.cleaned}
             </button>
           ))}
         </div>
@@ -126,16 +211,16 @@ export default function AIConceptReviewPanel({
         type="button"
         className="ai-concept-stage"
         onClick={() => setIsModalOpen(true)}
-        aria-label="Open AI concept full-size preview"
+        aria-label={copy.fullPreviewAria}
       >
         {/* Native img keeps generated data URLs lightweight and immediate. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={displayImage}
-          alt="Generated AI embroidery concept"
+          alt={copy.imageAlt}
           draggable={false}
         />
-        <span>{hasCleanedImage ? 'Transparent PNG ready' : 'AI concept'}</span>
+        <span>{hasCleanedImage ? copy.transparentReady : copy.badge}</span>
       </button>
 
       {hasCleanedImage && (
@@ -143,25 +228,25 @@ export default function AIConceptReviewPanel({
           <figure>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedConcept.imageDataUrl} alt="" draggable={false} />
-            <figcaption>Original</figcaption>
+            <figcaption>{copy.original}</figcaption>
           </figure>
           <figure>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedConcept.cleanedImageDataUrl} alt="" draggable={false} />
-            <figcaption>Cleaned</figcaption>
+            <figcaption>{copy.cleaned}</figcaption>
           </figure>
         </div>
       )}
 
       <div className="ai-concept-brief">
         <div>
-          <span>Original idea</span>
+          <span>{copy.originalIdea}</span>
           <p>{selectedConcept.prompt}</p>
         </div>
 
         {styleHints.length > 0 && (
           <div>
-            <span>Style direction</span>
+            <span>{copy.styleDirection}</span>
             <div className="ai-concept-style-list">
               {styleHints.map((styleHint) => (
                 <b key={styleHint}>{styleHint}</b>
@@ -172,12 +257,11 @@ export default function AIConceptReviewPanel({
       </div>
 
       <p className="ai-concept-note">
-        The T-shirt preview shows placement and size. This concept preview shows the artwork clearly.
-        Final stitch-ready artwork is reviewed by Stitchra before production.
+        {copy.note}
       </p>
 
       <p className="ai-provider-credit">
-        AI concept generation powered by{' '}
+        {copy.providerCredit}{' '}
         <a
           href="https://pollinations.ai"
           target="_blank"
@@ -186,16 +270,16 @@ export default function AIConceptReviewPanel({
         >
           pollinations.ai
         </a>
-        . Do not enter private personal data in design prompts.
+        . {copy.privateDataNote}
       </p>
 
       <div className="ai-readiness-box" aria-label="Embroidery readiness summary">
         <div>
-          <span>Embroidery-ready score</span>
+          <span>{copy.readinessLabel}</span>
           <strong>{readiness.score}/100</strong>
         </div>
         <div>
-          <span>Colors target</span>
+          <span>{copy.colorsTarget}</span>
           <strong>{readiness.colorsTarget}</strong>
         </div>
         <p>{readiness.contrastNote}</p>
@@ -209,7 +293,7 @@ export default function AIConceptReviewPanel({
           className="ai-concept-primary"
           onClick={() => onUseConcept(selectedConcept)}
         >
-          {isActiveConcept ? 'Design added' : 'Use this design'}
+          {isActiveConcept ? copy.designAdded : copy.useThisDesign}
         </button>
         <button
           type="button"
@@ -217,7 +301,7 @@ export default function AIConceptReviewPanel({
           onClick={() => onCleanBackground(selectedConcept)}
           disabled={isCleaningBackground}
         >
-          {isCleaningBackground ? 'Cleaning...' : 'Clean background'}
+          {isCleaningBackground ? copy.cleaning : copy.cleanBackground}
         </button>
         <button
           type="button"
@@ -225,32 +309,32 @@ export default function AIConceptReviewPanel({
           onClick={onGenerateAnother}
           disabled={isGenerating}
         >
-          {isGeneratingVariation ? 'Generating new direction...' : 'Generate another direction'}
+          {isGeneratingVariation ? copy.generatingNew : copy.generateAnother}
         </button>
         <button
           type="button"
           className="ai-concept-secondary"
           onClick={() => setIsSuggestingChanges((current) => !current)}
         >
-          Suggest changes
+          {copy.suggestChanges}
         </button>
         <button
           type="button"
           className="ai-concept-link"
           onClick={onSwitchToUpload}
-        >
-          Upload my own logo instead
-        </button>
+      >
+          {copy.uploadInstead}
+      </button>
       </div>
 
       <p className="ai-variation-helper">
-        Generate another direction creates a different visual direction for the same idea.
+        {copy.variationHelper}
       </p>
 
       <div className="ai-refinement-strip">
-        <span>Refine direction</span>
+        <span>{copy.refineDirection}</span>
         <div className="ai-refinement-chip-row" aria-label="Suggested refinements">
-          {REFINEMENT_SUGGESTIONS.map((suggestion) => (
+          {copy.refinements.map((suggestion) => (
             <button
               key={suggestion}
               type="button"
@@ -267,8 +351,7 @@ export default function AIConceptReviewPanel({
 
       <div className="ai-output-safety-box">
         <p>
-          Please make sure this concept does not resemble a protected brand, logo,
-          character or celebrity. Stitchra may reject risky artwork before production.
+          {copy.safety}
         </p>
         <button
           type="button"
@@ -276,7 +359,7 @@ export default function AIConceptReviewPanel({
           onClick={() => onApplyChanges(SAFER_ORIGINAL_REQUEST, selectedConcept)}
           disabled={isGenerating}
         >
-          Generate safer original version
+          {copy.saferVersion}
         </button>
       </div>
 
@@ -288,12 +371,12 @@ export default function AIConceptReviewPanel({
 
       {isSuggestingChanges && (
         <div className="ai-concept-change-box">
-          <label htmlFor="ai-concept-change-request">Tell us what to change</label>
+          <label htmlFor="ai-concept-change-request">{copy.changeLabel}</label>
           <textarea
             id="ai-concept-change-request"
             value={changeRequest}
             onChange={(event) => setChangeRequest(event.target.value)}
-            placeholder="Example: make it more playful, fewer colors, bigger giraffe, remove text"
+            placeholder={copy.changePlaceholder}
             rows={3}
           />
           <button
@@ -307,7 +390,7 @@ export default function AIConceptReviewPanel({
               setChangeRequest('');
             }}
           >
-            Apply changes
+            {copy.applyChanges}
           </button>
         </div>
       )}
@@ -328,8 +411,8 @@ export default function AIConceptReviewPanel({
                 draggable={false}
               />
               <span>
-                Variation {concept.variationIndex ?? index + 1}
-                {concept.accepted ? ' · Added' : ''}
+                {copy.variation} {concept.variationIndex ?? index + 1}
+                {concept.accepted ? ` · ${copy.added}` : ''}
               </span>
             </button>
           ))}
@@ -341,7 +424,7 @@ export default function AIConceptReviewPanel({
           className="ai-concept-modal-overlay"
           role="dialog"
           aria-modal="true"
-          aria-label="AI concept full-size preview"
+          aria-label={copy.modalAria}
           onClick={() => setIsModalOpen(false)}
         >
           <div
@@ -352,14 +435,14 @@ export default function AIConceptReviewPanel({
               type="button"
               className="ai-concept-modal-close"
               onClick={() => setIsModalOpen(false)}
-              aria-label="Close AI concept preview"
+              aria-label={copy.closePreviewAria}
             >
               ×
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={displayImage}
-              alt="Generated AI embroidery concept large preview"
+              alt={copy.largeImageAlt}
               draggable={false}
             />
             <div className="ai-concept-action-row">
@@ -371,7 +454,7 @@ export default function AIConceptReviewPanel({
                   setIsModalOpen(false);
                 }}
               >
-                Use this design
+                {copy.useThisDesign}
               </button>
               <button
                 type="button"
@@ -379,7 +462,7 @@ export default function AIConceptReviewPanel({
                 onClick={onGenerateAnother}
                 disabled={isGenerating}
               >
-                Generate another direction
+                {copy.generateAnother}
               </button>
               <button
                 type="button"
@@ -389,7 +472,7 @@ export default function AIConceptReviewPanel({
                   setIsModalOpen(false);
                 }}
               >
-                Suggest changes
+                {copy.suggestChanges}
               </button>
             </div>
           </div>

@@ -57,10 +57,18 @@ import {
   createTranslator,
   getLocaleDirection,
   getLocalizedArray,
+  getLocalizedPlacementGroupLabel,
+  getLocalizedPlacementZoneLabel,
+  getLocalizedRouteItems,
+  getPublicI18nCopy,
   localeLabels,
+  localeFlags,
   locales,
+  localizedPath,
   resolveLocale,
+  switchLocalePath,
   type Locale,
+  type PublicI18nCopy,
   type Translator,
 } from '@/lib/i18n';
 
@@ -604,15 +612,6 @@ type HomeProps = {
   entry?: 'home' | 'design';
 };
 
-const localeFlags: Record<Locale, string> = {
-  en: '🇬🇧',
-  de: '🇩🇪',
-  fr: '🇫🇷',
-  ar: '🇸🇦',
-  es: '🇪🇸',
-  ru: '🇷🇺',
-};
-
 function getLocaleDisplay(locale: Locale) {
   return `${localeFlags[locale]} ${localeLabels[locale].name}`;
 }
@@ -683,19 +682,21 @@ function GuidedStudioStepper({
 function MobileDesignStepper({
   currentStep,
   completedSteps,
+  labels,
   onStepClick,
 }: {
   currentStep: MobileDesignStepId;
   completedSteps: Set<MobileDesignStepId>;
+  labels: Record<MobileDesignStepId, string>;
   onStepClick: (stepId: MobileDesignStepId) => void;
 }) {
   const steps: Array<{ id: MobileDesignStepId; label: string }> = [
-    { id: 'choose', label: 'Choose' },
-    { id: 'create', label: 'Create / Upload' },
-    { id: 'review', label: 'Review' },
-    { id: 'place', label: 'Place' },
-    { id: 'price', label: 'Price' },
-    { id: 'request', label: 'Request' },
+    { id: 'choose', label: labels.choose },
+    { id: 'create', label: labels.create },
+    { id: 'review', label: labels.review },
+    { id: 'place', label: labels.place },
+    { id: 'price', label: labels.price },
+    { id: 'request', label: labels.request },
   ];
 
   return (
@@ -731,10 +732,18 @@ function MobileDesignStepper({
 
 function StartNewDesignDialog({
   open,
+  copy,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
+  copy: {
+    eyebrow: string;
+    title: string;
+    text: string;
+    cancel: string;
+    confirm: string;
+  };
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -751,17 +760,15 @@ function StartNewDesignDialog({
         aria-labelledby="reset-design-title"
         aria-describedby="reset-design-description"
       >
-        <span>Fresh start</span>
-        <h2 id="reset-design-title">Start a new design?</h2>
-        <p id="reset-design-description">
-          This clears your saved draft and returns Stitchra to the beginning.
-        </p>
+        <span>{copy.eyebrow}</span>
+        <h2 id="reset-design-title">{copy.title}</h2>
+        <p id="reset-design-description">{copy.text}</p>
         <div className="reset-design-actions">
           <button type="button" onClick={onCancel}>
-            Cancel
+            {copy.cancel}
           </button>
           <button type="button" onClick={onConfirm}>
-            Start new design
+            {copy.confirm}
           </button>
         </div>
       </section>
@@ -772,8 +779,13 @@ function StartNewDesignDialog({
 export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const activeLocale = resolveLocale(locale);
   const t = createTranslator(activeLocale);
+  const publicCopy = getPublicI18nCopy(activeLocale);
   const dir = getLocaleDirection(activeLocale);
-  const localizedHomePath = activeLocale === 'en' ? '/' : `/${activeLocale}`;
+  const localizedHomePath = localizedPath(activeLocale, '/');
+  const localize = useCallback(
+    (path: string) => localizedPath(activeLocale, path),
+    [activeLocale]
+  );
 
   useHtmlLocale(activeLocale);
 
@@ -1247,9 +1259,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     }
 
     setEmptyDesignHelperOpen(true);
-    setViewerHint(
-      'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.'
-    );
+    setViewerHint(publicCopy.designWizard.place.guidanceEmpty);
 
     if (viewerHintTimeoutRef.current) {
       window.clearTimeout(viewerHintTimeoutRef.current);
@@ -1259,7 +1269,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setViewerHint('');
       viewerHintTimeoutRef.current = null;
     }, 5200);
-  }, [preview]);
+  }, [preview, publicCopy.designWizard.place.guidanceEmpty]);
 
   const handleStartDesigningClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
@@ -1377,10 +1387,10 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     setShowDraftRecovery(false);
     focusShirtViewer(
       preview
-        ? 'Restored design ready. Click the shirt to reposition it.'
+        ? publicCopy.common.designOnShirt
         : undefined
     );
-  }, [focusShirtViewer, preview]);
+  }, [focusShirtViewer, preview, publicCopy.common.designOnShirt]);
 
   const toggleAiStyleHint = (styleHint: string) => {
     setAiStyleHints((current) =>
@@ -1824,7 +1834,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     setEmptyDesignHelperOpen(false);
     setMobileDesignStep('review');
     setDesignAddedToastOpen(true);
-    focusShirtViewer('Logo added. Click the shirt to reposition it.', true);
+    focusShirtViewer(publicCopy.common.designOnShirt, true);
     setIsAnalyzing(true);
     setStatus(t('status.analyzingLogo'));
 
@@ -2068,10 +2078,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setDesignStartMode('ai');
       setMobileDesignStep('place');
       setDesignAddedToastOpen(true);
-      focusShirtViewer('Design added. Click the shirt to reposition it.', true);
-      setStatus(
-        'AI concept added. Final stitch-ready artwork is reviewed by Stitchra.'
-      );
+      focusShirtViewer(publicCopy.common.designOnShirt, true);
+      setStatus(publicCopy.designWizard.ai.previewNote);
       setEmptyDesignHelperOpen(false);
       setDraftSaveStatus('Draft saved just now');
     } catch {
@@ -2112,13 +2120,13 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       setEstimate(null);
       setOrderStatus('');
       setOrderError('');
-      setBackgroundCleanupStatus('Background cleaned. Preview updated.');
+      setBackgroundCleanupStatus(t('status.logoReady'));
       setDesignAddedToastOpen(true);
-      focusShirtViewer('Background cleaned. Click the shirt to reposition it.', true);
+      focusShirtViewer(publicCopy.common.designOnShirt, true);
       setEmptyDesignHelperOpen(false);
     } catch {
       setBackgroundCleanupStatus(
-        'Background cleanup failed. You can still use the original design.'
+        t('status.cleanupUnavailable')
       );
     } finally {
       setIsCleaningBackground(false);
@@ -2162,14 +2170,14 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         setFile(cleanedFile);
         await saveDraftImage(DESIGN_DRAFT_ACTIVE_LOGO_IMAGE_KEY, cleanedFile);
         await applyLogoPreview(result.dataUrl);
-        focusShirtViewer('Background cleaned. Click the shirt to reposition it.', true);
+        focusShirtViewer(publicCopy.common.designOnShirt, true);
       }
 
-      setBackgroundCleanupStatus('Background cleaned. Preview updated.');
+      setBackgroundCleanupStatus(t('status.logoReady'));
       setDraftSaveStatus('Draft saved just now');
     } catch {
       setBackgroundCleanupStatus(
-        'Background cleanup failed. You can still use the original design.'
+        t('status.cleanupUnavailable')
       );
     } finally {
       setIsCleaningBackground(false);
@@ -2319,7 +2327,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             pricing_tier: 'studio_review',
             customer_warnings: [
               estimatedCapability.message ??
-                'Studio review recommended for this design.',
+                publicCopy.designWizard.place.studioReview,
               ...getPublicQuote(pricedEstimate).customer_warnings,
             ],
           },
@@ -2764,61 +2772,20 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     scrollToOrderRequest();
   };
 
-  const mobileExploreSections = [
-    {
-      id: 'mobile-explore-how',
-      title: t('nav.how'),
-      summary: 'Create or upload, review the concept, place it on fabric, get a quote, then request your order.',
-      bullets: [
-        'Create with AI or upload a logo',
-        'Review the artwork clearly',
-        'Place it on the shirt and check price',
-      ],
-    },
-    {
-      id: 'mobile-explore-craft',
-      title: 'Craft quality',
-      summary: 'Stitchra keeps the preview practical for embroidery: clean shapes, readable size and studio review when needed.',
-      bullets: ['Fabric-aware preview', 'Background cleanup', 'Studio quality check'],
-    },
-    {
-      id: 'mobile-explore-pricing',
-      title: t('nav.pricing'),
-      summary: 'Small simple left-chest logos can start around €9. Larger front designs can start around €13.',
-      bullets: ['Final offer before production', 'Studio review for complex artwork', 'Customer-facing quote only'],
-    },
-    {
-      id: 'mobile-explore-gallery',
-      title: t('nav.gallery'),
-      summary: 'Browse compact examples for clubs, creators, events and small brands without scrolling through the full desktop page.',
-      bullets: ['Badges', 'Brand marks', 'Event shirts'],
-    },
-    {
-      id: 'mobile-explore-features',
-      title: t('nav.features'),
-      summary: 'AI concept generation, logo cleanup, placement preview and quote request are combined in one mobile studio flow.',
-      bullets: ['AI Concept Studio', 'Upload your own design', 'Draft recovery after refresh'],
-    },
-    {
-      id: 'mobile-explore-faq',
-      title: t('nav.faq'),
-      summary: 'You can order one shirt, upload your own file, or create an original AI concept before requesting a quote.',
-      bullets: ['Payment happens after final offer', 'Use only designs you have rights to', 'Support: orders@stitchra.com'],
-    },
-  ];
+  const mobileExploreSections = publicCopy.mobileHome.exploreSections;
   const currentMobileStepIndex = Math.max(
     0,
     guidedStudioSteps.findIndex((step) => step.id === currentStudioStep)
   );
   const currentMobileStepLabel =
-    guidedStudioSteps[currentMobileStepIndex]?.label ?? 'Start';
+    guidedStudioSteps[currentMobileStepIndex]?.label ?? publicCopy.designWizard.steps.choose.label;
   const mobileStepHelp: Record<GuidedStudioStepId, string> = {
-    start: 'Choose whether to upload your own logo or create an original AI concept.',
-    create: 'Add the artwork first. You can upload a file or describe an AI concept.',
-    review: 'Check the concept clearly before using it on the shirt.',
-    place: 'Tap the shirt, choose a preset, and adjust the logo size.',
-    price: 'Check the customer-facing estimate before you request an offer.',
-    request: 'Send the design request so Stitchra can prepare the final offer.',
+    start: publicCopy.designWizard.steps.choose.help,
+    create: publicCopy.designWizard.steps.create.help,
+    review: publicCopy.designWizard.steps.review.help,
+    place: publicCopy.designWizard.steps.place.help,
+    price: publicCopy.designWizard.steps.price.help,
+    request: publicCopy.designWizard.steps.request.help,
   };
   const mobileDesignSteps: MobileDesignStepId[] = [
     'choose',
@@ -2829,20 +2796,89 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     'request',
   ];
   const mobileDesignStepLabels: Record<MobileDesignStepId, string> = {
-    choose: 'Choose',
-    create: 'Create / Upload',
-    review: 'Review',
-    place: 'Place',
-    price: 'Price',
-    request: 'Request',
+    choose: publicCopy.designWizard.steps.choose.label,
+    create: publicCopy.designWizard.steps.create.label,
+    review: publicCopy.designWizard.steps.review.label,
+    place: publicCopy.designWizard.steps.place.label,
+    price: publicCopy.designWizard.steps.price.label,
+    request: publicCopy.designWizard.steps.request.label,
   };
   const mobileDesignStepHelp: Record<MobileDesignStepId, string> = {
-    choose: 'Choose whether to upload your logo or create a new concept with AI.',
-    create: 'Add your artwork first. Upload a file or describe an original idea.',
-    review: 'Inspect the artwork clearly before placing it on the shirt.',
-    place: 'Tap the shirt, choose placement and adjust the logo size.',
-    price: 'Prepare a customer-facing estimate before requesting an offer.',
-    request: 'Send your request so Stitchra can review the artwork.',
+    choose: publicCopy.designWizard.steps.choose.help,
+    create: publicCopy.designWizard.steps.create.help,
+    review: publicCopy.designWizard.steps.review.help,
+    place: publicCopy.designWizard.steps.place.help,
+    price: publicCopy.designWizard.steps.price.help,
+    request: publicCopy.designWizard.steps.request.help,
+  };
+  const designStartCopy = {
+    eyebrow: publicCopy.designWizard.stepWord,
+    title: publicCopy.designWizard.steps.choose.label,
+    subtitle: publicCopy.designWizard.steps.choose.help,
+    uploadTitle: publicCopy.designWizard.choice.uploadTitle,
+    uploadText: publicCopy.designWizard.choice.uploadSubtitle,
+    uploadCta: publicCopy.designWizard.choice.uploadCta,
+    aiTitle: publicCopy.designWizard.choice.aiTitle,
+    aiText: publicCopy.designWizard.choice.aiSubtitle,
+    aiCta: publicCopy.designWizard.choice.aiCta,
+  };
+  const uploadPanelCopy = {
+    eyebrow: publicCopy.designWizard.upload.eyebrow,
+    title: publicCopy.designWizard.upload.title,
+    subtitle: publicCopy.designWizard.upload.subtitle,
+    chooseLogo: publicCopy.designWizard.upload.chooseLogo,
+    fileHint: publicCopy.designWizard.upload.fileHint,
+    maxSize: publicCopy.designWizard.upload.maxSize,
+    ready: publicCopy.designWizard.upload.ready,
+    viewOnShirt: publicCopy.designWizard.upload.viewOnShirt,
+    removeBackground: publicCopy.designWizard.upload.removeBackground,
+    cleaning: publicCopy.designWizard.upload.cleaning,
+  };
+  const aiCreatorCopy = {
+    eyebrow: publicCopy.designWizard.ai.eyebrow,
+    title: publicCopy.designWizard.ai.title,
+    subtitle: publicCopy.designWizard.ai.subtitle,
+    inputAria: publicCopy.designWizard.ai.title,
+    placeholder: publicCopy.designWizard.ai.placeholder,
+    generating: publicCopy.designWizard.ai.generating,
+    generate: publicCopy.common.generateConcept,
+    intent: publicCopy.designWizard.ai.intent,
+    directionPrefix: publicCopy.designWizard.ai.directionPrefix,
+    chooseDirection: publicCopy.designWizard.ai.chooseDirection,
+    previewNote: publicCopy.designWizard.ai.previewNote,
+    reviewNote: publicCopy.designWizard.ai.reviewNote,
+    providerCredit: publicCopy.designWizard.ai.providerCredit,
+    privateDataNote: publicCopy.designWizard.ai.privateDataNote,
+    uploadInstead: publicCopy.designWizard.ai.uploadInstead,
+    styleHints: publicCopy.designWizard.ai.styleHints,
+  };
+  const aiReviewCopy = {
+    title: publicCopy.designWizard.steps.review.label,
+    subtitle: publicCopy.designWizard.steps.review.help,
+    badge: publicCopy.common.aiConcept,
+    providerCredit: publicCopy.designWizard.ai.providerCredit,
+    privateDataNote: publicCopy.designWizard.ai.privateDataNote,
+    useThisDesign: publicCopy.common.useThisDesign,
+    cleanBackground: publicCopy.designWizard.upload.removeBackground,
+    cleaning: publicCopy.designWizard.upload.cleaning,
+    generatingNew: publicCopy.designWizard.ai.generating,
+    generateAnother: publicCopy.common.generateConcept,
+    suggestChanges: publicCopy.common.keepEditing,
+    uploadInstead: publicCopy.designWizard.ai.uploadInstead,
+  };
+  const shirtViewerCopy = {
+    addDesignFirst: publicCopy.designWizard.place.emptyTitle,
+    emptyTitle: publicCopy.designWizard.place.emptyTitle,
+    emptyText: publicCopy.designWizard.place.emptyText,
+    uploadLogo: publicCopy.common.uploadLogo,
+    createWithAi: publicCopy.common.createWithAi,
+    resetView: publicCopy.common.resetView,
+    previewUnavailable: publicCopy.designWizard.review.addFirstText,
+  };
+  const quickSizeLabels = {
+    Small: publicCopy.designWizard.place.small,
+    Medium: publicCopy.designWizard.place.medium,
+    Large: publicCopy.designWizard.place.large,
   };
   const mobileCompletedSteps = new Set<MobileDesignStepId>();
 
@@ -2922,11 +2958,19 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       <Header
         locale={activeLocale}
         t={t}
+        copy={publicCopy}
         onBrandReset={handleBrandResetClick}
         onStartDesigning={handleStartDesigningClick}
       />
       <StartNewDesignDialog
         open={resetDialogOpen}
+        copy={{
+          eyebrow: publicCopy.common.startFresh,
+          title: publicCopy.designWizard.request.startNewDesign,
+          text: publicCopy.mobileHome.draftText,
+          cancel: publicCopy.common.cancel,
+          confirm: publicCopy.designWizard.request.startNewDesign,
+        }}
         onCancel={() => setResetDialogOpen(false)}
         onConfirm={() => void resetDesignToStart()}
       />
@@ -2937,6 +2981,15 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       )}
       <DesignAddedToast
         open={designAddedToastOpen}
+        copy={{
+          ariaLabel: publicCopy.common.designOnShirt,
+          eyebrow: publicCopy.common.aiConcept,
+          title: publicCopy.common.designOnShirt,
+          text: publicCopy.designWizard.place.placementText,
+          viewOnShirt: publicCopy.designWizard.upload.viewOnShirt,
+          checkPrice: publicCopy.common.getClearPrice,
+          keepEditing: publicCopy.common.keepEditing,
+        }}
         onViewOnShirt={() => {
           setDesignAddedToastOpen(false);
           focusShirtViewer(undefined, true);
@@ -2954,41 +3007,39 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             <StitchraLogo compact markOnly size={62} />
             <span />
           </div>
-          <p>AI Embroidery Studio</p>
+          <p>{publicCopy.mobileHome.productLabel}</p>
           <h1>Stitchra</h1>
-          <strong>
-            Create a logo idea, preview it on fabric, and get a clear embroidery quote.
-          </strong>
+          <strong>{publicCopy.mobileHome.value}</strong>
           <div className="mobile-launch-actions">
             <Link
-              href="/design"
+              href={localize('/design')}
               className="mobile-launch-primary"
             >
-              {t('nav.start')}
+              {publicCopy.common.startDesigning}
             </Link>
-            <Link href="/explore" className="mobile-launch-secondary">
-              Explore
+            <Link href={localize('/explore')} className="mobile-launch-secondary">
+              {publicCopy.common.explore}
             </Link>
           </div>
           <div className="mobile-launch-trust" aria-label="Stitchra trust signals">
-            <span>AI concept</span>
-            <span>Fabric preview</span>
-            <span>Clear quote</span>
+            <span>{publicCopy.common.aiConcept}</span>
+            <span>{publicCopy.common.fabricPreview}</span>
+            <span>{publicCopy.common.clearQuote}</span>
           </div>
           {showMobileDraftPrompt && (
             <div className="mobile-draft-soft-card" role="status">
               <div>
-                <span>Saved draft</span>
-                <strong>Continue your last design</strong>
-                <p>We found a recent design draft on this device.</p>
+                <span>{publicCopy.mobileHome.savedDraft}</span>
+                <strong>{publicCopy.mobileHome.continueDraft}</strong>
+                <p>{publicCopy.mobileHome.draftText}</p>
               </div>
               <div>
-                <Link href="/design">Continue</Link>
+                <Link href={localize('/design')}>{publicCopy.common.continue}</Link>
                 <button
                   type="button"
                   onClick={() => void resetDesignDraftState()}
                 >
-                  Start fresh
+                  {publicCopy.common.startFresh}
                 </button>
               </div>
             </div>
@@ -2998,12 +3049,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
       <section id="mobile-explore" className="mobile-explore-hub">
         <div className="mobile-explore-heading">
-          <span>Explore Stitchra</span>
-          <h2>A compact guide before you design.</h2>
-          <p>
-            The full desktop story is still available on larger screens. On mobile,
-            start quickly and open only the details you need.
-          </p>
+          <span>{publicCopy.mobileHome.exploreEyebrow}</span>
+          <h2>{publicCopy.mobileHome.exploreTitle}</h2>
+          <p>{publicCopy.mobileHome.exploreText}</p>
         </div>
 
         <div className="mobile-explore-grid">
@@ -3024,10 +3072,10 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         </div>
 
         <Link
-          href="/design"
+          href={localize('/design')}
           className="mobile-explore-cta"
         >
-          {t('nav.start')}
+          {publicCopy.common.startDesigning}
         </Link>
       </section>
 
@@ -3039,7 +3087,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         <div className="mobile-design-wizard-shell">
           <div className="mobile-design-wizard-head">
             <span>
-              Step {mobileDesignStepIndex + 1} of {mobileDesignSteps.length}
+              {publicCopy.designWizard.stepWord} {mobileDesignStepIndex + 1} {publicCopy.designWizard.ofWord}{' '}
+              {mobileDesignSteps.length}
             </span>
             <h1>{mobileDesignStepLabels[mobileDesignStep]}</h1>
             <p>{mobileDesignStepHelp[mobileDesignStep]}</p>
@@ -3048,6 +3097,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
           <MobileDesignStepper
             currentStep={mobileDesignStep}
             completedSteps={mobileCompletedSteps}
+            labels={mobileDesignStepLabels}
             onStepClick={goToMobileDesignStep}
           />
 
@@ -3056,6 +3106,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               lastSavedAt={restoredDraftAt}
               saveStatus={draftSaveStatus}
               imageNeedsUpload={draftImageNeedsUpload}
+              copy={{
+                ariaLabel: publicCopy.mobileHome.savedDraft,
+                savedDraft: publicCopy.mobileHome.savedDraft,
+                restoredSettings: publicCopy.mobileHome.continueDraft,
+                restoredDesign: publicCopy.mobileHome.continueDraft,
+                imageNeedsUploadText: publicCopy.mobileHome.draftText,
+                readyText: publicCopy.mobileHome.draftText,
+                continue: publicCopy.common.continue,
+                startNew: publicCopy.designWizard.request.startNewDesign,
+              }}
               onContinue={() => {
                 continueRestoredDraft();
                 setMobileDesignStep(
@@ -3080,6 +3140,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 <DesignStartOptions
                   selectedMode={designStartMode}
                   onSelectMode={chooseMobileDesignMode}
+                  copy={designStartCopy}
                 />
                 <div className="mobile-design-inline-actions">
                   <button
@@ -3090,7 +3151,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       setMobileDesignStep('create');
                     }}
                   >
-                    Upload logo
+                    {publicCopy.common.uploadLogo}
                   </button>
                   <button
                     type="button"
@@ -3100,7 +3161,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       setMobileDesignStep('create');
                     }}
                   >
-                    Create with AI
+                    {publicCopy.common.createWithAi}
                   </button>
                 </div>
               </>
@@ -3112,6 +3173,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   <DesignStartOptions
                     selectedMode={designStartMode}
                     onSelectMode={chooseMobileDesignMode}
+                    copy={designStartCopy}
                   />
                 )}
 
@@ -3123,6 +3185,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       isCleaningBackground={isCleaningBackground}
                       cleanupStatus={backgroundCleanupStatus}
                       errorMessage={uploadError}
+                      copy={uploadPanelCopy}
                       onFileChange={onFile}
                       onCleanBackground={() => void cleanUploadedLogoBackground()}
                       onViewOnShirt={() => setMobileDesignStep('place')}
@@ -3133,7 +3196,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         className="mobile-design-secondary-action"
                         onClick={() => setMobileDesignStep('choose')}
                       >
-                        Back
+                        {publicCopy.common.back}
                       </button>
                       <button
                         type="button"
@@ -3141,7 +3204,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         disabled={!preview}
                         onClick={() => setMobileDesignStep('review')}
                       >
-                        Continue to Review
+                        {publicCopy.designWizard.review.continueToReview}
                       </button>
                     </div>
                   </div>
@@ -3154,6 +3217,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       selectedStyleHints={aiStyleHints}
                       isGenerating={isGenerating}
                       hasGeneratedConcept={hasGeneratedAiConcept}
+                      copy={aiCreatorCopy}
                       onPromptChange={(value) => {
                         setLogoPrompt(value);
                         setDesignPreparation(null);
@@ -3173,7 +3237,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         className="mobile-design-secondary-action"
                         onClick={() => setMobileDesignStep('choose')}
                       >
-                        Back
+                        {publicCopy.common.back}
                       </button>
                       <button
                         type="button"
@@ -3181,7 +3245,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         disabled={aiConcepts.length === 0}
                         onClick={() => setMobileDesignStep('review')}
                       >
-                        Continue to Review
+                        {publicCopy.designWizard.review.continueToReview}
                       </button>
                     </div>
                   </div>
@@ -3202,12 +3266,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     concepts={aiConcepts}
                     selectedConceptId={selectedAiConcept?.id ?? null}
                     activeConceptId={activeAiConceptId}
-                    styleHints={aiStyleHints}
+                    styleHints={aiStyleHints.map(
+                      (styleHint) =>
+                        publicCopy.designWizard.ai.styleHints[styleHint] ?? styleHint
+                    )}
                     readiness={aiConceptReadiness}
                     isGenerating={isGenerating}
                     isGeneratingVariation={generationIntent === 'new'}
                     isCleaningBackground={isCleaningBackground}
                     backgroundCleanupStatus={backgroundCleanupStatus}
+                    copy={aiReviewCopy}
                     onSelectConcept={setSelectedAiConceptId}
                     onUseConcept={(concept) => {
                       void acceptAiConcept(concept).then(() => {
@@ -3229,12 +3297,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 ) : preview ? (
                   <section className="mobile-upload-review-card">
                     <div>
-                      <span>Uploaded design</span>
-                      <h2>Review your logo</h2>
-                      <p>
-                        Check the file before placing it on the T-shirt. You can
-                        clean the background when it is a PNG or JPG.
-                      </p>
+                      <span>{publicCopy.designWizard.review.uploadedEyebrow}</span>
+                      <h2>{publicCopy.designWizard.review.uploadedTitle}</h2>
+                      <p>{publicCopy.designWizard.review.uploadedText}</p>
                     </div>
                     <button
                       type="button"
@@ -3243,7 +3308,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     >
                       {/* Native img is used for local object URLs and generated data URLs. */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={preview} alt="Uploaded logo preview" />
+                      <img src={preview} alt={publicCopy.designWizard.review.uploadedTitle} />
                     </button>
                     <div className="mobile-design-inline-actions">
                       {file && !isSvgLogoFile(file) && (
@@ -3253,7 +3318,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           onClick={() => void cleanUploadedLogoBackground()}
                           disabled={isCleaningBackground}
                         >
-                          {isCleaningBackground ? 'Cleaning...' : 'Clean background'}
+                          {isCleaningBackground
+                            ? publicCopy.designWizard.upload.cleaning
+                            : publicCopy.designWizard.upload.removeBackground}
                         </button>
                       )}
                       <button
@@ -3261,7 +3328,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         className="mobile-design-primary-action"
                         onClick={() => setMobileDesignStep('place')}
                       >
-                        Use this design
+                        {publicCopy.common.useThisDesign}
                       </button>
                     </div>
                     {backgroundCleanupStatus && (
@@ -3270,8 +3337,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   </section>
                 ) : (
                   <section className="mobile-empty-design-card">
-                    <h2>Add your design first</h2>
-                    <p>Upload your logo or create an AI concept before review.</p>
+                    <h2>{publicCopy.designWizard.review.addFirstTitle}</h2>
+                    <p>{publicCopy.designWizard.review.addFirstText}</p>
                     <div className="mobile-design-inline-actions">
                       <button
                         type="button"
@@ -3281,7 +3348,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setMobileDesignStep('create');
                         }}
                       >
-                        Upload logo
+                        {publicCopy.common.uploadLogo}
                       </button>
                       <button
                         type="button"
@@ -3291,7 +3358,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setMobileDesignStep('create');
                         }}
                       >
-                        Create with AI
+                        {publicCopy.common.createWithAi}
                       </button>
                     </div>
                   </section>
@@ -3312,6 +3379,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     onConfigChange={updateLogoPlacementConfig}
                     customPlacement={customLogoPlacement}
                     onCustomPlacementChange={updateCustomLogoPlacement}
+                    copy={shirtViewerCopy}
                     viewerGroup={placementGroup}
                     focusPulseKey={logoFocusPulseKey}
                     showEmptyStateHelper={!preview && emptyDesignHelperOpen}
@@ -3327,16 +3395,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     guidanceHint={
                       viewerHint ||
                       (preview
-                        ? 'Tap the shirt to place your logo.'
-                        : 'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.')
+                        ? publicCopy.designWizard.place.guidanceWithLogo
+                        : publicCopy.designWizard.place.guidanceEmpty)
                     }
                   />
                 </div>
 
                 {!preview ? (
                   <section className="mobile-empty-design-card">
-                    <h2>Add your design first</h2>
-                    <p>Upload your logo or create an AI concept, then place it on the shirt.</p>
+                    <h2>{publicCopy.designWizard.place.emptyTitle}</h2>
+                    <p>{publicCopy.designWizard.place.emptyText}</p>
                     <div className="mobile-design-inline-actions">
                       <button
                         type="button"
@@ -3346,7 +3414,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setMobileDesignStep('create');
                         }}
                       >
-                        Upload logo
+                        {publicCopy.common.uploadLogo}
                       </button>
                       <button
                         type="button"
@@ -3356,7 +3424,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setMobileDesignStep('create');
                         }}
                       >
-                        Create with AI
+                        {publicCopy.common.createWithAi}
                       </button>
                     </div>
                   </section>
@@ -3364,9 +3432,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   <>
                     <div ref={mobilePlacementControlsRef} className="mobile-placement-card">
                       <div className="guided-section-header">
-                        <span>Placement</span>
-                        <h3>Place your logo</h3>
-                        <p>Pick a preset or tap directly on the shirt.</p>
+                        <span>{publicCopy.designWizard.place.placementEyebrow}</span>
+                        <h3>{publicCopy.designWizard.place.placementTitle}</h3>
+                        <p>{publicCopy.designWizard.place.placementText}</p>
                       </div>
 
                       <div className="placement-mode-row">
@@ -3379,17 +3447,17 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                             setViewerHint('');
                           }}
                         >
-                          Preset
+                          {publicCopy.designWizard.place.preset}
                         </button>
                         <button
                           type="button"
                           className={placementMode === 'custom' ? 'placement-mode-active' : ''}
                           onClick={() => {
                             setPlacementMode('custom');
-                            focusShirtViewer('Tap the shirt where you want the logo.', true);
+                            focusShirtViewer(publicCopy.designWizard.place.customHint, true);
                           }}
                         >
-                          Place it yourself
+                          {publicCopy.designWizard.place.custom}
                         </button>
                       </div>
 
@@ -3400,16 +3468,27 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           updatePlacement(event.target.value as Placement)
                         }
                         style={input}
-                        aria-label="Choose embroidery placement"
+                        aria-label={publicCopy.designWizard.place.placementTitle}
                       >
                         {placementGroups.map((group) => (
-                          <optgroup key={group.id} label={group.label}>
+                          <optgroup
+                            key={group.id}
+                            label={getLocalizedPlacementGroupLabel(
+                              activeLocale,
+                              group.id,
+                              group.label
+                            )}
+                          >
                             {group.zones.map((zoneId) => {
                               const zone = getEmbroideryZone(zoneId);
 
                               return (
                                 <option key={zoneId} value={zoneId}>
-                                  {zone.label}
+                                  {getLocalizedPlacementZoneLabel(
+                                    activeLocale,
+                                    zoneId,
+                                    zone.label
+                                  )}
                                 </option>
                               );
                             })}
@@ -3420,8 +3499,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
                     <div className="mobile-placement-card">
                       <div className="guided-section-header">
-                        <span>Garment</span>
-                        <h3>Choose shirt color</h3>
+                        <span>{publicCopy.designWizard.place.garment}</span>
+                        <h3>{publicCopy.designWizard.place.chooseShirtColor}</h3>
                       </div>
                       <div className="mobile-shirt-color-row">
                         {(['black', 'white'] as const).map((color) => (
@@ -3432,7 +3511,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                             onClick={() => updateShirtColor(color)}
                           >
                             <span data-color={color} />
-                            {color === 'black' ? 'Black tee' : 'White tee'}
+                            {color === 'black'
+                              ? publicCopy.designWizard.place.blackTee
+                              : publicCopy.designWizard.place.whiteTee}
                           </button>
                         ))}
                       </div>
@@ -3440,9 +3521,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
                     <div className="mobile-placement-card">
                       <div className="guided-section-header">
-                        <span>Size</span>
+                        <span>{publicCopy.designWizard.place.size}</span>
                         <h3>{formatLogoSize(logoPlacementConfig)}</h3>
-                        <p>Logo size stays within safe embroidery limits.</p>
+                        <p>{publicCopy.designWizard.place.sizeHelp}</p>
                       </div>
                       <input
                         type="range"
@@ -3460,7 +3541,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           });
                         }}
                         style={rangeInput}
-                        aria-label="Logo size"
+                        aria-label={publicCopy.designWizard.place.size}
                       />
                       <div className="logo-size-quick-row">
                         {logoSizeQuickActions.map((action) => (
@@ -3475,7 +3556,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                               })
                             }
                           >
-                            {action.label}
+                            {quickSizeLabels[action.label as keyof typeof quickSizeLabels] ?? action.label}
                           </button>
                         ))}
                       </div>
@@ -3483,7 +3564,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         <p className="mobile-design-warning">
                           {capabilityPreview.blocked
                             ? capabilityPreview.message
-                            : 'Studio review recommended for clean stitch quality.'}
+                            : publicCopy.designWizard.place.studioReview}
                         </p>
                       )}
                     </div>
@@ -3494,14 +3575,14 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         className="mobile-design-secondary-action"
                         onClick={() => setMobileDesignStep('review')}
                       >
-                        Back
+                        {publicCopy.common.back}
                       </button>
                       <button
                         type="button"
                         className="mobile-design-primary-action"
                         onClick={() => setMobileDesignStep('price')}
                       >
-                        Continue to Price
+                        {publicCopy.designWizard.place.continueToPrice}
                       </button>
                     </div>
                   </>
@@ -3512,12 +3593,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             {mobileDesignStep === 'price' && (
               <div ref={mobilePriceActionRef} className="mobile-price-step">
                 <section className="mobile-price-card">
-                  <span>Price</span>
-                  <h2>Get clear price</h2>
-                  <p>
-                    Your estimate uses placement, logo size, colors, coverage and artwork detail.
-                    Final offer is confirmed before production.
-                  </p>
+                  <span>{publicCopy.designWizard.price.eyebrow}</span>
+                  <h2>{publicCopy.designWizard.price.title}</h2>
+                  <p>{publicCopy.designWizard.price.text}</p>
                   <button
                     type="button"
                     className="mobile-design-primary-action"
@@ -3525,13 +3603,15 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     disabled={isEstimating || isAnalyzing || !file}
                   >
                     {isAnalyzing
-                      ? 'Preparing logo...'
+                      ? publicCopy.designWizard.price.preparingLogo
                       : isEstimating
-                        ? 'Preparing your quote...'
-                        : 'Get clear price'}
+                        ? publicCopy.designWizard.price.preparingQuote
+                        : publicCopy.common.getClearPrice}
                   </button>
                   {!file && (
-                    <p className="mobile-design-error">Add your design before checking price.</p>
+                    <p className="mobile-design-error">
+                      {publicCopy.designWizard.price.addDesignFirst}
+                    </p>
                   )}
                   {(status || error) && (
                     <p className={error ? 'mobile-design-error' : 'mobile-design-status'}>
@@ -3544,19 +3624,19 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   <>
                     <div className="mobile-price-metrics">
                       <Metric
-                        label="Stitches"
+                        label={publicCopy.designWizard.price.stitches}
                         value={publicQuote.stitches.toLocaleString()}
                       />
-                      <Metric label="Colors" value={publicQuote.colors} />
+                      <Metric label={publicCopy.designWizard.price.colors} value={publicQuote.colors} />
                       <Metric
-                        label="Coverage"
+                        label={publicCopy.designWizard.price.coverage}
                         value={`${(publicQuote.coverage * 100).toFixed(1)}%`}
                       />
                       <Metric
-                        label="Price"
+                        label={publicCopy.designWizard.price.price}
                         value={
                           publicQuote.manual_quote
-                            ? 'Studio review'
+                            ? publicCopy.designWizard.price.studioReviewRecommended
                             : `€${publicQuote.price_eur}`
                         }
                       />
@@ -3564,15 +3644,15 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     <section className="mobile-price-card">
                       <strong>
                         {publicQuote.manual_quote
-                          ? 'Studio review recommended'
-                          : 'Clear starting price'}
+                          ? publicCopy.designWizard.price.studioReviewRecommended
+                          : publicCopy.designWizard.price.clearStartingPrice}
                       </strong>
                       <p>
                         {publicQuote.manual_quote
-                          ? 'Studio review helps keep stitch quality clean for detailed artwork.'
-                          : 'This design qualifies for a customer-facing estimate.'}
+                          ? publicCopy.designWizard.price.studioReviewText
+                          : publicCopy.designWizard.price.estimateText}
                       </p>
-                      <small>Final offer is confirmed before production.</small>
+                      <small>{publicCopy.designWizard.price.finalOffer}</small>
                     </section>
                     <div className="mobile-design-inline-actions mobile-design-sticky-actions">
                       <button
@@ -3580,7 +3660,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         className="mobile-design-secondary-action"
                         onClick={() => setMobileDesignStep('place')}
                       >
-                        Back
+                        {publicCopy.common.back}
                       </button>
                       <button
                         type="button"
@@ -3590,7 +3670,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setMobileDesignStep('request');
                         }}
                       >
-                        Continue to Request
+                        {publicCopy.designWizard.price.continueToRequest}
                       </button>
                     </div>
                   </>
@@ -3602,30 +3682,31 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               <div ref={mobileOrderRequestRef} className="mobile-request-step">
                 {orderSuccess ? (
                   <div className="order-success-panel mobile-request-success">
-                    <span>Request sent</span>
-                    <h3>We’ll review your design and prepare your offer.</h3>
+                    <span>{publicCopy.designWizard.request.sent}</span>
+                    <h3>{publicCopy.designWizard.request.successTitle}</h3>
                     {orderSuccess.customerConfirmationSent && (
                       <p className="order-success-email">
-                        Confirmation email sent.
+                        {publicCopy.designWizard.request.confirmationEmail}
                       </p>
                     )}
                     <ol>
-                      <li>Studio checks artwork</li>
-                      <li>You receive an offer</li>
-                      <li>You accept or request changes</li>
-                      <li>Payment and production follow</li>
+                      {publicCopy.designWizard.request.steps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
                     </ol>
                     <div className="order-success-actions">
                       <button type="button" onClick={() => setMobileDesignStep('place')}>
-                        Back to design
+                        {publicCopy.designWizard.request.backToDesign}
                       </button>
                       <button
                         type="button"
                         onClick={() => void resetDesignDraftState()}
                       >
-                        Start new design
+                        {publicCopy.designWizard.request.startNewDesign}
                       </button>
-                      <a href="mailto:orders@stitchra.com">Contact support</a>
+                      <a href="mailto:orders@stitchra.com">
+                        {publicCopy.common.contactSupport}
+                      </a>
                     </div>
                   </div>
                 ) : publicQuote ? (
@@ -3635,13 +3716,22 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     className="mobile-request-form"
                   >
                     <div className="mobile-request-summary">
-                      <span>Request summary</span>
-                      <strong>{selectedZone.label}</strong>
+                      <span>{publicCopy.designWizard.request.summary}</span>
+                      <strong>
+                        {getLocalizedPlacementZoneLabel(
+                          activeLocale,
+                          placementZoneId,
+                          selectedZone.label
+                        )}
+                      </strong>
                       <p>
-                        {teeColor === 'black' ? 'Black tee' : 'White tee'} ·{' '}
+                        {teeColor === 'black'
+                          ? publicCopy.designWizard.place.blackTee
+                          : publicCopy.designWizard.place.whiteTee}{' '}
+                        ·{' '}
                         {formatLogoSize(logoPlacementConfig)} ·{' '}
                         {publicQuote.manual_quote
-                          ? 'Studio review'
+                          ? publicCopy.designWizard.price.studioReviewRecommended
                           : `€${publicQuote.price_eur}`}
                       </p>
                     </div>
@@ -3651,8 +3741,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       onChange={(event) =>
                         updateOrderFormField('name', event.target.value)
                       }
-                      placeholder="Your name"
-                      aria-label="Your name"
+                      placeholder={publicCopy.designWizard.request.yourName}
+                      aria-label={publicCopy.designWizard.request.yourName}
                       aria-invalid={Boolean(orderFieldErrors.name)}
                       style={{
                         ...input,
@@ -3668,8 +3758,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       onChange={(event) =>
                         updateOrderFormField('email', event.target.value)
                       }
-                      placeholder="Email"
-                      aria-label="Email"
+                      placeholder={publicCopy.designWizard.request.email}
+                      aria-label={publicCopy.designWizard.request.email}
                       type="email"
                       autoComplete="email"
                       aria-invalid={Boolean(orderFieldErrors.email)}
@@ -3687,8 +3777,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       onChange={(event) =>
                         updateOrderFormField('phone', event.target.value)
                       }
-                      placeholder="Phone optional"
-                      aria-label="Phone optional"
+                      placeholder={publicCopy.designWizard.request.phone}
+                      aria-label={publicCopy.designWizard.request.phone}
                       aria-invalid={Boolean(orderFieldErrors.phone)}
                       style={{
                         ...input,
@@ -3704,8 +3794,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       onChange={(event) =>
                         updateOrderFormField('quantity', event.target.value)
                       }
-                      placeholder="Quantity"
-                      aria-label="Quantity"
+                      placeholder={publicCopy.designWizard.request.quantity}
+                      aria-label={publicCopy.designWizard.request.quantity}
                       type="number"
                       min="1"
                       step="1"
@@ -3724,8 +3814,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       onChange={(event) =>
                         updateOrderFormField('note', event.target.value)
                       }
-                      placeholder="Note optional"
-                      aria-label="Order note optional"
+                      placeholder={publicCopy.designWizard.request.note}
+                      aria-label={publicCopy.designWizard.request.note}
                       rows={3}
                       style={{
                         ...input,
@@ -3739,14 +3829,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                         className="mobile-design-secondary-action"
                         onClick={() => setMobileDesignStep('price')}
                       >
-                        Back
+                        {publicCopy.common.back}
                       </button>
                       <button
                         type="submit"
                         className="mobile-design-primary-action"
                         disabled={isRequestingOrder}
                       >
-                        {isRequestingOrder ? 'Sending request...' : 'Request order'}
+                        {isRequestingOrder
+                          ? publicCopy.designWizard.request.sending
+                          : publicCopy.designWizard.request.sendRequest}
                       </button>
                     </div>
                     {orderError && <p className="mobile-design-error">{orderError}</p>}
@@ -3756,14 +3848,14 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   </form>
                 ) : (
                   <section className="mobile-empty-design-card">
-                    <h2>Check price first</h2>
-                    <p>Prepare a clear price before requesting an offer.</p>
+                    <h2>{publicCopy.designWizard.price.title}</h2>
+                    <p>{publicCopy.designWizard.price.text}</p>
                     <button
                       type="button"
                       className="mobile-design-primary-action"
                       onClick={() => setMobileDesignStep('price')}
                     >
-                      Go to Price
+                      {publicCopy.designWizard.place.continueToPrice}
                     </button>
                   </section>
                 )}
@@ -5243,6 +5335,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   lastSavedAt={restoredDraftAt}
                   saveStatus={draftSaveStatus}
                   imageNeedsUpload={draftImageNeedsUpload}
+                  copy={{
+                    ariaLabel: publicCopy.mobileHome.savedDraft,
+                    savedDraft: publicCopy.mobileHome.savedDraft,
+                    restoredSettings: publicCopy.mobileHome.continueDraft,
+                    restoredDesign: publicCopy.mobileHome.continueDraft,
+                    imageNeedsUploadText: publicCopy.mobileHome.draftText,
+                    readyText: publicCopy.mobileHome.draftText,
+                    continue: publicCopy.common.continue,
+                    startNew: publicCopy.designWizard.request.startNewDesign,
+                  }}
                   onContinue={continueRestoredDraft}
                   onStartNew={() => void resetDesignDraftState()}
                 />
@@ -5250,6 +5352,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
               <DesignStartOptions
                 selectedMode={designStartMode}
+                copy={designStartCopy}
                 onSelectMode={(mode) => {
                   setDesignStartMode(mode);
                   setError('');
@@ -5276,6 +5379,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     isCleaningBackground={isCleaningBackground}
                     cleanupStatus={backgroundCleanupStatus}
                     errorMessage={uploadError}
+                    copy={uploadPanelCopy}
                     onFileChange={onFile}
                     onCleanBackground={() => void cleanUploadedLogoBackground()}
                     onViewOnShirt={() => focusShirtViewer(undefined, true)}
@@ -5291,6 +5395,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       selectedStyleHints={aiStyleHints}
                       isGenerating={isGenerating}
                       hasGeneratedConcept={hasGeneratedAiConcept}
+                      copy={aiCreatorCopy}
                       onPromptChange={(value) => {
                         setLogoPrompt(value);
                         setDesignPreparation(null);
@@ -5309,12 +5414,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                       concepts={aiConcepts}
                       selectedConceptId={selectedAiConcept?.id ?? null}
                       activeConceptId={activeAiConceptId}
-                      styleHints={aiStyleHints}
+                      styleHints={aiStyleHints.map(
+                        (styleHint) =>
+                          publicCopy.designWizard.ai.styleHints[styleHint] ?? styleHint
+                      )}
                       readiness={aiConceptReadiness}
                       isGenerating={isGenerating}
                       isGeneratingVariation={generationIntent === 'new'}
                       isCleaningBackground={isCleaningBackground}
                       backgroundCleanupStatus={backgroundCleanupStatus}
+                      copy={aiReviewCopy}
                       onSelectConcept={setSelectedAiConceptId}
                       onUseConcept={(concept) => void acceptAiConcept(concept)}
                       onCleanBackground={(concept) =>
@@ -5339,12 +5448,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     className="guided-placement-panel"
                   >
                     <div className="guided-section-header">
-                      <span>Placement</span>
-                      <h3>Choose placement</h3>
-                      <p>
-                        Pick a preset or click directly on the shirt to place
-                        the logo yourself.
-                      </p>
+                      <span>{publicCopy.designWizard.place.placementEyebrow}</span>
+                      <h3>{publicCopy.designWizard.place.placementTitle}</h3>
+                      <p>{publicCopy.designWizard.place.placementText}</p>
                     </div>
 
                     <div className="placement-mode-row">
@@ -5361,7 +5467,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setViewerHint('');
                         }}
                       >
-                        Preset placement
+                        {publicCopy.designWizard.place.preset}
                       </button>
                       <button
                         type="button"
@@ -5374,13 +5480,13 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           setPlacementMode('custom');
                           focusShirtViewer(
                             preview
-                              ? 'Click the shirt where you want the logo.'
-                              : 'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.',
+                              ? publicCopy.designWizard.place.customHint
+                              : publicCopy.designWizard.place.guidanceEmpty,
                             true
                           );
                         }}
                       >
-                        Place it yourself
+                        {publicCopy.designWizard.place.custom}
                       </button>
                     </div>
 
@@ -5399,7 +5505,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                                 placementGroup === group.id
                               )}
                             >
-                              {group.label}
+                              {getLocalizedPlacementGroupLabel(
+                                activeLocale,
+                                group.id,
+                                group.label
+                              )}
                             </button>
                           ))}
                         </div>
@@ -5421,7 +5531,13 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                                   onClick={() => updatePlacement(zoneId)}
                                   style={placementChipButton(active)}
                                 >
-                                  <span>{zone.label}</span>
+                                  <span>
+                                    {getLocalizedPlacementZoneLabel(
+                                      activeLocale,
+                                      zoneId,
+                                      zone.label
+                                    )}
+                                  </span>
                                   <small>
                                     {zone.maxWidthMm} × {zone.maxHeightMm} mm
                                   </small>
@@ -5437,16 +5553,27 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                             updatePlacement(event.target.value as Placement)
                           }
                           style={input}
-                          aria-label="Choose embroidery placement"
+                          aria-label={publicCopy.designWizard.place.placementTitle}
                         >
                           {placementGroups.map((group) => (
-                            <optgroup key={group.id} label={group.label}>
+                            <optgroup
+                              key={group.id}
+                              label={getLocalizedPlacementGroupLabel(
+                                activeLocale,
+                                group.id,
+                                group.label
+                              )}
+                            >
                               {group.zones.map((zoneId) => {
                                 const zone = getEmbroideryZone(zoneId);
 
                                 return (
                                   <option key={zoneId} value={zoneId}>
-                                    {zone.label}
+                                    {getLocalizedPlacementZoneLabel(
+                                      activeLocale,
+                                      zoneId,
+                                      zone.label
+                                    )}
                                   </option>
                                 );
                               })}
@@ -5459,7 +5586,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
                   <div className="guided-shirt-color-panel">
                     <div className="guided-section-header">
-                      <span>Garment</span>
+                      <span>{publicCopy.designWizard.place.garment}</span>
                       <h3>{t('designer.chooseShirtColor')}</h3>
                     </div>
                     <div
@@ -5532,10 +5659,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               <div style={configuratorControlPanel}>
                 <div style={configuratorControlHeader}>
                   <strong>Logo placement</strong>
-                  <span>{selectedZone.label}</span>
+                  <span>
+                    {getLocalizedPlacementZoneLabel(
+                      activeLocale,
+                      placementZoneId,
+                      selectedZone.label
+                    )}
+                  </span>
                 </div>
                 <label style={sliderLabel}>
-                  Logo size: {formatLogoSize(logoPlacementConfig)}
+                  {publicCopy.designWizard.place.size}: {formatLogoSize(logoPlacementConfig)}
                   <input
                     type="range"
                     min="20"
@@ -5577,13 +5710,13 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                           })
                         }
                       >
-                        {action.label}
+                        {quickSizeLabels[action.label as keyof typeof quickSizeLabels] ?? action.label}
                       </button>
                     );
                   })}
                 </div>
                 <p style={configuratorHint}>
-                  Logo size stays within safe embroidery limits.
+                  {publicCopy.designWizard.place.sizeHelp}
                 </p>
                 {capabilityPreview.message && (
                   <p
@@ -5596,7 +5729,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   >
                     {capabilityPreview.blocked
                       ? capabilityPreview.message
-                      : 'Studio review recommended so we can keep the stitch quality clean.'}
+                      : publicCopy.designWizard.place.studioReview}
                   </p>
                 )}
               </div>
@@ -6102,30 +6235,31 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
                     {orderSuccess && (
                       <div className="order-success-panel">
-                        <span>Request sent</span>
-                        <h3>We’ll review your design and prepare your offer.</h3>
+                        <span>{publicCopy.designWizard.request.sent}</span>
+                        <h3>{publicCopy.designWizard.request.successTitle}</h3>
                         {orderSuccess.customerConfirmationSent && (
                           <p className="order-success-email">
-                            Confirmation email sent.
+                            {publicCopy.designWizard.request.confirmationEmail}
                           </p>
                         )}
                         <ol>
-                          <li>Studio checks artwork</li>
-                          <li>You receive an offer</li>
-                          <li>You accept or request changes</li>
-                          <li>Payment and production follow</li>
+                          {publicCopy.designWizard.request.steps.map((step) => (
+                            <li key={step}>{step}</li>
+                          ))}
                         </ol>
                         <div className="order-success-actions">
                           <button type="button" onClick={() => focusShirtViewer(undefined, true)}>
-                            Back to design
+                            {publicCopy.designWizard.request.backToDesign}
                           </button>
                           <button
                             type="button"
                             onClick={() => void resetDesignDraftState()}
                           >
-                            Start new design
+                            {publicCopy.designWizard.request.startNewDesign}
                           </button>
-                          <a href="mailto:orders@stitchra.com">Contact support</a>
+                          <a href="mailto:orders@stitchra.com">
+                            {publicCopy.common.contactSupport}
+                          </a>
                         </div>
                       </div>
                     )}
@@ -6154,7 +6288,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                     className="design-reset-link"
                     onClick={() => void resetDesignDraftState()}
                   >
-                    Start new design
+                    {publicCopy.designWizard.request.startNewDesign}
                   </button>
                 </div>
               )}
@@ -6172,6 +6306,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               onConfigChange={updateLogoPlacementConfig}
               customPlacement={customLogoPlacement}
               onCustomPlacementChange={updateCustomLogoPlacement}
+              copy={shirtViewerCopy}
               viewerGroup={placementGroup}
               focusPulseKey={logoFocusPulseKey}
               showEmptyStateHelper={!preview && emptyDesignHelperOpen}
@@ -6182,43 +6317,43 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 viewerHint ||
                 (placementMode === 'custom'
                   ? preview
-                    ? 'Click the shirt where you want the logo.'
-                    : 'Add your design first. Upload a logo or create one with AI below, then click the shirt to place it.'
+                    ? publicCopy.designWizard.place.customHint
+                    : publicCopy.designWizard.place.guidanceEmpty
                   : undefined)
               }
             />
             {preview && (
               <div className="design-next-step-row" aria-label="Design next steps">
-                <span>Design is on your T-shirt</span>
+                <span>{publicCopy.common.designOnShirt}</span>
                 <button
                   type="button"
                   onClick={() => {
                     setPlacementMode('custom');
                     focusShirtViewer(
-                      'Click the shirt where you want the logo.',
+                      publicCopy.designWizard.place.customHint,
                       true
                     );
                   }}
                 >
-                  Move logo
+                  {publicCopy.designWizard.place.custom}
                 </button>
                 <button type="button" onClick={scrollToPlacementControls}>
-                  Choose placement
+                  {publicCopy.designWizard.place.placementTitle}
                 </button>
                 <button type="button" onClick={scrollToPriceAction}>
-                  Check price
+                  {publicCopy.common.getClearPrice}
                 </button>
                 <button type="button" onClick={() => void downloadPreview()}>
-                  Download preview
+                  {publicCopy.common.downloadPreview}
                 </button>
                 <button type="button" onClick={() => void sharePreview()}>
-                  Share design
+                  {publicCopy.common.shareDesign}
                 </button>
                 <button
                   type="button"
                   onClick={() => void resetDesignDraftState()}
                 >
-                  Start new design
+                  {publicCopy.designWizard.request.startNewDesign}
                 </button>
                 {previewExportStatus && (
                   <small>{previewExportStatus}</small>
@@ -6562,18 +6697,18 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }}
           >
             <StitchraLogo compact markOnly size={34} />
-            <span><strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · {t('footer.tagline')}</span>
+            <span><strong style={{ color: '#f5f7f8' }}>Stitchra</strong> · {publicCopy.footer.tagline}</span>
           </a>
 
           <div style={footerLinks}>
-            <Link href="/how-it-works" style={footerLink}>{t('footer.how')}</Link>
-            <Link href="/features" style={footerLink}>{t('footer.features')}</Link>
-            <Link href="/pricing" style={footerLink}>{t('footer.pricing')}</Link>
-            <Link href="/faq" style={footerLink}>{t('footer.faq')}</Link>
-            <a href="https://stitchra.com/impressum" style={footerLink}>{t('footer.impressum')}</a>
-            <a href="https://stitchra.com/privacy" style={footerLink}>{t('footer.privacy')}</a>
-            <a href="https://stitchra.com/contact" style={footerLink}>{t('footer.contact')}</a>
-            <a href="https://stitchra.com/terms" style={footerLink}>{t('footer.terms')}</a>
+            <Link href={localize('/how-it-works')} style={footerLink}>{publicCopy.footer.how}</Link>
+            <Link href={localize('/features')} style={footerLink}>{publicCopy.footer.features}</Link>
+            <Link href={localize('/pricing')} style={footerLink}>{publicCopy.footer.pricing}</Link>
+            <Link href={localize('/faq')} style={footerLink}>{publicCopy.footer.faq}</Link>
+            <a href="https://stitchra.com/impressum" style={footerLink}>{publicCopy.footer.impressum}</a>
+            <a href="https://stitchra.com/privacy" style={footerLink}>{publicCopy.footer.privacy}</a>
+            <Link href={localize('/contact')} style={footerLink}>{publicCopy.footer.contact}</Link>
+            <a href="https://stitchra.com/terms" style={footerLink}>{publicCopy.footer.terms}</a>
             <span>© 2026 Stitchra</span>
           </div>
         </div>
@@ -6585,25 +6720,20 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 function Header({
   locale,
   t,
+  copy,
   onBrandReset,
   onStartDesigning,
 }: {
   locale: Locale;
   t: Translator;
+  copy: PublicI18nCopy;
   onBrandReset: (event: MouseEvent<HTMLAnchorElement>) => void;
   onStartDesigning: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const navItems = getNavItems(t);
-  const mobileNavItems = [
-    { label: t('nav.start'), href: '/design' },
-    { label: 'Explore', href: '/explore' },
-    { label: t('nav.how'), href: '/how-it-works' },
-    { label: t('nav.features'), href: '/features' },
-    { label: t('nav.pricing'), href: '/pricing' },
-    { label: t('nav.gallery'), href: '/gallery' },
-    { label: t('nav.faq'), href: '/faq' },
-    { label: t('footer.contact'), href: '/contact' },
-  ];
+  const mobileNavItems = getLocalizedRouteItems(locale);
+  const localize = (path: string) => localizedPath(locale, path);
+  const mobileArrow = getLocaleDirection(locale) === 'rtl' ? '←' : '→';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileLanguageOpen, setMobileLanguageOpen] = useState(false);
   const closeMobileMenu = () => {
@@ -6614,17 +6744,16 @@ function Header({
   const closeMobileLanguageSheet = () => setMobileLanguageOpen(false);
 
   const switchLocale = (nextLocale: Locale) => {
-    const currentPath = window.location.pathname;
     const hash = window.location.hash;
-    const segments = currentPath.split('/').filter(Boolean);
-    const rest =
-      segments[0] && locales.includes(segments[0] as Locale)
-        ? segments.slice(1)
-        : [];
-    const nextPath = `/${nextLocale}${rest.length ? `/${rest.join('/')}` : ''}`;
+    const nextPath = switchLocalePath(window.location.pathname, nextLocale);
 
     setMobileLanguageOpen(false);
     setMobileMenuOpen(false);
+    try {
+      window.localStorage.setItem('stitchra-locale', nextLocale);
+    } catch {
+      // Local storage can be unavailable in private browsing modes.
+    }
     window.location.assign(`${nextPath}${hash}`);
   };
 
@@ -6752,24 +6881,24 @@ function Header({
           </a>
 
           <Link
-            href="/design"
+            href={localize('/design')}
             className="lux-button mobile-start-link"
             style={primaryButton}
           >
-            {t('nav.start')}
+            {copy.common.startDesigning}
           </Link>
 
           <button
             type="button"
             className="mobile-menu-button"
             aria-label={
-              mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'
+              mobileMenuOpen ? copy.menu.ariaClose : copy.menu.ariaOpen
             }
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen((current) => !current)}
             style={mobileMenuButton}
           >
-            {mobileMenuOpen ? 'Close' : 'Menu'}
+            {mobileMenuOpen ? copy.common.close : copy.common.menu}
           </button>
         </div>
       </nav>
@@ -6790,13 +6919,13 @@ function Header({
             <div className="mobile-menu-heading">
               <div>
                 <p>Stitchra</p>
-                <h2 id="mobile-menu-title">Menu</h2>
+                <h2 id="mobile-menu-title">{copy.menu.title}</h2>
               </div>
               <button
                 type="button"
                 className="mobile-menu-close"
                 onClick={closeMobileMenu}
-                aria-label="Close navigation menu"
+                aria-label={copy.menu.ariaClose}
               >
                 ×
               </button>
@@ -6806,18 +6935,18 @@ function Header({
               {mobileNavItems.map((item) => (
                 <Link
                   key={item.label}
-                  href={item.href}
+                  href={localize(item.href)}
                   onClick={closeMobileMenu}
                 >
                   <span>{item.label}</span>
-                  <span aria-hidden="true">→</span>
+                  <span aria-hidden="true">{mobileArrow}</span>
                 </Link>
               ))}
             </nav>
 
             <div className="mobile-language-card">
               <div>
-                <p>Language</p>
+                <p>{copy.common.language}</p>
                 <span>{getLocaleDisplay(locale)}</span>
               </div>
               <button
@@ -6830,13 +6959,13 @@ function Header({
             </div>
 
             <Link
-              href="/design"
+              href={localize('/design')}
               className="mobile-menu-primary"
               onClick={() => {
                 closeMobileMenu();
               }}
             >
-              {t('nav.start')}
+              {copy.common.startDesigning}
             </Link>
           </section>
         </div>
@@ -6857,14 +6986,14 @@ function Header({
           >
             <div className="mobile-language-heading">
               <div>
-                <p>Language</p>
-                <h2 id="mobile-language-title">Choose language</h2>
+                <p>{copy.common.language}</p>
+                <h2 id="mobile-language-title">{copy.common.chooseLanguage}</h2>
               </div>
               <button
                 type="button"
                 className="mobile-menu-close"
                 onClick={closeMobileLanguageSheet}
-                aria-label="Close language selector"
+                aria-label={copy.menu.ariaCloseLanguage}
               >
                 ×
               </button>
@@ -6907,16 +7036,15 @@ function LanguageSwitcher({
   const [open, setOpen] = useState(false);
 
   const switchLocale = (nextLocale: Locale) => {
-    const currentPath = window.location.pathname;
     const hash = window.location.hash;
-    const segments = currentPath.split('/').filter(Boolean);
-    const rest =
-      segments[0] && locales.includes(segments[0] as Locale)
-        ? segments.slice(1)
-        : [];
-    const nextPath = `/${nextLocale}${rest.length ? `/${rest.join('/')}` : ''}`;
+    const nextPath = switchLocalePath(window.location.pathname, nextLocale);
 
     setOpen(false);
+    try {
+      window.localStorage.setItem('stitchra-locale', nextLocale);
+    } catch {
+      // Local storage can be unavailable in private browsing modes.
+    }
     window.location.assign(`${nextPath}${hash}`);
   };
 
@@ -10127,6 +10255,29 @@ function GlobalVisualStyles() {
 
         .mobile-language-options .mobile-language-active strong {
           color: #9dffc4;
+        }
+
+        .home-shell[dir="rtl"] .mobile-app-launch,
+        .home-shell[dir="rtl"] .mobile-explore-hub,
+        .home-shell[dir="rtl"] .mobile-design-wizard,
+        .home-shell[dir="rtl"] .mobile-menu-sheet,
+        .home-shell[dir="rtl"] .mobile-language-sheet {
+          direction: rtl;
+          text-align: right;
+        }
+
+        .home-shell[dir="rtl"] .mobile-menu-panel a,
+        .home-shell[dir="rtl"] .mobile-language-options button,
+        .home-shell[dir="rtl"] .mobile-language-card,
+        .home-shell[dir="rtl"] .mobile-design-inline-actions,
+        .home-shell[dir="rtl"] .mobile-shirt-color-row,
+        .home-shell[dir="rtl"] .placement-mode-row {
+          direction: rtl;
+        }
+
+        .home-shell[dir="rtl"] .mobile-explore-grid ul {
+          padding-left: 0;
+          padding-right: 18px;
         }
 
         .pricing-confidence-panel {

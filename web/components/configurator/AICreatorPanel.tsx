@@ -5,6 +5,24 @@ type AICreatorPanelProps = {
   selectedStyleHints: string[];
   isGenerating: boolean;
   hasGeneratedConcept: boolean;
+  copy?: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    inputAria: string;
+    placeholder: string;
+    generating: string;
+    generate: string;
+    intent: string;
+    directionPrefix: string;
+    chooseDirection: string;
+    previewNote: string;
+    reviewNote: string;
+    providerCredit: string;
+    privateDataNote: string;
+    uploadInstead: string;
+    styleHints: Record<string, string>;
+  };
   onPromptChange: (value: string) => void;
   onToggleStyleHint: (value: string) => void;
   onGenerate: () => void;
@@ -22,11 +40,34 @@ const STYLE_HINTS = [
   'Vintage',
 ];
 
+const defaultCopy: NonNullable<AICreatorPanelProps['copy']> = {
+  eyebrow: 'AI creator',
+  title: 'Create with AI',
+  subtitle:
+    'Describe an original idea. Stitchra turns it into an embroidery-friendly concept for preview.',
+  inputAria: 'Describe the AI artwork idea',
+  placeholder:
+    'Example: playful giraffe driving a tiny red car through space, clean patch logo, 4 colors',
+  generating: 'Generating...',
+  generate: 'Generate concept',
+  intent: 'Intent',
+  directionPrefix: 'Direction:',
+  chooseDirection: 'Choose a style direction before generating.',
+  previewNote:
+    'AI concepts are previews. Final stitch-ready artwork is reviewed by Stitchra before production.',
+  reviewNote: 'Review the concept below, then use it on the shirt.',
+  providerCredit: 'AI concept generation powered by',
+  privateDataNote: 'Do not enter private personal data in design prompts.',
+  uploadInstead: 'Or upload your own logo instead.',
+  styleHints: {},
+};
+
 export default function AICreatorPanel({
   prompt,
   selectedStyleHints,
   isGenerating,
   hasGeneratedConcept,
+  copy = defaultCopy,
   onPromptChange,
   onToggleStyleHint,
   onGenerate,
@@ -35,11 +76,9 @@ export default function AICreatorPanel({
   return (
     <section className="design-path-panel design-path-panel-ai ai-concept-studio">
       <div className="design-path-header">
-        <span>AI creator</span>
-        <h3>Create with AI</h3>
-        <p>
-          Describe an original idea. Stitchra turns it into an embroidery-friendly concept for preview.
-        </p>
+        <span>{copy.eyebrow}</span>
+        <h3>{copy.title}</h3>
+        <p>{copy.subtitle}</p>
       </div>
 
       <div className="designer-prompt-row">
@@ -47,8 +86,8 @@ export default function AICreatorPanel({
           id="stitchra-ai-idea-input"
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
-          aria-label="Describe the AI artwork idea"
-          placeholder="Example: playful giraffe driving a tiny red car through space, clean patch logo, 4 colors"
+          aria-label={copy.inputAria}
+          placeholder={copy.placeholder}
         />
 
         <button
@@ -58,17 +97,19 @@ export default function AICreatorPanel({
           disabled={isGenerating}
           className="lux-button"
         >
-          {isGenerating ? 'Generating...' : 'Generate concept'}
+          {isGenerating ? copy.generating : copy.generate}
         </button>
       </div>
 
       <div className="ai-style-selector">
         <div>
-          <span>Intent</span>
+          <span>{copy.intent}</span>
           <p>
             {selectedStyleHints.length > 0
-              ? `Direction: ${selectedStyleHints.join(', ')}`
-              : 'Choose a style direction before generating.'}
+              ? `${copy.directionPrefix} ${selectedStyleHints
+                  .map((styleHint) => copy.styleHints[styleHint] ?? styleHint)
+                  .join(', ')}`
+              : copy.chooseDirection}
           </p>
         </div>
 
@@ -83,8 +124,8 @@ export default function AICreatorPanel({
                 className={active ? 'ai-style-chip-active' : ''}
                 onClick={() => onToggleStyleHint(styleHint)}
                 aria-pressed={active}
-              >
-                {styleHint}
+            >
+                {copy.styleHints[styleHint] ?? styleHint}
               </button>
             );
           })}
@@ -93,12 +134,12 @@ export default function AICreatorPanel({
 
       <p className="design-path-helper">
         {hasGeneratedConcept
-          ? 'Review the concept below, then use it on the shirt.'
-          : 'AI concepts are previews. Final stitch-ready artwork is reviewed by Stitchra before production.'}
+          ? copy.reviewNote
+          : copy.previewNote}
       </p>
 
       <p className="ai-provider-credit">
-        AI concept generation powered by{' '}
+        {copy.providerCredit}{' '}
         <a
           href="https://pollinations.ai"
           target="_blank"
@@ -107,7 +148,7 @@ export default function AICreatorPanel({
         >
           pollinations.ai
         </a>
-        . Do not enter private personal data in design prompts.
+        . {copy.privateDataNote}
       </p>
 
       <button
@@ -115,7 +156,7 @@ export default function AICreatorPanel({
         className="design-path-link"
         onClick={onSwitchToUpload}
       >
-        Or upload your own logo instead.
+        {copy.uploadInstead}
       </button>
     </section>
   );

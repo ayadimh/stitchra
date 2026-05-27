@@ -5,20 +5,44 @@ export type DesignStartMode = 'choice' | 'upload' | 'ai';
 type DesignStartOptionsProps = {
   selectedMode: DesignStartMode;
   onSelectMode: (mode: Exclude<DesignStartMode, 'choice'>) => void;
+  copy?: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    uploadTitle: string;
+    uploadText: string;
+    uploadCta: string;
+    aiTitle: string;
+    aiText: string;
+    aiCta: string;
+  };
+};
+
+const defaultCopy: NonNullable<DesignStartOptionsProps['copy']> = {
+  eyebrow: 'Design start',
+  title: 'How do you want to start?',
+  subtitle: 'Upload your own logo or create an embroidery-friendly concept with AI.',
+  uploadTitle: 'Bring your own design',
+  uploadText:
+    'Upload your logo and see it live on the T-shirt before requesting a quote.',
+  uploadCta: 'Upload logo',
+  aiTitle: 'Create with AI',
+  aiText:
+    'Describe an original idea and Stitchra creates an embroidery-friendly concept for preview.',
+  aiCta: 'Generate concept',
 };
 
 export default function DesignStartOptions({
   selectedMode,
   onSelectMode,
+  copy = defaultCopy,
 }: DesignStartOptionsProps) {
   return (
     <section className="design-start-panel" aria-labelledby="design-start-title">
       <div className="design-start-header">
-        <span>Design start</span>
-        <h2 id="design-start-title">How do you want to start?</h2>
-        <p>
-          Upload your own logo or create an embroidery-friendly concept with AI.
-        </p>
+        <span>{copy.eyebrow}</span>
+        <h2 id="design-start-title">{copy.title}</h2>
+        <p>{copy.subtitle}</p>
       </div>
 
       <div className="design-start-grid">
@@ -35,11 +59,9 @@ export default function DesignStartOptions({
             <b>JPG</b>
             <b>SVG</b>
           </span>
-          <strong>Bring your own design</strong>
-          <p>
-            Upload your logo and see it live on the T-shirt before requesting a quote.
-          </p>
-          <small>Upload logo</small>
+          <strong>{copy.uploadTitle}</strong>
+          <p>{copy.uploadText}</p>
+          <small>{copy.uploadCta}</small>
         </button>
 
         <button
@@ -53,11 +75,9 @@ export default function DesignStartOptions({
             <i />
             <b>AI</b>
           </span>
-          <strong>Create with AI</strong>
-          <p>
-            Describe an original idea and Stitchra creates an embroidery-friendly concept for preview.
-          </p>
-          <small>Generate concept</small>
+          <strong>{copy.aiTitle}</strong>
+          <p>{copy.aiText}</p>
+          <small>{copy.aiCta}</small>
         </button>
       </div>
     </section>

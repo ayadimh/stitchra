@@ -422,11 +422,22 @@ export default function ShirtPlacementMockup({
   viewerGroup,
   focusPulseKey = 0,
   guidanceHint,
+  copy,
   showEmptyStateHelper = false,
   onEmptyDesignClick,
   onStartUpload,
   onStartAi,
 }: ShirtConfiguratorProps) {
+  const viewerCopy = {
+    addDesignFirst: 'Add your design first',
+    emptyTitle: 'Start with a design',
+    emptyText: 'Upload your logo or create an AI concept below.',
+    uploadLogo: 'Upload logo',
+    createWithAi: 'Create with AI',
+    resetView: 'Reset view',
+    previewUnavailable: 'Preview unavailable',
+    ...copy,
+  };
   const torsoRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [viewerDrag, setViewerDrag] = useState<{
@@ -613,7 +624,7 @@ export default function ShirtPlacementMockup({
     }
 
     if (!hasVisibleLogo) {
-      setPlacementNotice('Add your design first');
+      setPlacementNotice(viewerCopy.addDesignFirst);
       onEmptyDesignClick?.();
       return false;
     }
@@ -945,7 +956,7 @@ export default function ShirtPlacementMockup({
                       : 'rgba(224,255,244,0.74)',
                   }}
                 >
-                  Preview unavailable
+                  {viewerCopy.previewUnavailable}
                 </span>
               )}
             </div>
@@ -958,8 +969,8 @@ export default function ShirtPlacementMockup({
       {!hasVisibleLogo && showEmptyStateHelper && (
         <div style={emptyStateHelper}>
           <div style={emptyStateCopy}>
-            <strong>Start with a design</strong>
-            <span>Upload your logo or create an AI concept below.</span>
+            <strong>{viewerCopy.emptyTitle}</strong>
+            <span>{viewerCopy.emptyText}</span>
           </div>
           <div style={emptyStateActions}>
             <button
@@ -976,7 +987,7 @@ export default function ShirtPlacementMockup({
                 onStartUpload?.();
               }}
             >
-              Upload logo
+              {viewerCopy.uploadLogo}
             </button>
             <button
               type="button"
@@ -992,7 +1003,7 @@ export default function ShirtPlacementMockup({
                 onStartAi?.();
               }}
             >
-              Create with AI
+              {viewerCopy.createWithAi}
             </button>
           </div>
         </div>
@@ -1007,7 +1018,7 @@ export default function ShirtPlacementMockup({
         }}
         style={resetButton}
       >
-        Reset view
+        {viewerCopy.resetView}
       </button>
 
       {placementNotice && (

@@ -2,6 +2,15 @@
 
 type DesignAddedToastProps = {
   open: boolean;
+  copy?: {
+    ariaLabel: string;
+    eyebrow: string;
+    title: string;
+    text: string;
+    viewOnShirt: string;
+    checkPrice: string;
+    keepEditing: string;
+  };
   onViewOnShirt: () => void;
   onCheckPrice: () => void;
   onKeepEditing: () => void;
@@ -9,6 +18,7 @@ type DesignAddedToastProps = {
 
 export default function DesignAddedToast({
   open,
+  copy,
   onViewOnShirt,
   onCheckPrice,
   onKeepEditing,
@@ -17,30 +27,39 @@ export default function DesignAddedToast({
     return null;
   }
 
+  const labels = {
+    ariaLabel: 'Design added',
+    eyebrow: 'Design ready',
+    title: 'Design added to your T-shirt',
+    text: 'You can move it on the shirt, choose a preset placement, or check the price.',
+    viewOnShirt: 'View on shirt',
+    checkPrice: 'Check price',
+    keepEditing: 'Keep editing',
+    ...copy,
+  };
+
   return (
     <aside
       className="design-added-toast"
       role="status"
       aria-live="polite"
-      aria-label="Design added"
+      aria-label={labels.ariaLabel}
     >
       <div>
-        <span>Design ready</span>
-        <strong>Design added to your T-shirt</strong>
-        <p>
-          You can move it on the shirt, choose a preset placement, or check the price.
-        </p>
+        <span>{labels.eyebrow}</span>
+        <strong>{labels.title}</strong>
+        <p>{labels.text}</p>
       </div>
 
       <div className="design-added-toast-actions">
         <button type="button" onClick={onViewOnShirt}>
-          View on shirt
+          {labels.viewOnShirt}
         </button>
         <button type="button" onClick={onCheckPrice}>
-          Check price
+          {labels.checkPrice}
         </button>
         <button type="button" onClick={onKeepEditing}>
-          Keep editing
+          {labels.keepEditing}
         </button>
       </div>
     </aside>

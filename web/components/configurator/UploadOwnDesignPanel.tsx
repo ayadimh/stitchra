@@ -8,9 +8,35 @@ type UploadOwnDesignPanelProps = {
   isCleaningBackground: boolean;
   cleanupStatus: string;
   errorMessage?: string;
+  copy?: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    chooseLogo: string;
+    fileHint: string;
+    ready: string;
+    viewOnShirt: string;
+    removeBackground: string;
+    cleaning: string;
+    maxSize: string;
+  };
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onCleanBackground: () => void;
   onViewOnShirt?: () => void;
+};
+
+const defaultCopy: NonNullable<UploadOwnDesignPanelProps['copy']> = {
+  eyebrow: 'Upload path',
+  title: 'Bring your own design',
+  subtitle:
+    'Upload PNG, JPG or SVG. We’ll preview it on the shirt and check whether it is suitable for embroidery.',
+  chooseLogo: 'Choose logo',
+  fileHint: 'PNG, JPG or SVG · max 10 MB',
+  ready: 'Logo ready for preview',
+  viewOnShirt: 'View on shirt',
+  removeBackground: 'Remove background',
+  cleaning: 'Cleaning...',
+  maxSize: 'Max 10 MB',
 };
 
 export default function UploadOwnDesignPanel({
@@ -19,6 +45,7 @@ export default function UploadOwnDesignPanel({
   isCleaningBackground,
   cleanupStatus,
   errorMessage,
+  copy = defaultCopy,
   onFileChange,
   onCleanBackground,
   onViewOnShirt,
@@ -26,11 +53,9 @@ export default function UploadOwnDesignPanel({
   return (
     <section className="design-path-panel">
       <div className="design-path-header">
-        <span>Upload path</span>
-        <h3>Bring your own design</h3>
-        <p>
-          Upload PNG, JPG or SVG. We’ll preview it on the shirt and check whether it is suitable for embroidery.
-        </p>
+        <span>{copy.eyebrow}</span>
+        <h3>{copy.title}</h3>
+        <p>{copy.subtitle}</p>
       </div>
 
       <label className="stitchra-upload-box">
@@ -42,9 +67,9 @@ export default function UploadOwnDesignPanel({
         <span className="stitchra-upload-icon" aria-hidden="true">
           <i />
         </span>
-        <span className="stitchra-upload-button">Choose logo</span>
+        <span className="stitchra-upload-button">{copy.chooseLogo}</span>
         <span className="stitchra-upload-copy">
-          {fileName ?? 'PNG, JPG or SVG · max 10 MB'}
+          {fileName ?? copy.fileHint}
         </span>
       </label>
 
@@ -52,19 +77,19 @@ export default function UploadOwnDesignPanel({
         <span>PNG</span>
         <span>JPG</span>
         <span>SVG</span>
-        <span>Max 10 MB</span>
+        <span>{copy.maxSize}</span>
       </div>
 
       {fileName && (
         <div className="upload-ready-row">
-          <p className="upload-ready-status">Logo ready for preview</p>
+          <p className="upload-ready-status">{copy.ready}</p>
           {onViewOnShirt && (
             <button
               type="button"
               className="upload-view-button"
               onClick={onViewOnShirt}
             >
-              View on shirt
+              {copy.viewOnShirt}
             </button>
           )}
           {canCleanBackground && (
@@ -74,7 +99,7 @@ export default function UploadOwnDesignPanel({
               onClick={onCleanBackground}
               disabled={isCleaningBackground}
             >
-              {isCleaningBackground ? 'Cleaning...' : 'Remove background'}
+              {isCleaningBackground ? copy.cleaning : copy.removeBackground}
             </button>
           )}
         </div>

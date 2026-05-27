@@ -26,6 +26,15 @@ export type ShirtConfiguratorProps = {
   viewerGroup?: EmbroideryPlacementGroup;
   focusPulseKey?: number;
   guidanceHint?: string;
+  copy?: {
+    addDesignFirst: string;
+    emptyTitle: string;
+    emptyText: string;
+    uploadLogo: string;
+    createWithAi: string;
+    resetView: string;
+    previewUnavailable: string;
+  };
   showEmptyStateHelper?: boolean;
   onEmptyDesignClick?: () => void;
   onStartUpload?: () => void;

@@ -4,73 +4,41 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import StitchraLogo from '@/components/brand/StitchraLogo';
-import { localeLabels, locales, type Locale } from '@/lib/i18n';
-
-export type MobileInfoCard = {
-  title: string;
-  text: string;
-  href?: string;
-  cta?: string;
-  bullets?: string[];
-};
+import {
+  getLocaleDirection,
+  getLocalizedRouteItems,
+  getMobileInfoPageCopy,
+  getPathLocale,
+  getPublicI18nCopy,
+  localeFlags,
+  localeLabels,
+  localizedPath,
+  locales,
+  switchLocalePath,
+  type Locale,
+  type MobileInfoPageKey,
+} from '@/lib/i18n';
 
 type MobileInfoPageProps = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  cards: MobileInfoCard[];
+  pageKey: MobileInfoPageKey;
   current?: string;
 };
 
-const navItems = [
-  { label: 'Start Designing', href: '/design' },
-  { label: 'Explore', href: '/explore' },
-  { label: 'How it works', href: '/how-it-works' },
-  { label: 'Features', href: '/features' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'Gallery', href: '/gallery' },
-  { label: 'FAQ', href: '/faq' },
-  { label: 'Contact', href: '/contact' },
-];
-
-const localeFlags: Record<Locale, string> = {
-  en: '🇬🇧',
-  de: '🇩🇪',
-  fr: '🇫🇷',
-  ar: '🇸🇦',
-  es: '🇪🇸',
-  ru: '🇷🇺',
-};
-
-function getLocaleFromPath(pathname: string) {
-  const firstSegment = pathname.split('/').filter(Boolean)[0];
-
-  return locales.includes(firstSegment as Locale)
-    ? (firstSegment as Locale)
-    : 'en';
-}
-
-function hasLocalePrefix(pathname: string) {
-  const firstSegment = pathname.split('/').filter(Boolean)[0];
-
-  return locales.includes(firstSegment as Locale);
-}
-
 export default function MobileInfoPage({
-  eyebrow,
-  title,
-  description,
-  cards,
+  pageKey,
   current,
 }: MobileInfoPageProps) {
   const pathname = usePathname() ?? '/';
-  const activeLocale = useMemo(() => getLocaleFromPath(pathname), [pathname]);
-  const localizedMode = hasLocalePrefix(pathname);
+  const activeLocale = useMemo(() => getPathLocale(pathname), [pathname]);
+  const direction = getLocaleDirection(activeLocale);
+  const publicCopy = getPublicI18nCopy(activeLocale);
+  const pageCopy = getMobileInfoPageCopy(activeLocale, pageKey);
+  const navItems = getLocalizedRouteItems(activeLocale);
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
-  const homeHref = localizedMode ? `/${activeLocale}` : '/';
-  const withLocale = (href: string) =>
-    localizedMode ? `/${activeLocale}${href}` : href;
+  const homeHref = localizedPath(activeLocale, '/');
+  const withLocale = (href: string) => localizedPath(activeLocale, href);
+  const arrow = direction === 'rtl' ? '←' : '→';
 
   const closeMenu = () => {
     setMenuOpen(false);
@@ -79,15 +47,15 @@ export default function MobileInfoPage({
 
   const switchLocale = (nextLocale: Locale) => {
     const hash = window.location.hash;
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    const rest =
-      segments[0] && locales.includes(segments[0] as Locale)
-        ? segments.slice(1)
-        : segments;
-    const nextPath = `/${nextLocale}${rest.length ? `/${rest.join('/')}` : ''}`;
+    const nextPath = switchLocalePath(window.location.pathname, nextLocale);
 
     setLanguageOpen(false);
     setMenuOpen(false);
+    try {
+      window.localStorage.setItem('stitchra-locale', nextLocale);
+    } catch {
+      // Local storage can be unavailable in private browsing modes.
+    }
     window.location.assign(`${nextPath}${hash}`);
   };
 
@@ -124,7 +92,7 @@ export default function MobileInfoPage({
   }, [languageOpen, menuOpen]);
 
   return (
-    <main className="mobile-info-shell">
+    <main className="mobile-info-shell" lang={activeLocale} dir={direction}>
       <header className="mobile-info-header">
         <Link href={homeHref} className="mobile-info-brand" aria-label="Stitchra home">
           <StitchraLogo compact markOnly size={42} />
@@ -132,32 +100,32 @@ export default function MobileInfoPage({
         </Link>
         <div className="mobile-info-header-actions">
           <Link href={withLocale('/design')} className="mobile-info-primary">
-            Start Designing
+            {publicCopy.common.startDesigning}
           </Link>
           <button
             type="button"
             className="mobile-info-menu-button"
-            aria-label="Open navigation menu"
+            aria-label={publicCopy.menu.ariaOpen}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
           >
-            Menu
+            {publicCopy.common.menu}
           </button>
         </div>
       </header>
 
       <section className="mobile-info-hero">
-        <span>{eyebrow}</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
+        <span>{pageCopy.eyebrow}</span>
+        <h1>{pageCopy.title}</h1>
+        <p>{pageCopy.description}</p>
         <div className="mobile-info-actions">
-          <Link href={withLocale('/design')}>Start Designing</Link>
-          <Link href={withLocale('/explore')}>Explore</Link>
+          <Link href={withLocale('/design')}>{publicCopy.common.startDesigning}</Link>
+          <Link href={withLocale('/explore')}>{publicCopy.common.explore}</Link>
         </div>
       </section>
 
-      <section className="mobile-info-grid" aria-label={title}>
-        {cards.map((card) => {
+      <section className="mobile-info-grid" aria-label={pageCopy.title}>
+        {pageCopy.cards.map((card) => {
           const content = (
             <>
               <h2>{card.title}</h2>
@@ -197,7 +165,7 @@ export default function MobileInfoPage({
             </Link>
           ))}
         </nav>
-        <p>Stitchra · AI embroidery studio</p>
+        <p>Stitchra · {publicCopy.footer.tagline}</p>
       </footer>
 
       {menuOpen && (
@@ -212,9 +180,9 @@ export default function MobileInfoPage({
             <div className="mobile-info-sheet-heading">
               <div>
                 <p>Stitchra</p>
-                <h2 id="mobile-info-menu-title">Menu</h2>
+                <h2 id="mobile-info-menu-title">{publicCopy.menu.title}</h2>
               </div>
-              <button type="button" onClick={closeMenu} aria-label="Close menu">
+              <button type="button" onClick={closeMenu} aria-label={publicCopy.menu.ariaClose}>
                 ×
               </button>
             </div>
@@ -222,7 +190,7 @@ export default function MobileInfoPage({
               {navItems.map((item) => (
                 <Link key={item.href} href={withLocale(item.href)} onClick={closeMenu}>
                   <span>{item.label}</span>
-                  <span aria-hidden="true">→</span>
+                  <span aria-hidden="true">{arrow}</span>
                 </Link>
               ))}
             </nav>
@@ -232,7 +200,7 @@ export default function MobileInfoPage({
               onClick={() => setLanguageOpen(true)}
             >
               <span>
-                <small>Language</small>
+                <small>{publicCopy.common.language}</small>
                 {localeFlags[activeLocale]} {localeLabels[activeLocale].name}
               </span>
               <strong>{localeLabels[activeLocale].code}</strong>
@@ -256,13 +224,13 @@ export default function MobileInfoPage({
           >
             <div className="mobile-info-sheet-heading">
               <div>
-                <p>Language</p>
-                <h2 id="mobile-info-language-title">Choose language</h2>
+                <p>{publicCopy.common.language}</p>
+                <h2 id="mobile-info-language-title">{publicCopy.common.chooseLanguage}</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setLanguageOpen(false)}
-                aria-label="Close language selector"
+                aria-label={publicCopy.menu.ariaCloseLanguage}
               >
                 ×
               </button>
@@ -656,6 +624,28 @@ export default function MobileInfoPage({
           background:
             linear-gradient(135deg, rgba(0,255,136,0.16), rgba(0,200,255,0.10)) !important;
           color: #f7fff9 !important;
+        }
+
+        .mobile-info-shell[dir="rtl"] {
+          text-align: right;
+        }
+
+        .mobile-info-shell[dir="rtl"] .mobile-info-header,
+        .mobile-info-shell[dir="rtl"] .mobile-info-header-actions,
+        .mobile-info-shell[dir="rtl"] .mobile-info-actions,
+        .mobile-info-shell[dir="rtl"] .mobile-info-footer nav {
+          direction: rtl;
+        }
+
+        .mobile-info-shell[dir="rtl"] .mobile-info-card ul {
+          padding-left: 0;
+          padding-right: 18px;
+        }
+
+        .mobile-info-shell[dir="rtl"] .mobile-info-sheet,
+        .mobile-info-shell[dir="rtl"] .mobile-info-sheet-links,
+        .mobile-info-shell[dir="rtl"] .mobile-info-language-options {
+          direction: rtl;
         }
 
         @media (max-width: 540px) {
