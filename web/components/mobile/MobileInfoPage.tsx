@@ -268,7 +268,7 @@ export default function MobileInfoPage({
             radial-gradient(circle at 92% 8%, rgba(0,200,255,0.12), transparent 32%),
             #050607;
           color: #f7fff9;
-          font-family: var(--font-geist-sans), Inter, "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+          font-family: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
           padding: calc(14px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom));
         }
 

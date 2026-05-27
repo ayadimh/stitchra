@@ -2945,7 +2945,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         background: bg,
         color: '#f5f7f8',
         fontFamily:
-          'var(--font-geist-sans), Inter, "Avenir Next", "Helvetica Neue", Arial, sans-serif',
+          'var(--font-sans), "Helvetica Neue", Arial, sans-serif',
         overflowX: 'hidden',
         overflowY: 'visible',
         position: 'relative',
@@ -11077,6 +11077,9 @@ function GlobalVisualStyles() {
           }
 
           .mobile-launch-card {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
             min-height: calc(100svh - 132px);
             display: flex;
             flex-direction: column;
@@ -11094,6 +11097,29 @@ function GlobalVisualStyles() {
               0 34px 100px rgba(0,0,0,0.38),
               inset 0 1px 0 rgba(255,255,255,0.08);
             backdrop-filter: blur(14px);
+          }
+
+          .mobile-launch-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -2;
+            background-image: url("/stitchra-machine-detail-v5.jpg");
+            background-size: cover;
+            background-position: center;
+            opacity: 0.28;
+            transform: scale(1.01);
+          }
+
+          .mobile-launch-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background:
+              linear-gradient(180deg, rgba(3, 8, 8, 0.42), rgba(3, 8, 8, 0.86)),
+              radial-gradient(circle at 24% 20%, rgba(0,255,136,0.23), transparent 38%),
+              linear-gradient(135deg, rgba(0, 20, 14, 0.78), rgba(2, 11, 13, 0.9));
           }
 
           .mobile-launch-logo {

@@ -1,7 +1,39 @@
 import type { Metadata, Viewport } from "next";
+import {
+  Geist,
+  Geist_Mono,
+  Noto_Sans,
+  Noto_Sans_Arabic,
+} from "next/font/google";
 import StitchraDesignAgent from "@/components/assistant/StitchraDesignAgent";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
+
+const geistSans = Geist({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
+
+const notoSans = Noto_Sans({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-noto-sans",
+  display: "swap",
+});
+
+const notoSansArabic = Noto_Sans_Arabic({
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-arabic",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://stitchra.com"),
@@ -69,7 +101,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${notoSans.variable} ${notoSansArabic.variable}`}
+    >
       <body>
         {children}
         <ServiceWorkerRegister />

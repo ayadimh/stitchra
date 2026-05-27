@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { generateText, gateway } from "ai";
 import type { ModelMessage } from "ai";
+import {
+  getAssistantCopy,
+  getAssistantLanguageInstruction,
+  normalizeAssistantLocale,
+} from "@/lib/assistantI18n";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,13 +16,6 @@ const DEFAULT_RATE_LIMIT_PER_IP = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const MAX_MESSAGES = 6;
 const MAX_OUTPUT_TOKENS = 260;
-const DISABLED_MESSAGE = "Stitchra AI Design Agent is currently disabled.";
-const NOT_CONFIGURED_MESSAGE =
-  "Stitchra AI Design Agent is not configured yet.";
-const TEMPORARILY_UNAVAILABLE_MESSAGE =
-  "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
-const RATE_LIMIT_MESSAGE =
-  "You reached the assistant limit for now. You can still use the configurator and submit a quote request.";
 const SUGGESTED_MODEL = "openai/gpt-5.4";
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -60,6 +58,14 @@ Rules:
 type ClientMessage = {
   role?: unknown;
   content?: unknown;
+};
+
+type AssistantRequestBody = {
+  messages?: ClientMessage[];
+  locale?: unknown;
+  languageName?: unknown;
+  pageContext?: unknown;
+  designContext?: unknown;
 };
 
 function parsePositiveInteger(value: string | undefined, fallback: number) {
@@ -231,16 +237,27 @@ function toModelMessages(messages: ClientMessage[], maxChars: number) {
 }
 
 export async function POST(request: Request) {
+  let body: AssistantRequestBody | null = null;
+
+  try {
+    body = (await request.json()) as AssistantRequestBody;
+  } catch {
+    const copy = getAssistantCopy("en");
+    return textResponse(copy.badRequest, 400);
+  }
+
+  const locale = normalizeAssistantLocale(body?.locale);
+  const copy = getAssistantCopy(locale);
   const config = getAssistantConfig();
 
   if (!config.enabled) {
     logAssistantFailure("assistant_disabled", config.model);
-    return textResponse(DISABLED_MESSAGE, 503);
+    return textResponse(copy.disabled, 503);
   }
 
   if (!config.gatewayKeyPresent) {
     logAssistantFailure("gateway_key_missing", config.model);
-    return textResponse(NOT_CONFIGURED_MESSAGE, 503);
+    return textResponse(copy.notConfigured, 503);
   }
 
   const rateLimit = parsePositiveInteger(
@@ -253,7 +270,7 @@ export async function POST(request: Request) {
     logAssistantFailure("rate_limit_reached", config.model, {
       limit: String(rateLimit),
     });
-    return textResponse(RATE_LIMIT_MESSAGE, 429);
+    return textResponse(copy.rateLimit, 429);
   }
 
   const maxInputChars = parsePositiveInteger(
@@ -261,27 +278,16 @@ export async function POST(request: Request) {
     DEFAULT_MAX_INPUT_CHARS,
   );
 
-  let body: { messages?: ClientMessage[] } | null = null;
-
-  try {
-    body = (await request.json()) as { messages?: ClientMessage[] };
-  } catch {
-    return textResponse("Send a message to the Stitchra Design Agent.", 400);
-  }
-
   const messages = toModelMessages(body?.messages ?? [], maxInputChars);
 
   if (!messages.some((message) => message.role === "user")) {
-    return textResponse(
-      "Ask me about logo placement, upload files, pricing or the Stitchra quote flow.",
-      400,
-    );
+    return textResponse(copy.emptyRequest, 400);
   }
 
   try {
     const result = await generateText({
       model: gateway(config.model),
-      system: STITCHRA_SYSTEM_PROMPT,
+      system: `${STITCHRA_SYSTEM_PROMPT}\n\nLanguage instruction:\n${getAssistantLanguageInstruction(locale)}`,
       messages,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       temperature: 0.35,
@@ -315,10 +321,10 @@ export async function POST(request: Request) {
     });
 
     if (reason === "gateway_authentication_failed") {
-      return textResponse(NOT_CONFIGURED_MESSAGE, 503);
+      return textResponse(copy.notConfigured, 503);
     }
 
-    return textResponse(TEMPORARILY_UNAVAILABLE_MESSAGE, 503);
+    return textResponse(copy.unavailable, 503);
   }
 }
 

@@ -10,6 +10,14 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { usePathname } from "next/navigation";
+import {
+  getLocaleDirection,
+  getPathLocale,
+  localizedPath,
+  stripLocaleFromPath,
+  type Locale,
+} from "@/lib/i18n";
+import { getAssistantCopy } from "@/lib/assistantI18n";
 import StitchraAgentOrb from "./StitchraAgentOrb";
 
 type ChatMessage = {
@@ -48,15 +56,6 @@ type LauncherDragState = {
   moved: boolean;
 };
 
-const SUGGESTED_PROMPTS = [
-  "Help me choose logo placement",
-  "What logo file should I upload?",
-  "How does pricing work?",
-  "Can I order one T-shirt?",
-  "When do I pay?",
-  "Can I use a brand logo?",
-];
-
 const PUBLIC_ROUTE_EXCLUSIONS = [
   "/studio",
   "/api",
@@ -67,7 +66,6 @@ const PUBLIC_ROUTE_EXCLUSIONS = [
   "/impressum",
 ];
 
-const LOCALE_SEGMENTS = new Set(["en", "de", "fr", "ar", "es", "ru"]);
 const CLIENT_MAX_INPUT_CHARS = 1200;
 const CLIENT_MAX_MESSAGES = 6;
 const MOBILE_LAUNCHER_POSITION_KEY = "stitchra-agent-launcher-position-v1";
@@ -77,10 +75,7 @@ const MOBILE_EDGE_PADDING = 12;
 const MOBILE_TOP_SAFE_PADDING = 16;
 const MOBILE_BOTTOM_RESERVED = 96;
 const MOBILE_DRAG_THRESHOLD = 7;
-const TEMPORARILY_UNAVAILABLE_MESSAGE =
-  "The Stitchra AI Design Agent is temporarily unavailable. You can still use the configurator and submit a quote request.";
-
-const WELCOME_MESSAGE: ChatMessage = {
+const DEFAULT_WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "assistant",
   content:
@@ -96,13 +91,7 @@ function createMessageId() {
 }
 
 function normalizePublicPath(pathname: string) {
-  const segments = pathname.split("/").filter(Boolean);
-
-  if (segments[0] && LOCALE_SEGMENTS.has(segments[0])) {
-    segments.shift();
-  }
-
-  return `/${segments.join("/")}`;
+  return stripLocaleFromPath(pathname);
 }
 
 function shouldHideAgent(pathname: string) {
@@ -115,9 +104,15 @@ function shouldHideAgent(pathname: string) {
   });
 }
 
-function scrollToDesigner() {
+function scrollToDesigner(locale: Locale) {
   const target = document.getElementById("designer");
-  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
+  }
+
+  window.location.assign(localizedPath(locale, "/design"));
+  return false;
 }
 
 function dispatchDesignAction(detail: StitchraDesignActionDetail) {
@@ -128,8 +123,11 @@ function dispatchDesignAction(detail: StitchraDesignActionDetail) {
   );
 }
 
-function openLogoUpload() {
-  scrollToDesigner();
+function openLogoUpload(locale: Locale) {
+  if (!scrollToDesigner(locale)) {
+    return;
+  }
+
   dispatchDesignAction({ action: "openUploadOwnDesign" });
   window.setTimeout(() => {
     const uploadInput = document.querySelector<HTMLInputElement>(
@@ -148,21 +146,24 @@ function getLatestUserMessage(messages: ChatMessage[]) {
   );
 }
 
-function getSuggestedArtworkPrompt(latestUserMessage: string) {
+function getSuggestedArtworkPrompt(
+  latestUserMessage: string,
+  copy: ReturnType<typeof getAssistantCopy>,
+) {
   const cleaned = latestUserMessage
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 180);
 
   if (/eid|adha|ramadan|lantern|crescent/i.test(cleaned)) {
-    return "school Eid al-Adha badge with crescent, lantern and bold text";
+    return copy.suggestedEidPrompt;
   }
 
   if (/school|club|team|event|badge|logo|design|shirt/i.test(cleaned)) {
     return cleaned;
   }
 
-  return "clean event badge with bold text, simple icon and 4-6 colors";
+  return copy.suggestedArtworkFallback;
 }
 
 function shouldShowArtworkActions(latestUserMessage: string) {
@@ -354,9 +355,17 @@ function isLauncherRectVisible(element: HTMLElement | null) {
 
 export default function StitchraDesignAgent() {
   const pathname = usePathname() ?? "/";
+  const locale = useMemo(() => getPathLocale(pathname), [pathname]);
+  const direction = getLocaleDirection(locale);
+  const copy = useMemo(() => getAssistantCopy(locale), [locale]);
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    {
+      ...DEFAULT_WELCOME_MESSAGE,
+      content: getAssistantCopy(getPathLocale(pathname)).welcomeMessage,
+    },
+  ]);
   const [status, setStatus] = useState<SendStatus>("idle");
   const [isMobileDraggable, setIsMobileDraggable] = useState(false);
   const [showHelperCloud, setShowHelperCloud] = useState(false);
@@ -372,6 +381,24 @@ export default function StitchraDesignAgent() {
   const suppressLauncherClickRef = useRef(false);
 
   const isHidden = useMemo(() => shouldHideAgent(pathname), [pathname]);
+
+  useEffect(() => {
+    setMessages((currentMessages) => {
+      if (
+        currentMessages.length === 1 &&
+        currentMessages[0]?.id === "welcome"
+      ) {
+        return [
+          {
+            ...DEFAULT_WELCOME_MESSAGE,
+            content: copy.welcomeMessage,
+          },
+        ];
+      }
+
+      return currentMessages;
+    });
+  }, [copy.welcomeMessage]);
 
   const applyLauncherPosition = useCallback((position: LauncherPosition) => {
     const nextPosition = {
@@ -623,6 +650,11 @@ export default function StitchraDesignAgent() {
             role,
             content: message,
           })),
+          locale,
+          languageName: copy.languageName,
+          pageContext: {
+            pathname: normalizePublicPath(pathname),
+          },
         }),
         signal: controller.signal,
       });
@@ -636,7 +668,7 @@ export default function StitchraDesignAgent() {
                   ...message,
                   content:
                     errorMessage ||
-                    "The Stitchra Design Agent is not available right now.",
+                    copy.unavailable,
                 }
               : message,
           ),
@@ -650,8 +682,7 @@ export default function StitchraDesignAgent() {
             message.id === assistantMessage.id
               ? {
                   ...message,
-                  content:
-                    "The Stitchra Design Agent is not available right now.",
+                  content: copy.unavailable,
                 }
               : message,
           ),
@@ -693,7 +724,7 @@ export default function StitchraDesignAgent() {
             content:
               content.trim().length > 0
                 ? content
-                : TEMPORARILY_UNAVAILABLE_MESSAGE,
+                : copy.unavailable,
           };
         }),
       );
@@ -707,7 +738,7 @@ export default function StitchraDesignAgent() {
           message.id === assistantMessage.id
             ? {
                 ...message,
-                content: TEMPORARILY_UNAVAILABLE_MESSAGE,
+                content: copy.unavailable,
               }
             : message,
         ),
@@ -721,7 +752,10 @@ export default function StitchraDesignAgent() {
   const trimmedInput = input.trim();
   const isStreaming = status === "streaming";
   const latestUserMessage = getLatestUserMessage(messages);
-  const suggestedArtworkPrompt = getSuggestedArtworkPrompt(latestUserMessage);
+  const suggestedArtworkPrompt = getSuggestedArtworkPrompt(
+    latestUserMessage,
+    copy,
+  );
   const showArtworkActions = shouldShowArtworkActions(latestUserMessage);
   const agentClassName = [
     "stitchra-ai-agent",
@@ -862,29 +896,35 @@ export default function StitchraDesignAgent() {
   };
 
   return (
-    <div className={agentClassName} style={agentStyle} aria-live="polite">
+    <div
+      className={agentClassName}
+      style={agentStyle}
+      aria-live="polite"
+      lang={locale}
+      dir={direction}
+    >
       {isOpen ? (
         <section
           className="stitchra-ai-panel"
-          aria-label="Stitchra AI Design Agent"
+          aria-label={copy.panelAria}
         >
           <header className="stitchra-ai-header">
             <div>
-              <p className="stitchra-ai-kicker">Stitchra Studio</p>
-              <h2>AI Design Agent</h2>
+              <p className="stitchra-ai-kicker">{copy.kicker}</p>
+              <h2>{copy.title}</h2>
             </div>
             <button
               type="button"
               className="stitchra-ai-icon-button"
               onClick={() => setIsOpen(false)}
-              aria-label="Close Stitchra AI Design Agent"
+              aria-label={copy.closeAria}
             >
               ×
             </button>
           </header>
 
-          <div className="stitchra-ai-suggestions" aria-label="Suggested prompts">
-            {SUGGESTED_PROMPTS.map((prompt) => (
+          <div className="stitchra-ai-suggestions" aria-label={copy.suggestionsLabel}>
+            {copy.quickPrompts.map((prompt) => (
               <button
                 type="button"
                 key={prompt}
@@ -903,89 +943,91 @@ export default function StitchraDesignAgent() {
                 className={`stitchra-ai-message stitchra-ai-message-${message.role}`}
               >
                 <span>
-                  {message.role === "assistant" ? "Design agent" : "You"}
+                  {message.role === "assistant"
+                    ? copy.assistantLabel
+                    : copy.userLabel}
                 </span>
                 <p>
                   {message.content ||
                     (message.role === "assistant" && isStreaming
-                      ? "Thinking…"
+                      ? copy.thinking
                       : "")}
                 </p>
               </article>
             ))}
           </div>
 
-          <div className="stitchra-ai-actions" aria-label="Design actions">
-            <button type="button" onClick={scrollToDesigner}>
-              Start Designing
+          <div className="stitchra-ai-actions" aria-label={copy.actionsLabel}>
+            <button type="button" onClick={() => scrollToDesigner(locale)}>
+              {copy.actions.startDesigning}
             </button>
             <button
               type="button"
               onClick={() => {
-                scrollToDesigner();
+                if (!scrollToDesigner(locale)) return;
                 dispatchDesignAction({ action: "scrollToViewer" });
               }}
             >
-              View Shirt
+              {copy.actions.viewShirt}
             </button>
             <button
               type="button"
               onClick={() => {
-                scrollToDesigner();
+                if (!scrollToDesigner(locale)) return;
                 dispatchDesignAction({ action: "openAICreator" });
               }}
             >
-              Open AI Creator
+              {copy.actions.openAiCreator}
             </button>
             {showArtworkActions ? (
               <>
                 <button
                   type="button"
                   onClick={() => {
-                    scrollToDesigner();
+                    if (!scrollToDesigner(locale)) return;
                     dispatchDesignAction({
                       action: "prefillIdeaPrompt",
                       prompt: suggestedArtworkPrompt,
                     });
                   }}
                 >
-                  Use this idea
+                  {copy.actions.useThisIdea}
                 </button>
               </>
             ) : null}
             <button
               type="button"
               onClick={() => {
-                scrollToDesigner();
+                if (!scrollToDesigner(locale)) return;
                 dispatchDesignAction({
                   action: "setPlacement",
                   placement: "center_chest",
                 });
               }}
             >
-              Set Center Chest
+              {copy.actions.setCenterChest}
             </button>
             <button
               type="button"
               onClick={() => {
-                scrollToDesigner();
+                if (!scrollToDesigner(locale)) return;
                 dispatchDesignAction({
                   action: "setPlacement",
                   placement: "left_chest",
                 });
               }}
             >
-              Set Left Chest
+              {copy.actions.setLeftChest}
             </button>
-            <button type="button" onClick={openLogoUpload}>
-              Open Upload
+            <button type="button" onClick={() => openLogoUpload(locale)}>
+              {copy.actions.openUpload}
             </button>
-            <button type="button" onClick={scrollToDesigner}>
-              Continue to Quote
+            <button type="button" onClick={() => scrollToDesigner(locale)}>
+              {copy.actions.continueToQuote}
             </button>
             {isMobileDraggable ? (
               <button type="button" onClick={resetLauncherPosition}>
-                Reset bubble
+                {copy.actions.resetBubble}
               </button>
             ) : null}
           </div>
@@ -997,7 +1039,7 @@ export default function StitchraDesignAgent() {
               sendMessage();
             }}
           >
-            <label htmlFor="stitchra-ai-input">Ask about your design</label>
+            <label htmlFor="stitchra-ai-input">{copy.inputLabel}</label>
             <div>
               <textarea
                 id="stitchra-ai-input"
@@ -1011,23 +1053,22 @@ export default function StitchraDesignAgent() {
                     sendMessage();
                   }
                 }}
-                placeholder="Ask about placement, logo files, price or payment…"
+                placeholder={copy.placeholder}
                 rows={2}
                 disabled={isStreaming}
               />
               <button
                 type="submit"
                 disabled={!trimmedInput || isStreaming}
-                aria-label="Send message"
+                aria-label={copy.sendAria}
               >
-                {isStreaming ? "…" : "Send"}
+                {isStreaming ? "…" : copy.send}
               </button>
             </div>
           </form>
 
           <p className="stitchra-ai-footnote">
-            Session-only guidance. Do not share card details or private order
-            data here.
+            {copy.footnote}
           </p>
         </section>
       ) : null}
@@ -1041,7 +1082,7 @@ export default function StitchraDesignAgent() {
             setIsOpen(true);
           }}
         >
-          Need help?
+          {copy.helper}
         </button>
       ) : null}
 
@@ -1063,13 +1104,13 @@ export default function StitchraDesignAgent() {
           setIsOpen((current) => !current);
         }}
         aria-expanded={isOpen}
-        aria-label="Open Stitchra AI Design Agent. Drag on mobile to move."
+        aria-label={copy.launcherAria}
       >
         <StitchraAgentOrb
           active={isStreaming}
           className="stitchra-agent-orb-shell"
         />
-        <strong>Design Agent</strong>
+        <strong>{copy.launcherLabel}</strong>
       </button>
 
       <style>{`
@@ -1380,6 +1421,36 @@ export default function StitchraDesignAgent() {
           display: none;
         }
 
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-panel {
+          direction: rtl;
+          text-align: right;
+          font-family: var(--font-arabic-sans), inherit;
+        }
+
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-header,
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-form div {
+          direction: rtl;
+        }
+
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-suggestions,
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-actions {
+          direction: rtl;
+        }
+
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-message-user {
+          margin-left: 0;
+          margin-right: 42px;
+        }
+
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-message-assistant {
+          margin-right: 0;
+          margin-left: 20px;
+        }
+
+        .stitchra-ai-agent[dir="rtl"] .stitchra-ai-form textarea {
+          text-align: right;
+        }
+
         body[data-stitchra-mobile-sheet-open="true"] .stitchra-ai-agent {
           z-index: 90;
           pointer-events: none;
@@ -1446,6 +1517,11 @@ export default function StitchraDesignAgent() {
             border-radius: 3px;
             background: inherit;
             transform: rotate(45deg);
+          }
+
+          .stitchra-ai-agent[dir="rtl"] .stitchra-agent-helper-cloud::after {
+            right: auto;
+            left: -4px;
           }
 
           .stitchra-ai-agent-mobile-drag {
