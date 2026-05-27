@@ -47,18 +47,34 @@ These IDs are prepared so a future animation can reveal the logo with a moving n
 
 ## PNG export
 
-PNG export has not been committed in this pass. The current assets are SVG sources.
+PNG exports are generated from the clean SVG sources with Sharp.
 
-Recommended export workflow:
+Generated PNG files:
 
-1. Open the SVG source in Figma, Illustrator, Inkscape, or a trusted SVG-to-PNG conversion tool.
-2. Export favicon and app icon PNGs at:
-   - `favicon-32x32.png`
-   - `apple-touch-icon.png` at 180x180
-   - `icon-192.png`
-   - `icon-512.png`
-3. Run the exported icon set through RealFaviconGenerator or a similar favicon QA tool.
-4. Verify the icons on iOS Safari, Android Chrome, desktop Chrome, Safari, and pinned tabs.
+- `exports/icons/favicon-16x16.png`
+- `exports/icons/favicon-32x32.png`
+- `exports/icons/apple-touch-icon.png` at 180x180
+- `exports/icons/icon-192.png`
+- `exports/icons/icon-512.png`
+- `exports/social/stitchra-og.png` at 1200x630
+- `exports/social/stitchra-twitter.png` at 1200x675
+- `exports/social/stitchra-square.png` at 1080x1080
+- `exports/banners/stitchra-banner.png` at 1500x500
+
+Regenerate the PNG exports from the `web` folder:
+
+```bash
+npm run brand:export
+```
+
+The script lives at `scripts/export-brand-assets.mjs`. It reads only the SVG sources in this folder and writes PNGs back to `public/brand/exports/`.
+
+Recommended final QA workflow:
+
+1. Inspect the SVG and PNG previews at `/brand-assets`.
+2. Run the exported icon set through RealFaviconGenerator or a similar favicon QA tool.
+3. Verify the icons on iOS Safari, Android Chrome, desktop Chrome, Safari, and pinned tabs.
+4. Only after approval, copy or point live metadata/manifest references to the approved production files.
 
 ## Future metadata update
 
@@ -74,3 +90,14 @@ When approved, update:
 ## Current status
 
 These files are asset preparation and preview assets only. The live website logo, favicon, manifest icons, Open Graph image, email logo, and Studio logo are intentionally unchanged.
+
+Production-ready candidates:
+
+- The clean SVG master files.
+- The generated PNG icon/social/banner exports.
+
+Still reference or preview only:
+
+- `candidates/logo01.jpg`
+- `source/thread-needle-s-reference.jpg`
+- Any `/brand-assets`, `/brand-lab`, or `/brand-preview` presentation context.

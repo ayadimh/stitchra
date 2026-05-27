@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "brand:export": "node scripts/export-brand-assets.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint app components lib next.config.ts eslint.config.mjs public/sw.js"

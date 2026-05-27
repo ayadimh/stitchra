@@ -41,41 +41,80 @@ const masterAssets = [
   },
 ];
 
-const iconAssets = [
-  { label: '16px', src: '/brand/exports/icons/favicon.svg', size: 16 },
-  { label: '32px', src: '/brand/exports/icons/favicon.svg', size: 32 },
-  { label: '64px', src: '/brand/exports/icons/favicon.svg', size: 64 },
-  { label: '128px', src: '/brand/exports/icons/favicon.svg', size: 128 },
+const faviconExports = [
+  {
+    label: '16px favicon',
+    svg: '/brand/exports/icons/favicon.svg',
+    png: '/brand/exports/icons/favicon-16x16.png',
+    size: 16,
+  },
+  {
+    label: '32px favicon',
+    svg: '/brand/exports/icons/favicon.svg',
+    png: '/brand/exports/icons/favicon-32x32.png',
+    size: 32,
+  },
 ];
 
-const exportAssets = [
+const appIconExports = [
   {
-    title: 'Open Graph source',
-    src: '/brand/exports/social/stitchra-og.svg',
-    note: '1200x630 SVG source for future OG image export.',
+    title: 'Apple touch icon',
+    svg: '/brand/exports/icons/apple-touch-icon-source.svg',
+    png: '/brand/exports/icons/apple-touch-icon.png',
+    note: '180x180 PNG export for future iOS home screen usage.',
+    width: 180,
+    height: 180,
+  },
+  {
+    title: 'PWA icon 192',
+    svg: '/brand/exports/icons/icon-192.svg',
+    png: '/brand/exports/icons/icon-192.png',
+    note: '192x192 PNG export for future web app manifest usage.',
+    width: 192,
+    height: 192,
+  },
+  {
+    title: 'PWA icon 512',
+    svg: '/brand/exports/icons/icon-512.svg',
+    png: '/brand/exports/icons/icon-512.png',
+    note: '512x512 PNG export for future web app manifest usage.',
+    width: 512,
+    height: 512,
+  },
+];
+
+const socialExports = [
+  {
+    title: 'Open Graph',
+    svg: '/brand/exports/social/stitchra-og.svg',
+    png: '/brand/exports/social/stitchra-og.png',
+    note: '1200x630 source and PNG export.',
     width: 1200,
     height: 630,
   },
   {
-    title: 'Twitter/X card source',
-    src: '/brand/exports/social/stitchra-twitter.svg',
-    note: '1200x675 SVG source for social card export.',
+    title: 'Twitter/X card',
+    svg: '/brand/exports/social/stitchra-twitter.svg',
+    png: '/brand/exports/social/stitchra-twitter.png',
+    note: '1200x675 source and PNG export.',
     width: 1200,
     height: 675,
   },
   {
-    title: 'Wide banner source',
-    src: '/brand/exports/banners/stitchra-banner.svg',
-    note: '1500x500 SVG source for profile banners and campaign headers.',
-    width: 1500,
-    height: 500,
-  },
-  {
-    title: 'Square social source',
-    src: '/brand/exports/social/stitchra-square.svg',
-    note: '1080x1080 SVG source for square social placement.',
+    title: 'Square social',
+    svg: '/brand/exports/social/stitchra-square.svg',
+    png: '/brand/exports/social/stitchra-square.png',
+    note: '1080x1080 source and PNG export.',
     width: 1080,
     height: 1080,
+  },
+  {
+    title: 'Wide banner',
+    svg: '/brand/exports/banners/stitchra-banner.svg',
+    png: '/brand/exports/banners/stitchra-banner.png',
+    note: '1500x500 source and PNG export.',
+    width: 1500,
+    height: 500,
   },
 ];
 
@@ -97,22 +136,22 @@ export default function BrandAssetsPage() {
         </div>
         <div className="audit-grid">
           <article>
-            <h3>Exists now</h3>
+            <h3>Ready now</h3>
             <ul>
-              <li>Reference JPG at `brand/candidates/logo01.jpg`.</li>
-              <li>Copied reference at `brand/source/thread-needle-s-reference.jpg`.</li>
+              <li>Reference JPG is preserved only as visual direction.</li>
               <li>Clean master SVG icon, horizontal, one-color and patch assets.</li>
-              <li>SVG source files for favicon, app icons, avatar, social cards and banners.</li>
+              <li>SVG and PNG favicon/app icon exports.</li>
+              <li>SVG and PNG social/banner exports.</li>
               <li>Animation-ready layered SVG with stable IDs.</li>
             </ul>
           </article>
           <article>
-            <h3>Still missing</h3>
+            <h3>Still not live</h3>
             <ul>
-              <li>Final hand-refined vector polish from a professional logo pass.</li>
-              <li>PNG favicon and app icon exports from the SVG sources.</li>
-              <li>Live metadata, manifest and navbar rollout after final approval.</li>
-              <li>Final logo reveal animation using the prepared SVG layers.</li>
+              <li>Live navbar, footer, favicon, manifest icons and OG metadata are unchanged.</li>
+              <li>Final hand-refined vector polish is still recommended before rollout.</li>
+              <li>Real device favicon/app icon QA is still required.</li>
+              <li>Logo reveal animation is prepared but not implemented.</li>
             </ul>
           </article>
         </div>
@@ -143,6 +182,7 @@ export default function BrandAssetsPage() {
               The production path uses simplified SVG assets so the identity can scale, animate, export to icons and
               survive embroidery constraints.
             </p>
+            <StatusRow items={['Reference only', 'Do not use as final logo']} />
           </article>
         </div>
       </section>
@@ -166,6 +206,7 @@ export default function BrandAssetsPage() {
               </div>
               <h3>{asset.title}</h3>
               <p>{asset.note}</p>
+              <StatusRow items={['SVG source ready']} />
               <code>{asset.src}</code>
             </article>
           ))}
@@ -175,62 +216,55 @@ export default function BrandAssetsPage() {
       <section className="asset-section" aria-labelledby="icons-title">
         <div className="section-heading">
           <p>Favicons and app icons</p>
-          <h2 id="icons-title">Small-size source checks.</h2>
+          <h2 id="icons-title">SVG sources plus PNG exports.</h2>
         </div>
-        <div className="icon-layout">
-          <div className="favicon-strip">
-            {iconAssets.map((asset) => (
-              <div key={asset.label} className="favicon-card">
-                <div className="favicon-stage" style={{ width: asset.size, height: asset.size }}>
-                  <Image src={asset.src} alt={`Stitchra favicon preview ${asset.label}`} width={asset.size} height={asset.size} unoptimized />
-                </div>
-                <span>{asset.label}</span>
+        <div className="favicon-export-grid">
+          {faviconExports.map((asset) => (
+            <article key={asset.label} className="favicon-export-card">
+              <h3>{asset.label}</h3>
+              <div className="favicon-pair">
+                <PreviewTile label="SVG source" src={asset.svg} size={asset.size} />
+                <PreviewTile label="PNG export" src={asset.png} size={asset.size} />
               </div>
-            ))}
-          </div>
-          <div className="app-icon-card">
-            <Image
-              src="/brand/exports/icons/icon-512.svg"
-              alt="Stitchra 512 app icon source preview"
-              width={260}
-              height={260}
-              unoptimized
-            />
-            <div>
-              <h3>App icon source</h3>
-              <p>Prepared as SVG source. PNG exports should be generated after final approval.</p>
-              <code>/brand/exports/icons/icon-512.svg</code>
-            </div>
-          </div>
-          <div className="app-icon-card light">
-            <Image
-              src="/brand/exports/icons/apple-touch-icon-source.svg"
-              alt="Stitchra Apple touch icon source preview"
-              width={220}
-              height={220}
-              unoptimized
-            />
-            <div>
-              <h3>Apple touch icon source</h3>
-              <p>Flat source for future 180x180 PNG export and iOS home screen testing.</p>
-              <code>/brand/exports/icons/apple-touch-icon-source.svg</code>
-            </div>
-          </div>
+              <StatusRow items={['SVG source ready', 'PNG export ready']} />
+              <code>{asset.png}</code>
+            </article>
+          ))}
+        </div>
+        <div className="app-icon-grid">
+          {appIconExports.map((asset) => (
+            <article key={asset.png} className="asset-card">
+              <div className="asset-stage app-icon-stage">
+                <div>
+                  <span>SVG</span>
+                  <Image src={asset.svg} alt={`${asset.title} SVG source`} width={asset.width} height={asset.height} unoptimized />
+                </div>
+                <div>
+                  <span>PNG</span>
+                  <Image src={asset.png} alt={`${asset.title} PNG export`} width={asset.width} height={asset.height} unoptimized />
+                </div>
+              </div>
+              <h3>{asset.title}</h3>
+              <p>{asset.note}</p>
+              <StatusRow items={['SVG source ready', 'PNG export ready']} />
+              <code>{asset.png}</code>
+            </article>
+          ))}
         </div>
       </section>
 
       <section className="asset-section" aria-labelledby="social-title">
         <div className="section-heading">
           <p>Social and banners</p>
-          <h2 id="social-title">SVG sources for marketing export.</h2>
+          <h2 id="social-title">Marketing SVG sources plus PNG exports.</h2>
         </div>
         <div className="export-grid">
-          {exportAssets.map((asset) => (
-            <article key={asset.src} className="asset-card export-card">
+          {socialExports.map((asset) => (
+            <article key={asset.png} className="asset-card export-card">
               <div className="asset-stage">
                 <Image
-                  src={asset.src}
-                  alt={asset.title}
+                  src={asset.png}
+                  alt={`${asset.title} PNG export`}
                   width={asset.width}
                   height={asset.height}
                   unoptimized
@@ -238,7 +272,11 @@ export default function BrandAssetsPage() {
               </div>
               <h3>{asset.title}</h3>
               <p>{asset.note}</p>
-              <code>{asset.src}</code>
+              <StatusRow items={['SVG source ready', 'PNG export ready']} />
+              <div className="code-pair">
+                <code>{asset.svg}</code>
+                <code>{asset.png}</code>
+              </div>
             </article>
           ))}
         </div>
@@ -269,6 +307,7 @@ export default function BrandAssetsPage() {
               <li>`stitchra-baseline` for the subtle thread sweep.</li>
             </ul>
             <p>The full intro animation is not implemented here. This file only prepares clean, addressable layers.</p>
+            <StatusRow items={['SVG source ready', 'Animation-ready layers']} />
             <code>/brand/exports/animation/stitchra-logo-layered.svg</code>
           </article>
         </div>
@@ -277,14 +316,35 @@ export default function BrandAssetsPage() {
       <section className="asset-section final-note" aria-labelledby="status-title">
         <div>
           <p>Rollout status</p>
-          <h2 id="status-title">Preview-only pipeline.</h2>
+          <h2 id="status-title">Export-ready, not applied globally.</h2>
         </div>
         <p>
           The live navbar logo, favicon, manifest icons, Open Graph image, footer, email header and Studio logo are
-          intentionally unchanged. This page is a private asset QA surface before a future identity rollout.
+          intentionally unchanged. These PNG exports are prepared so a future approved rollout can happen cleanly.
         </p>
       </section>
     </main>
+  );
+}
+
+function StatusRow({ items }: { items: string[] }) {
+  return (
+    <div className="status-row">
+      {items.map((item) => (
+        <span key={item}>{item}</span>
+      ))}
+    </div>
+  );
+}
+
+function PreviewTile({ label, src, size }: { label: string; src: string; size: number }) {
+  return (
+    <div className="preview-tile">
+      <div className="favicon-stage" style={{ width: Math.max(size, 32), height: Math.max(size, 32) }}>
+        <Image src={src} alt={`${label} ${size}px preview`} width={size} height={size} unoptimized />
+      </div>
+      <span>{label}</span>
+    </div>
   );
 }
 
@@ -361,7 +421,9 @@ const brandAssetsStyles = `
   .reference-grid,
   .master-grid,
   .export-grid,
-  .animation-card {
+  .animation-card,
+  .favicon-export-grid,
+  .app-icon-grid {
     display: grid;
     gap: 16px;
   }
@@ -372,19 +434,22 @@ const brandAssetsStyles = `
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .master-grid {
+  .master-grid,
+  .export-grid,
+  .favicon-export-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .export-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .app-icon-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 16px;
   }
 
   .audit-grid article,
   .reference-note,
   .asset-card,
   .animation-card article,
-  .app-icon-card {
+  .favicon-export-card {
     border: 1px solid rgba(185, 255, 196, 0.12);
     border-radius: 22px;
     background: rgba(255, 255, 255, 0.035);
@@ -415,6 +480,11 @@ const brandAssetsStyles = `
     font-family: var(--font-geist-mono), monospace;
     font-size: 12px;
     overflow-wrap: anywhere;
+  }
+
+  .code-pair {
+    display: grid;
+    gap: 6px;
   }
 
   .reference-card {
@@ -452,28 +522,31 @@ const brandAssetsStyles = `
     min-height: 170px;
   }
 
-  .icon-layout {
+  .favicon-pair {
     display: grid;
-    grid-template-columns: 0.8fr 1fr 1fr;
-    gap: 16px;
-    align-items: stretch;
-  }
-
-  .favicon-strip {
-    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    align-content: start;
-    border: 1px solid rgba(185, 255, 196, 0.12);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.035);
-    padding: 18px;
+    margin: 14px 0;
   }
 
-  .favicon-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    min-height: 44px;
+  .preview-tile {
+    min-height: 112px;
+    display: grid;
+    place-items: center;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid rgba(185, 255, 196, 0.1);
+    border-radius: 18px;
+    background: #07100b;
+  }
+
+  .preview-tile span,
+  .app-icon-stage span {
+    color: #dff6e8;
+    font-size: 12px;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .favicon-stage {
@@ -482,34 +555,41 @@ const brandAssetsStyles = `
     flex: 0 0 auto;
   }
 
-  .favicon-card span {
-    color: #dff6e8;
-    font-weight: 800;
+  .app-icon-stage {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: center;
   }
 
-  .app-icon-card {
+  .app-icon-stage > div {
     display: grid;
-    align-content: start;
-    gap: 14px;
+    gap: 10px;
+    place-items: center;
   }
 
-  .app-icon-card img {
-    max-width: 100%;
+  .app-icon-stage img {
+    width: min(100%, 150px);
     height: auto;
-    margin: 0 auto;
   }
 
-  .app-icon-card.light {
-    background: #f4f8ef;
-    color: #07100b;
+  .status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
   }
 
-  .app-icon-card.light p {
-    color: #315141;
-  }
-
-  .app-icon-card.light code {
-    color: #0b6f46;
+  .status-row span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    border: 1px solid rgba(140, 255, 31, 0.22);
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: rgba(140, 255, 31, 0.08);
+    color: #dfffd6;
+    font-size: 12px;
+    font-weight: 850;
   }
 
   .animation-card {
@@ -538,7 +618,8 @@ const brandAssetsStyles = `
     .master-grid,
     .export-grid,
     .animation-card,
-    .icon-layout,
+    .favicon-export-grid,
+    .app-icon-grid,
     .final-note {
       grid-template-columns: 1fr;
     }
