@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Stitchra Twitter card brand image</title>
+  <desc id="desc">Stitchra Thread Needle S social card for large-preview platforms.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="675" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#050806"/>
+      <stop offset="0.6" stop-color="#07140f"/>
+      <stop offset="1" stop-color="#0c2018"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 337) scale(520 300)">
+      <stop stop-color="#16e884" stop-opacity="0.24"/>
+      <stop offset="0.52" stop-color="#8cff1f" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#8cff1f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="thread" x1="42" y1="30" x2="130" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d6ff3f"/>
+      <stop offset="0.48" stop-color="#8cff1f"/>
+      <stop offset="1" stop-color="#16e884"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="80" y1="12" x2="80" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf4"/>
+      <stop offset="0.48" stop-color="#cfd5d0"/>
+      <stop offset="1" stop-color="#737d78"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="62" y="58" width="1076" height="559" rx="46" fill="#07100b" stroke="#1d3f31" stroke-width="2"/>
+  <rect width="1200" height="675" fill="url(#halo)"/>
+  <g transform="translate(460 102) scale(1.75)">
+    <rect x="18" y="18" width="124" height="124" rx="34" fill="#07100b" stroke="#8cff1f" stroke-opacity="0.34" stroke-width="2.5"/>
+    <path d="M113 42H82C55 42 42 52 42 69C42 84 55 91 80 92H92C110 92 121 101 121 116C121 134 105 143 78 143H43" fill="none" stroke="#030604" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M111 45H81C59 45 49 54 49 68C49 80 60 86 81 87H93C115 87 128 99 128 116C128 137 110 148 78 148H45" fill="none" stroke="url(#thread)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M80 13V147" fill="none" stroke="url(#metal)" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M80 13C91 22 93 35 85 47C78 43 76 29 80 13Z" fill="#f8fff6" stroke="#f8fff6" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M69 62C78 57 88 57 98 62" fill="none" stroke="#8cff1f" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 5"/>
+    <path d="M60 112C75 104 95 104 112 112" fill="none" stroke="#8cff1f" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 5" opacity="0.82"/>
+  </g>
+  <text x="600" y="438" text-anchor="middle" fill="#f7fff5" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="950" letter-spacing="-7">Stitchra</text>
+  <path d="M436 470H764" fill="none" stroke="#8cff1f" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 10"/>
+  <text x="600" y="528" text-anchor="middle" fill="#c7d8cd" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800">AI Embroidery T-Shirt Platform</text>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="160" viewBox="0 0 560 160" role="img" aria-labelledby="title desc">
+  <title id="title">Stitchra one-color logo</title>
+  <desc id="desc">One-color Stitchra Thread Needle S lockup for embroidery, stamps and monochrome usage.</desc>
+  <g id="stitchra-icon" fill="none" stroke="currentColor" color="#07100f">
+    <rect x="18" y="18" width="124" height="124" rx="34" stroke-width="4"/>
+    <path id="stitchra-s-mark" d="M111 45H81C59 45 49 54 49 68C49 80 60 86 81 87H93C115 87 128 99 128 116C128 137 110 148 78 148H45" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="stitchra-needle">
+      <path d="M80 13V147" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M80 13C91 22 93 35 85 47C78 43 76 29 80 13Z" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+    <g id="stitchra-thread-dots" stroke-linecap="round" opacity="0.8">
+      <path d="M69 62C78 57 88 57 98 62" stroke-width="3" stroke-dasharray="1 5"/>
+      <path d="M60 112C75 104 95 104 112 112" stroke-width="3" stroke-dasharray="1 5"/>
+    </g>
+  </g>
+  <g id="stitchra-wordmark" fill="currentColor" color="#07100f">
+    <text x="198" y="96" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="950" letter-spacing="-5">Stitchra</text>
+    <path id="stitchra-baseline" d="M203 115H421" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7"/>
+    <text x="201" y="132" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="850" letter-spacing="2.4" opacity="0.72">AI EMBROIDERY STUDIO</text>
+  </g>
+</svg>

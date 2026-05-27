@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 160 160" role="img" aria-label="Stitchra app icon 512">
+  <rect width="160" height="160" rx="38" fill="#07100b"/>
+  <rect x="12" y="12" width="136" height="136" rx="36" fill="none" stroke="#8cff1f" stroke-opacity="0.28" stroke-width="3"/>
+  <path d="M113 42H82C55 42 42 52 42 69C42 84 55 91 80 92H92C110 92 121 101 121 116C121 134 105 143 78 143H43" fill="none" stroke="#030604" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M111 45H81C59 45 49 54 49 68C49 80 60 86 81 87H93C115 87 128 99 128 116C128 137 110 148 78 148H45" fill="none" stroke="#8cff1f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M80 13V147" fill="none" stroke="#f8fff6" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M69 62C78 57 88 57 98 62M60 112C75 104 95 104 112 112" fill="none" stroke="#d6ff3f" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="1 5" opacity="0.86"/>
+</svg>

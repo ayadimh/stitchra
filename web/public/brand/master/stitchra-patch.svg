@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220" role="img" aria-labelledby="title desc">
+  <title id="title">Stitchra Thread Needle S patch logo</title>
+  <desc id="desc">Circular patch version of the Stitchra Thread Needle S mark for labels and embroidered badges.</desc>
+  <defs>
+    <linearGradient id="patch-green" x1="55" y1="44" x2="166" y2="176" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d6ff3f"/>
+      <stop offset="0.52" stop-color="#8cff1f"/>
+      <stop offset="1" stop-color="#16e884"/>
+    </linearGradient>
+    <linearGradient id="patch-metal" x1="110" y1="32" x2="110" y2="188" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffdf4"/>
+      <stop offset="0.5" stop-color="#cfd5d0"/>
+      <stop offset="1" stop-color="#737d78"/>
+    </linearGradient>
+  </defs>
+  <circle id="stitchra-glow-ring" cx="110" cy="110" r="96" fill="#07100b" stroke="#8cff1f" stroke-opacity="0.42" stroke-width="7"/>
+  <circle cx="110" cy="110" r="78" fill="none" stroke="#8cff1f" stroke-opacity="0.32" stroke-width="3" stroke-dasharray="2 9"/>
+  <g transform="translate(30 30)">
+    <path id="stitchra-s-mark-shadow" d="M113 42H82C55 42 42 52 42 69C42 84 55 91 80 92H92C110 92 121 101 121 116C121 134 105 143 78 143H43" fill="none" stroke="#030604" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="stitchra-s-mark" d="M111 45H81C59 45 49 54 49 68C49 80 60 86 81 87H93C115 87 128 99 128 116C128 137 110 148 78 148H45" fill="none" stroke="url(#patch-green)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="stitchra-needle">
+      <path d="M80 13V147" fill="none" stroke="url(#patch-metal)" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M80 13C91 22 93 35 85 47C78 43 76 29 80 13Z" fill="#f8fff6" stroke="#f8fff6" stroke-width="1.4" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

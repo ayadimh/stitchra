@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 160 160" role="img" aria-label="Stitchra Apple touch icon source">
+  <rect width="160" height="160" rx="34" fill="#07100b"/>
+  <circle cx="80" cy="80" r="70" fill="none" stroke="#8cff1f" stroke-opacity="0.22" stroke-width="3"/>
+  <path d="M113 42H82C55 42 42 52 42 69C42 84 55 91 80 92H92C110 92 121 101 121 116C121 134 105 143 78 143H43" fill="none" stroke="#030604" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M111 45H81C59 45 49 54 49 68C49 80 60 86 81 87H93C115 87 128 99 128 116C128 137 110 148 78 148H45" fill="none" stroke="#8cff1f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M80 13V147" fill="none" stroke="#f8fff6" stroke-width="4.5" stroke-linecap="round"/>
+</svg>
