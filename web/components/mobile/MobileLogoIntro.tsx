@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type TouchEvent } from 'react';
 import StitchraLogo from '@/components/brand/StitchraLogo';
 
 const MOBILE_INTRO_KEY = 'stitchra-mobile-intro-entered-v1';
@@ -77,6 +77,7 @@ export default function MobileLogoIntro() {
   const [visible, setVisible] = useState(() => shouldShowMobileIntro());
   const [exiting, setExiting] = useState(false);
   const exitTimeoutRef = useRef<number | null>(null);
+  const pressStartedInsideRef = useRef(false);
 
   const dismiss = useCallback(() => {
     if (exitTimeoutRef.current !== null) {
@@ -89,6 +90,29 @@ export default function MobileLogoIntro() {
     exitTimeoutRef.current = window.setTimeout(() => {
       setVisible(false);
     }, 380);
+  }, []);
+
+  const handlePressStart = useCallback(() => {
+    pressStartedInsideRef.current = true;
+  }, []);
+
+  const handlePressEnd = useCallback(
+    (event: PointerEvent<HTMLButtonElement> | TouchEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!pressStartedInsideRef.current) {
+        return;
+      }
+
+      pressStartedInsideRef.current = false;
+      dismiss();
+    },
+    [dismiss],
+  );
+
+  const handlePressCancel = useCallback(() => {
+    pressStartedInsideRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -131,9 +155,22 @@ export default function MobileLogoIntro() {
       className="mobile-logo-intro"
       aria-label="Stitchra intro"
       data-exiting={exiting ? 'true' : 'false'}
-      onClick={dismiss}
     >
-      <button type="button" className="mobile-logo-intro-stage" aria-label="Enter Stitchra">
+      <button
+        type="button"
+        className="mobile-logo-intro-stage"
+        aria-label="Enter Stitchra"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onPointerDown={handlePressStart}
+        onPointerUp={handlePressEnd}
+        onPointerCancel={handlePressCancel}
+        onTouchStart={handlePressStart}
+        onTouchEnd={handlePressEnd}
+        onTouchCancel={handlePressCancel}
+      >
         <span className="mobile-logo-intro-mark">
           <StitchraLogo compact markOnly size={92} />
           <i />
