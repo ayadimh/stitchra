@@ -2771,6 +2771,19 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   };
 
   const mobileExploreSections = publicCopy.mobileHome.exploreSections;
+  const mobileHeroCopy = {
+    eyebrow: publicCopy.mobileHome.productLabel,
+    headline: publicCopy.mobileHome.heroTitle,
+    subheadline: publicCopy.mobileHome.heroSubtitle,
+    primaryCta: publicCopy.mobileHome.primaryCta,
+    secondaryCta: publicCopy.mobileHome.secondaryCta,
+    chips: [
+      publicCopy.common.aiConcept,
+      publicCopy.common.fabricPreview,
+      publicCopy.common.clearQuote,
+    ],
+    productionProof: publicCopy.mobileHome.productionProof,
+  };
   const currentMobileStepIndex = Math.max(
     0,
     guidedStudioSteps.findIndex((step) => step.id === currentStudioStep)
@@ -3001,28 +3014,44 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
       <section id="mobile-home" className="mobile-app-launch" aria-label="Stitchra mobile start">
         <div className="mobile-launch-card">
-          <div className="mobile-launch-logo" aria-hidden="true">
-            <StitchraLogo compact markOnly size={62} />
-            <span />
+          <Image
+            src={homepageImages.machineDetail}
+            alt=""
+            aria-hidden="true"
+            fill
+            sizes="100vw"
+            className="mobile-launch-bg-image"
+          />
+          <div className="mobile-launch-brand" aria-hidden="true">
+            <div className="mobile-launch-logo">
+              <StitchraLogo compact markOnly size={62} />
+              <span />
+            </div>
+            <span>Stitchra</span>
           </div>
-          <p>{publicCopy.mobileHome.productLabel}</p>
-          <h1>Stitchra</h1>
-          <strong>{publicCopy.mobileHome.value}</strong>
+          <p className="mobile-launch-eyebrow">{mobileHeroCopy.eyebrow}</p>
+          <h1>{mobileHeroCopy.headline}</h1>
+          <strong>{mobileHeroCopy.subheadline}</strong>
           <div className="mobile-launch-actions">
             <Link
               href={localize('/design')}
               className="mobile-launch-primary"
+              data-stitchra-mobile-hero-primary="true"
             >
-              {publicCopy.common.startDesigning}
+              {mobileHeroCopy.primaryCta}
             </Link>
-            <Link href={localize('/explore')} className="mobile-launch-secondary">
-              {publicCopy.common.explore}
+            <Link href={localize('/gallery')} className="mobile-launch-secondary">
+              {mobileHeroCopy.secondaryCta}
             </Link>
           </div>
+          <div className="mobile-launch-proof-line">
+            <span aria-hidden="true" />
+            {mobileHeroCopy.productionProof}
+          </div>
           <div className="mobile-launch-trust" aria-label="Stitchra trust signals">
-            <span>{publicCopy.common.aiConcept}</span>
-            <span>{publicCopy.common.fabricPreview}</span>
-            <span>{publicCopy.common.clearQuote}</span>
+            {mobileHeroCopy.chips.map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
           </div>
           {showMobileDraftPrompt && (
             <div className="mobile-draft-soft-card" role="status">
@@ -11112,7 +11141,7 @@ function GlobalVisualStyles() {
 
           .mobile-app-launch {
             min-height: 100svh;
-            padding: calc(96px + env(safe-area-inset-top)) 16px 28px;
+            padding: calc(88px + env(safe-area-inset-top)) 14px 28px;
             position: relative;
             z-index: 1;
           }
@@ -11121,55 +11150,71 @@ function GlobalVisualStyles() {
             position: relative;
             isolation: isolate;
             overflow: hidden;
-            min-height: calc(100svh - 132px);
+            min-height: min(680px, calc(100svh - 116px));
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-end;
             align-items: flex-start;
-            gap: 18px;
-            padding: 26px;
-            border: 1px solid rgba(140,255,220,0.18);
-            border-radius: 34px;
-            background:
-              radial-gradient(circle at 20% 0%, rgba(0,255,136,0.18), transparent 34%),
-              radial-gradient(circle at 92% 16%, rgba(0,200,255,0.14), transparent 32%),
-              rgba(5, 10, 11, 0.82);
+            gap: 16px;
+            padding: 26px 22px 24px;
+            border: 1px solid rgba(140,255,220,0.24);
+            border-radius: 32px;
+            background: rgba(5, 10, 11, 0.9);
             box-shadow:
-              0 34px 100px rgba(0,0,0,0.38),
+              0 32px 92px rgba(0,0,0,0.42),
+              0 0 54px rgba(0,255,136,0.10),
               inset 0 1px 0 rgba(255,255,255,0.08);
-            backdrop-filter: blur(14px);
+            backdrop-filter: blur(10px);
           }
 
-          .mobile-launch-card::before {
-            content: "";
+          .mobile-launch-bg-image {
             position: absolute;
             inset: 0;
-            z-index: -2;
-            background-image: url("/stitchra-machine-detail-v5.jpg");
-            background-size: cover;
-            background-position: center;
-            opacity: 0.28;
-            transform: scale(1.01);
+            z-index: 0;
+            object-fit: cover;
+            object-position: center;
+            opacity: 0.34;
+            transform: scale(1.015);
           }
 
           .mobile-launch-card::after {
             content: "";
             position: absolute;
             inset: 0;
-            z-index: -1;
+            z-index: 1;
             background:
-              linear-gradient(180deg, rgba(3, 8, 8, 0.42), rgba(3, 8, 8, 0.86)),
-              radial-gradient(circle at 24% 20%, rgba(0,255,136,0.23), transparent 38%),
-              linear-gradient(135deg, rgba(0, 20, 14, 0.78), rgba(2, 11, 13, 0.9));
+              linear-gradient(180deg, rgba(1, 6, 6, 0.3) 0%, rgba(2, 9, 9, 0.66) 38%, rgba(1, 7, 8, 0.96) 100%),
+              radial-gradient(circle at 24% 16%, rgba(0,255,136,0.18), transparent 34%),
+              radial-gradient(circle at 96% 28%, rgba(0,200,255,0.14), transparent 32%),
+              linear-gradient(135deg, rgba(0, 16, 12, 0.62), rgba(2, 10, 12, 0.88));
+          }
+
+          .mobile-launch-card > :not(.mobile-launch-bg-image) {
+            position: relative;
+            z-index: 2;
+          }
+
+          .mobile-launch-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 2px;
+          }
+
+          .mobile-launch-brand > span {
+            color: #f7fff9;
+            font-size: 20px;
+            font-weight: 950;
+            letter-spacing: 0;
+            text-shadow: 0 2px 22px rgba(0,0,0,0.52);
           }
 
           .mobile-launch-logo {
             position: relative;
-            width: 76px;
-            height: 76px;
+            width: 66px;
+            height: 66px;
             display: grid;
             place-items: center;
-            margin-bottom: 8px;
           }
 
           .mobile-launch-logo > span {
@@ -11184,7 +11229,7 @@ function GlobalVisualStyles() {
             animation: mobileThreadDraw 900ms ease-out 1 both;
           }
 
-          .mobile-launch-card p,
+          .mobile-launch-eyebrow,
           .mobile-explore-heading span {
             margin: 0;
             color: #18ff9a;
@@ -11197,24 +11242,47 @@ function GlobalVisualStyles() {
           .mobile-launch-card h1 {
             margin: 0;
             color: #f7fff9;
-            font-size: clamp(50px, 17vw, 72px);
-            line-height: 0.94;
+            max-width: 350px;
+            font-size: clamp(34px, 9.8vw, 47px);
+            line-height: 1.02;
             letter-spacing: 0;
+            text-wrap: balance;
+            text-shadow: 0 4px 30px rgba(0,0,0,0.54);
           }
 
           .mobile-launch-card strong {
-            max-width: 330px;
-            color: rgba(246,255,249,0.74);
-            font-size: 18px;
+            max-width: 360px;
+            color: rgba(246,255,249,0.82);
+            font-size: 16px;
             line-height: 1.5;
             font-weight: 650;
+            text-shadow: 0 1px 18px rgba(0,0,0,0.45);
           }
 
           .mobile-launch-actions {
             width: 100%;
             display: grid;
             gap: 12px;
-            margin-top: 10px;
+            margin-top: 8px;
+          }
+
+          .mobile-launch-proof-line {
+            min-height: 28px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(203,255,224,0.82);
+            font-size: 12px;
+            font-weight: 850;
+            letter-spacing: 0.01em;
+          }
+
+          .mobile-launch-proof-line span {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #00ff88, #00c8ff);
+            box-shadow: 0 0 18px rgba(0,255,136,0.36);
           }
 
           .mobile-launch-trust {
@@ -11226,16 +11294,17 @@ function GlobalVisualStyles() {
           }
 
           .mobile-launch-trust span {
-            min-height: 30px;
+            min-height: 32px;
             display: inline-flex;
             align-items: center;
-            border: 1px solid rgba(255,255,255,0.10);
+            border: 1px solid rgba(170,255,222,0.16);
             border-radius: 999px;
-            color: rgba(246,255,249,0.72);
-            background: rgba(255,255,255,0.045);
+            color: rgba(246,255,249,0.78);
+            background: rgba(4, 14, 13, 0.52);
             padding: 6px 10px;
             font-size: 12px;
             font-weight: 850;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
           }
 
           .mobile-draft-soft-card {
@@ -11308,7 +11377,7 @@ function GlobalVisualStyles() {
           .mobile-launch-primary,
           .mobile-launch-secondary,
           .mobile-explore-cta {
-            min-height: 54px;
+            min-height: 56px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -11322,13 +11391,16 @@ function GlobalVisualStyles() {
           .mobile-explore-cta {
             color: #06100a;
             background: linear-gradient(135deg, #00ff88, #00c8ff);
-            box-shadow: 0 18px 48px rgba(0,200,255,0.20);
+            box-shadow:
+              0 18px 48px rgba(0,200,255,0.24),
+              0 0 24px rgba(0,255,136,0.12);
           }
 
           .mobile-launch-secondary {
-            color: #f7fff9;
-            border: 1px solid rgba(255,255,255,0.14);
-            background: rgba(255,255,255,0.055);
+            min-height: 50px;
+            color: rgba(246,255,249,0.88);
+            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(255,255,255,0.05);
           }
 
           .mobile-explore-hub {

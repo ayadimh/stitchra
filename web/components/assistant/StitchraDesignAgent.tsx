@@ -353,6 +353,82 @@ function isLauncherRectVisible(element: HTMLElement | null) {
   );
 }
 
+function rectanglesOverlap(
+  first: DOMRect | { left: number; right: number; top: number; bottom: number },
+  second: DOMRect | { left: number; right: number; top: number; bottom: number },
+  margin = 0,
+) {
+  return !(
+    first.right < second.left - margin ||
+    first.left > second.right + margin ||
+    first.bottom < second.top - margin ||
+    first.top > second.bottom + margin
+  );
+}
+
+function launcherRectFromPosition(
+  position: LauncherPosition,
+  size: { width: number; height: number },
+) {
+  return {
+    left: position.x,
+    top: position.y,
+    right: position.x + size.width,
+    bottom: position.y + size.height,
+  };
+}
+
+function avoidMobileHeroCtaCollision(
+  position: LauncherPosition,
+  size: { width: number; height: number },
+  pathname: string,
+) {
+  if (normalizePublicPath(pathname) !== "/" || !isMobileLauncherViewport()) {
+    return position;
+  }
+
+  const primaryCta = document.querySelector<HTMLElement>(
+    '[data-stitchra-mobile-hero-primary="true"]',
+  );
+
+  if (!primaryCta) {
+    return position;
+  }
+
+  const ctaRect = primaryCta.getBoundingClientRect();
+  if (
+    !rectanglesOverlap(launcherRectFromPosition(position, size), ctaRect, 14)
+  ) {
+    return position;
+  }
+
+  const viewport = getViewportSize();
+  const candidates = [
+    {
+      x: viewport.offsetLeft + viewport.width - size.width - MOBILE_EDGE_PADDING,
+      y: ctaRect.top - size.height - 18,
+    },
+    {
+      x: viewport.offsetLeft + MOBILE_EDGE_PADDING,
+      y: ctaRect.top - size.height - 18,
+    },
+    getDefaultLauncherPosition(size),
+  ];
+
+  return (
+    candidates
+      .map((candidate) => clampLauncherPosition(candidate, size))
+      .find(
+        (candidate) =>
+          !rectanglesOverlap(
+            launcherRectFromPosition(candidate, size),
+            ctaRect,
+            14,
+          ),
+      ) ?? position
+  );
+}
+
 export default function StitchraDesignAgent() {
   const pathname = usePathname() ?? "/";
   const locale = useMemo(() => getPathLocale(pathname), [pathname]);
@@ -441,7 +517,11 @@ export default function StitchraDesignAgent() {
     const size = getLauncherSize();
     const currentPosition =
       launcherPositionRef.current ?? getDefaultLauncherPosition(size);
-    const nextPosition = clampLauncherPosition(currentPosition, size);
+    const nextPosition = avoidMobileHeroCtaCollision(
+      clampLauncherPosition(currentPosition, size),
+      size,
+      pathname,
+    );
 
     applyLauncherPosition(nextPosition);
     if (save) {
@@ -455,7 +535,7 @@ export default function StitchraDesignAgent() {
         applyLauncherPosition(fallbackPosition);
       }
     });
-  }, [applyLauncherPosition, getLauncherSize]);
+  }, [applyLauncherPosition, getLauncherSize, pathname]);
 
   useEffect(() => {
     clearResetAgentQueryFlag();
@@ -533,9 +613,14 @@ export default function StitchraDesignAgent() {
       const savedPosition = loadSavedLauncherPosition();
       const hasValidSavedPosition =
         savedPosition && isReasonableSavedPosition(savedPosition, size);
-      const nextPosition = hasValidSavedPosition
+      const basePosition = hasValidSavedPosition
         ? clampLauncherPosition(savedPosition, size)
         : getDefaultLauncherPosition(size);
+      const nextPosition = avoidMobileHeroCtaCollision(
+        basePosition,
+        size,
+        pathname,
+      );
 
       if (savedPosition && !hasValidSavedPosition) {
         clearSavedLauncherPosition();
@@ -560,7 +645,7 @@ export default function StitchraDesignAgent() {
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [applyLauncherPosition, getLauncherSize, isHidden, isMobileDraggable]);
+  }, [applyLauncherPosition, getLauncherSize, isHidden, isMobileDraggable, pathname]);
 
   useEffect(() => {
     if (!isMobileDraggable || isHidden) {

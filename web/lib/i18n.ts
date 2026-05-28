@@ -167,6 +167,11 @@ export type PublicI18nCopy = {
   mobileHome: {
     productLabel: string;
     value: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    primaryCta: string;
+    secondaryCta: string;
+    productionProof: string;
     savedDraft: string;
     continueDraft: string;
     draftText: string;
@@ -395,6 +400,12 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
       productLabel: 'AI Embroidery Studio',
       value:
         'Create a logo idea, preview it on fabric, and get a clear embroidery quote.',
+      heroTitle: 'Create your embroidery preview.',
+      heroSubtitle:
+        'Upload a logo or generate one with AI, see it on fabric, and get a clear quote before production.',
+      primaryCta: 'Create your preview',
+      secondaryCta: 'Explore examples',
+      productionProof: 'Studio review before production',
       savedDraft: 'Saved draft',
       continueDraft: 'Continue your last design',
       draftText: 'We found a recent design draft on this device.',
@@ -663,6 +674,12 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
       productLabel: 'KI-Stickerei-Studio',
       value:
         'Erstelle eine Logoidee, prüfe sie auf Stoff und erhalte ein klares Stickerei-Angebot.',
+      heroTitle: 'Erstelle deine Stickerei-Vorschau.',
+      heroSubtitle:
+        'Lade ein Logo hoch oder erstelle eins mit KI, sieh es auf Stoff und erhalte ein klares Angebot vor der Produktion.',
+      primaryCta: 'Vorschau erstellen',
+      secondaryCta: 'Beispiele ansehen',
+      productionProof: 'Studioprüfung vor Produktion',
       savedDraft: 'Gespeicherter Entwurf',
       continueDraft: 'Letztes Design fortsetzen',
       draftText: 'Wir haben auf diesem Gerät einen aktuellen Entwurf gefunden.',
@@ -878,6 +895,12 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'Studio de broderie IA',
       value: 'Créez une idée de logo, prévisualisez-la sur tissu et obtenez un devis clair.',
+      heroTitle: 'Crée ton aperçu brodé.',
+      heroSubtitle:
+        'Importe un logo ou génère-en un avec l’IA, vois-le sur tissu et obtiens un devis clair avant production.',
+      primaryCta: 'Créer l’aperçu',
+      secondaryCta: 'Voir des exemples',
+      productionProof: 'Vérification atelier avant production',
       savedDraft: 'Brouillon enregistré',
       continueDraft: 'Continuer votre dernier design',
       draftText: 'Nous avons trouvé un brouillon récent sur cet appareil.',
@@ -1056,6 +1079,12 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'استوديو تطريز بالذكاء الاصطناعي',
       value: 'أنشئ فكرة شعار، عاينها على القماش، واحصل على عرض تطريز واضح.',
+      heroTitle: 'أنشئ معاينة التطريز.',
+      heroSubtitle:
+        'ارفع شعارك أو أنشئ واحدًا بالذكاء الاصطناعي، شاهده على القماش واحصل على عرض واضح قبل الإنتاج.',
+      primaryCta: 'أنشئ المعاينة',
+      secondaryCta: 'استكشف الأمثلة',
+      productionProof: 'مراجعة الاستوديو قبل الإنتاج',
       savedDraft: 'مسودة محفوظة',
       continueDraft: 'تابع آخر تصميم',
       draftText: 'وجدنا مسودة حديثة على هذا الجهاز.',
@@ -1234,6 +1263,12 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'Estudio de bordado con IA',
       value: 'Crea una idea de logo, prévisualízala en tela y obtén un presupuesto claro.',
+      heroTitle: 'Crea tu vista previa bordada.',
+      heroSubtitle:
+        'Sube un logo o créalo con IA, míralo sobre tela y recibe un presupuesto claro antes de producir.',
+      primaryCta: 'Crear vista previa',
+      secondaryCta: 'Ver ejemplos',
+      productionProof: 'Revisión del estudio antes de producir',
       savedDraft: 'Borrador guardado',
       continueDraft: 'Continuar último diseño',
       draftText: 'Encontramos un borrador reciente en este dispositivo.',
@@ -1412,6 +1447,12 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'AI-студия вышивки',
       value: 'Создайте идею логотипа, посмотрите ее на ткани и получите понятную цену.',
+      heroTitle: 'Создай превью вышивки.',
+      heroSubtitle:
+        'Загрузи логотип или создай его с AI, посмотри на ткани и получи понятное предложение до производства.',
+      primaryCta: 'Создать превью',
+      secondaryCta: 'Смотреть примеры',
+      productionProof: 'Проверка студии перед производством',
       savedDraft: 'Сохраненный черновик',
       continueDraft: 'Продолжить последний дизайн',
       draftText: 'Мы нашли свежий черновик на этом устройстве.',
