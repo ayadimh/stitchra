@@ -2777,12 +2777,10 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     subheadline: publicCopy.mobileHome.heroSubtitle,
     primaryCta: publicCopy.mobileHome.primaryCta,
     secondaryCta: publicCopy.mobileHome.secondaryCta,
-    chips: [
-      publicCopy.common.aiConcept,
-      publicCopy.common.fabricPreview,
-      publicCopy.common.clearQuote,
-    ],
+    chips: publicCopy.mobileHome.trustChips,
     productionProof: publicCopy.mobileHome.productionProof,
+    miniCardTitle: publicCopy.mobileHome.miniCardTitle,
+    miniCardPrice: publicCopy.mobileHome.miniCardPrice,
   };
   const currentMobileStepIndex = Math.max(
     0,
@@ -3028,6 +3026,29 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               <span />
             </div>
             <span>Stitchra</span>
+          </div>
+          <div
+            className="mobile-launch-shirt-proof"
+            data-stitchra-mobile-hero-proof="true"
+            aria-label={`${mobileHeroCopy.miniCardTitle} - ${mobileHeroCopy.miniCardPrice}`}
+          >
+            <div className="mobile-launch-shirt-stage" aria-hidden="true">
+              <Image
+                src="/mockups/shirts/shirt-front-black.png"
+                alt=""
+                width={154}
+                height={184}
+                sizes="132px"
+                className="mobile-launch-shirt-image"
+              />
+              <div className="mobile-launch-shirt-mark">
+                <StitchraLogo compact markOnly size={34} />
+              </div>
+            </div>
+            <div className="mobile-launch-shirt-meta">
+              <span>{mobileHeroCopy.miniCardTitle}</span>
+              <strong>{mobileHeroCopy.miniCardPrice}</strong>
+            </div>
           </div>
           <p className="mobile-launch-eyebrow">{mobileHeroCopy.eyebrow}</p>
           <h1>{mobileHeroCopy.headline}</h1>
@@ -11173,7 +11194,7 @@ function GlobalVisualStyles() {
             z-index: 0;
             object-fit: cover;
             object-position: center;
-            opacity: 0.34;
+            opacity: 0.44;
             transform: scale(1.015);
           }
 
@@ -11183,10 +11204,10 @@ function GlobalVisualStyles() {
             inset: 0;
             z-index: 1;
             background:
-              linear-gradient(180deg, rgba(1, 6, 6, 0.3) 0%, rgba(2, 9, 9, 0.66) 38%, rgba(1, 7, 8, 0.96) 100%),
-              radial-gradient(circle at 24% 16%, rgba(0,255,136,0.18), transparent 34%),
-              radial-gradient(circle at 96% 28%, rgba(0,200,255,0.14), transparent 32%),
-              linear-gradient(135deg, rgba(0, 16, 12, 0.62), rgba(2, 10, 12, 0.88));
+              linear-gradient(180deg, rgba(1, 6, 6, 0.18) 0%, rgba(2, 9, 9, 0.48) 34%, rgba(1, 7, 8, 0.93) 100%),
+              radial-gradient(circle at 24% 16%, rgba(0,255,136,0.16), transparent 34%),
+              radial-gradient(circle at 96% 20%, rgba(0,200,255,0.1), transparent 34%),
+              linear-gradient(135deg, rgba(0, 16, 12, 0.44), rgba(2, 10, 12, 0.8));
           }
 
           .mobile-launch-card > :not(.mobile-launch-bg-image) {
@@ -11227,6 +11248,107 @@ function GlobalVisualStyles() {
             background: linear-gradient(90deg, transparent, #18ff9a, #00c8ff);
             transform-origin: left center;
             animation: mobileThreadDraw 900ms ease-out 1 both;
+          }
+
+          .mobile-launch-shirt-proof {
+            position: absolute;
+            top: 96px;
+            inset-inline-end: 16px;
+            width: 154px;
+            display: grid;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid rgba(170,255,222,0.22);
+            border-radius: 24px;
+            background:
+              linear-gradient(180deg, rgba(10, 24, 22, 0.72), rgba(3, 8, 9, 0.86)),
+              rgba(255,255,255,0.05);
+            box-shadow:
+              0 18px 46px rgba(0,0,0,0.38),
+              0 0 22px rgba(0,255,136,0.12),
+              inset 0 1px 0 rgba(255,255,255,0.09);
+          }
+
+          .mobile-launch-shirt-stage {
+            position: relative;
+            min-height: 118px;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            border-radius: 18px;
+            background:
+              radial-gradient(circle at 50% 18%, rgba(0,255,136,0.2), transparent 44%),
+              linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+          }
+
+          .mobile-launch-shirt-stage::after {
+            content: "";
+            position: absolute;
+            inset: auto 16px 12px;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.38);
+            filter: blur(6px);
+          }
+
+          .mobile-launch-shirt-image {
+            width: 106px;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 14px 18px rgba(0,0,0,0.34));
+          }
+
+          .mobile-launch-shirt-mark {
+            position: absolute;
+            top: 42px;
+            left: 50%;
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: rgba(2, 10, 8, 0.72);
+            box-shadow:
+              0 0 0 1px rgba(24,255,154,0.26),
+              0 0 18px rgba(0,255,136,0.18);
+          }
+
+          .mobile-launch-shirt-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+          }
+
+          .mobile-launch-shirt-meta span,
+          .mobile-launch-shirt-meta strong {
+            white-space: nowrap;
+            letter-spacing: 0;
+          }
+
+          .mobile-launch-shirt-meta span {
+            min-width: 0;
+            overflow: hidden;
+            color: rgba(246,255,249,0.78);
+            font-size: 11px;
+            font-weight: 850;
+            text-overflow: ellipsis;
+          }
+
+          .mobile-launch-shirt-meta strong {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            color: #06100a;
+            background: linear-gradient(135deg, #00ff88, #00c8ff);
+            font-size: 11px;
+            font-weight: 950;
+            line-height: 1;
+            text-shadow: none;
           }
 
           .mobile-launch-eyebrow,
@@ -11401,6 +11523,54 @@ function GlobalVisualStyles() {
             color: rgba(246,255,249,0.88);
             border: 1px solid rgba(255,255,255,0.13);
             background: rgba(255,255,255,0.05);
+          }
+
+          @media (max-width: 380px), (max-height: 730px) {
+            .mobile-launch-card {
+              gap: 13px;
+              padding: 22px 18px 20px;
+            }
+
+            .mobile-launch-shirt-proof {
+              position: relative;
+              top: auto;
+              inset-inline-end: auto;
+              width: min(100%, 218px);
+              align-self: flex-end;
+              grid-template-columns: 78px minmax(0, 1fr);
+              align-items: center;
+              gap: 10px;
+              padding: 9px;
+            }
+
+            .mobile-launch-shirt-stage {
+              min-height: 78px;
+            }
+
+            .mobile-launch-shirt-image {
+              width: 70px;
+            }
+
+            .mobile-launch-shirt-mark {
+              top: 26px;
+              width: 28px;
+              height: 28px;
+            }
+
+            .mobile-launch-shirt-meta {
+              display: grid;
+              justify-items: start;
+              gap: 6px;
+            }
+
+            .mobile-launch-card h1 {
+              font-size: clamp(31px, 9vw, 40px);
+            }
+
+            .mobile-launch-card strong {
+              font-size: 15px;
+              line-height: 1.42;
+            }
           }
 
           .mobile-explore-hub {

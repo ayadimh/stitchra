@@ -387,43 +387,65 @@ function avoidMobileHeroCtaCollision(
     return position;
   }
 
-  const primaryCta = document.querySelector<HTMLElement>(
-    '[data-stitchra-mobile-hero-primary="true"]',
+  const protectedRects = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '[data-stitchra-mobile-hero-primary="true"], [data-stitchra-mobile-hero-proof="true"]',
+    ),
+    (element) => element.getBoundingClientRect(),
   );
 
-  if (!primaryCta) {
+  if (protectedRects.length === 0) {
     return position;
   }
 
-  const ctaRect = primaryCta.getBoundingClientRect();
+  const launcherRect = launcherRectFromPosition(position, size);
   if (
-    !rectanglesOverlap(launcherRectFromPosition(position, size), ctaRect, 14)
+    protectedRects.every((rect) => !rectanglesOverlap(launcherRect, rect, 14))
   ) {
     return position;
   }
 
   const viewport = getViewportSize();
+  const primaryCta = document.querySelector<HTMLElement>(
+    '[data-stitchra-mobile-hero-primary="true"]',
+  );
+  const ctaRect = primaryCta?.getBoundingClientRect();
   const candidates = [
+    ctaRect
+      ? {
+          x:
+            viewport.offsetLeft +
+            viewport.width -
+            size.width -
+            MOBILE_EDGE_PADDING,
+          y: ctaRect.top - size.height - 18,
+        }
+      : null,
+    ctaRect
+      ? {
+          x: viewport.offsetLeft + MOBILE_EDGE_PADDING,
+          y: ctaRect.top - size.height - 18,
+        }
+      : null,
     {
       x: viewport.offsetLeft + viewport.width - size.width - MOBILE_EDGE_PADDING,
-      y: ctaRect.top - size.height - 18,
-    },
-    {
-      x: viewport.offsetLeft + MOBILE_EDGE_PADDING,
-      y: ctaRect.top - size.height - 18,
+      y: viewport.offsetTop + MOBILE_EDGE_PADDING,
     },
     getDefaultLauncherPosition(size),
-  ];
+  ].filter((candidate): candidate is LauncherPosition => candidate !== null);
 
   return (
     candidates
       .map((candidate) => clampLauncherPosition(candidate, size))
       .find(
         (candidate) =>
-          !rectanglesOverlap(
-            launcherRectFromPosition(candidate, size),
-            ctaRect,
-            14,
+          protectedRects.every(
+            (rect) =>
+              !rectanglesOverlap(
+                launcherRectFromPosition(candidate, size),
+                rect,
+                14,
+              ),
           ),
       ) ?? position
   );

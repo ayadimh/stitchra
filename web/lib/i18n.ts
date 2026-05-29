@@ -172,6 +172,9 @@ export type PublicI18nCopy = {
     primaryCta: string;
     secondaryCta: string;
     productionProof: string;
+    trustChips: string[];
+    miniCardTitle: string;
+    miniCardPrice: string;
     savedDraft: string;
     continueDraft: string;
     draftText: string;
@@ -400,12 +403,15 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
       productLabel: 'AI Embroidery Studio',
       value:
         'Create a logo idea, preview it on fabric, and get a clear embroidery quote.',
-      heroTitle: 'Create your embroidery preview.',
+      heroTitle: 'See your logo stitched on a T-shirt.',
       heroSubtitle:
-        'Upload a logo or generate one with AI, see it on fabric, and get a clear quote before production.',
-      primaryCta: 'Create your preview',
+        'Upload a logo or create one with AI, preview it on fabric, and get a clear quote before production.',
+      primaryCta: 'Create my T-shirt preview',
       secondaryCta: 'Explore examples',
       productionProof: 'Studio review before production',
+      trustChips: ['AI logo concept', 'T-shirt preview', 'Clear quote'],
+      miniCardTitle: 'Logo on shirt',
+      miniCardPrice: 'From €9',
       savedDraft: 'Saved draft',
       continueDraft: 'Continue your last design',
       draftText: 'We found a recent design draft on this device.',
@@ -674,12 +680,15 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
       productLabel: 'KI-Stickerei-Studio',
       value:
         'Erstelle eine Logoidee, prüfe sie auf Stoff und erhalte ein klares Stickerei-Angebot.',
-      heroTitle: 'Erstelle deine Stickerei-Vorschau.',
+      heroTitle: 'Sieh dein Logo gestickt auf einem T-Shirt.',
       heroSubtitle:
         'Lade ein Logo hoch oder erstelle eins mit KI, sieh es auf Stoff und erhalte ein klares Angebot vor der Produktion.',
-      primaryCta: 'Vorschau erstellen',
+      primaryCta: 'T-Shirt-Vorschau erstellen',
       secondaryCta: 'Beispiele ansehen',
       productionProof: 'Studioprüfung vor Produktion',
+      trustChips: ['KI-Logoidee', 'T-Shirt-Vorschau', 'Klares Angebot'],
+      miniCardTitle: 'Logo auf Shirt',
+      miniCardPrice: 'Ab €9',
       savedDraft: 'Gespeicherter Entwurf',
       continueDraft: 'Letztes Design fortsetzen',
       draftText: 'Wir haben auf diesem Gerät einen aktuellen Entwurf gefunden.',
@@ -895,12 +904,15 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'Studio de broderie IA',
       value: 'Créez une idée de logo, prévisualisez-la sur tissu et obtenez un devis clair.',
-      heroTitle: 'Crée ton aperçu brodé.',
+      heroTitle: 'Vois ton logo brodé sur un T-shirt.',
       heroSubtitle:
-        'Importe un logo ou génère-en un avec l’IA, vois-le sur tissu et obtiens un devis clair avant production.',
-      primaryCta: 'Créer l’aperçu',
+        'Importe un logo ou crée-en un avec l’IA, prévisualise-le sur tissu et obtiens un devis clair avant production.',
+      primaryCta: 'Créer mon aperçu T-shirt',
       secondaryCta: 'Voir des exemples',
       productionProof: 'Vérification atelier avant production',
+      trustChips: ['Concept logo IA', 'Aperçu T-shirt', 'Devis clair'],
+      miniCardTitle: 'Logo sur T-shirt',
+      miniCardPrice: 'Dès 9 €',
       savedDraft: 'Brouillon enregistré',
       continueDraft: 'Continuer votre dernier design',
       draftText: 'Nous avons trouvé un brouillon récent sur cet appareil.',
@@ -1079,12 +1091,15 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'استوديو تطريز بالذكاء الاصطناعي',
       value: 'أنشئ فكرة شعار، عاينها على القماش، واحصل على عرض تطريز واضح.',
-      heroTitle: 'أنشئ معاينة التطريز.',
+      heroTitle: 'شاهد شعارك مطرزًا على قميص.',
       heroSubtitle:
-        'ارفع شعارك أو أنشئ واحدًا بالذكاء الاصطناعي، شاهده على القماش واحصل على عرض واضح قبل الإنتاج.',
-      primaryCta: 'أنشئ المعاينة',
+        'ارفع شعارك أو أنشئ واحدًا بالذكاء الاصطناعي، عاينه على القماش واحصل على عرض واضح قبل الإنتاج.',
+      primaryCta: 'أنشئ معاينة القميص',
       secondaryCta: 'استكشف الأمثلة',
       productionProof: 'مراجعة الاستوديو قبل الإنتاج',
+      trustChips: ['فكرة شعار بالذكاء الاصطناعي', 'معاينة القميص', 'عرض واضح'],
+      miniCardTitle: 'الشعار على القميص',
+      miniCardPrice: 'ابتداءً من 9 €',
       savedDraft: 'مسودة محفوظة',
       continueDraft: 'تابع آخر تصميم',
       draftText: 'وجدنا مسودة حديثة على هذا الجهاز.',
@@ -1263,12 +1278,15 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'Estudio de bordado con IA',
       value: 'Crea una idea de logo, prévisualízala en tela y obtén un presupuesto claro.',
-      heroTitle: 'Crea tu vista previa bordada.',
+      heroTitle: 'Ve tu logo bordado en una camiseta.',
       heroSubtitle:
-        'Sube un logo o créalo con IA, míralo sobre tela y recibe un presupuesto claro antes de producir.',
+        'Sube un logo o créalo con IA, previsualízalo sobre tela y recibe un presupuesto claro antes de producir.',
       primaryCta: 'Crear vista previa',
       secondaryCta: 'Ver ejemplos',
       productionProof: 'Revisión del estudio antes de producir',
+      trustChips: ['Concepto de logo IA', 'Vista en camiseta', 'Presupuesto claro'],
+      miniCardTitle: 'Logo en camiseta',
+      miniCardPrice: 'Desde 9 €',
       savedDraft: 'Borrador guardado',
       continueDraft: 'Continuar último diseño',
       draftText: 'Encontramos un borrador reciente en este dispositivo.',
@@ -1447,12 +1465,15 @@ const publicCopies: Record<Locale, PublicI18nCopy> = {
     mobileHome: {
       productLabel: 'AI-студия вышивки',
       value: 'Создайте идею логотипа, посмотрите ее на ткани и получите понятную цену.',
-      heroTitle: 'Создай превью вышивки.',
+      heroTitle: 'Посмотри логотип как вышивку на футболке.',
       heroSubtitle:
         'Загрузи логотип или создай его с AI, посмотри на ткани и получи понятное предложение до производства.',
-      primaryCta: 'Создать превью',
+      primaryCta: 'Создать превью футболки',
       secondaryCta: 'Смотреть примеры',
       productionProof: 'Проверка студии перед производством',
+      trustChips: ['AI-идея логотипа', 'Превью футболки', 'Понятная цена'],
+      miniCardTitle: 'Логотип на футболке',
+      miniCardPrice: 'От 9 €',
       savedDraft: 'Сохраненный черновик',
       continueDraft: 'Продолжить последний дизайн',
       draftText: 'Мы нашли свежий черновик на этом устройстве.',
