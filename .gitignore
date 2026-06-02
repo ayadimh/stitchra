@@ -3,3 +3,16 @@ source-assets/
 *.zprj
 *.rar
 .DS_Store
+
+# Local/editor state
+.claude/
+
+# Python local environments and caches
+.venv/
+venv/
+server/.venv/
+server/once/
+server/only/
+server/#/
+__pycache__/
+*.py[cod]
