@@ -213,66 +213,6 @@ const publicOrderSelect = [
   'payment_status',
 ].join(',');
 
-const studioOrderListSelect = [
-  'id',
-  'created_at',
-  'updated_at',
-  'public_token',
-  'customer_name',
-  'customer_email',
-  'customer_phone',
-  'quantity',
-  'customer_note',
-  'note',
-  'prompt',
-  'placement',
-  'shirt_color',
-  'design_config',
-  'stitches',
-  'colors',
-  'coverage',
-  'customer_price_eur',
-  'revised_price_eur',
-  'internal_cost_eur',
-  'estimated_profit_eur',
-  'profit_margin_percent',
-  'pricing_tier',
-  'manual_quote',
-  'warnings',
-  'recommendations',
-  'production_notes',
-  'team_message',
-  'cost_breakdown',
-  'status',
-  'customer_decision',
-  'customer_decision_at',
-  'customer_viewed_at',
-  'offer_sent_at',
-  'team_notified_at',
-  'team_notification_error',
-  'proposed_price_eur',
-  'requested_quantity',
-  'customer_change_note',
-  'wants_logo_change',
-  'change_requested_at',
-  'cancelled_at',
-  'payment_status',
-  'payment_requested_at',
-  'payment_completed_at',
-  'payment_provider',
-  'payment_session_id',
-  'production_state',
-  'production_paused_at',
-  'production_resumed_at',
-  'production_stopped_at',
-  'production_stop_reason',
-  'production_stop_note',
-  'production_stop_type',
-  'completed_at',
-  'archived_at',
-  'archive_reason',
-].join(',');
-
 const publicOrderSelectFallbacks = [
   publicOrderSelect,
   [
@@ -340,6 +280,11 @@ const phonePattern = /^[+\d\s()-]+$/;
 const publicSiteUrl = 'https://stitchra.com';
 const emailBrandIconUrl = `${publicSiteUrl}/brand/exports/icons/icon-192.png`;
 const supabaseRequestTimeoutMs = 12_000;
+
+type SupabaseRequestDiagnostics = {
+  endpointName: string;
+  selectMode: string;
+};
 
 function getResendApiKey() {
   return process.env.RESEND_API_KEY?.trim() ?? '';
@@ -849,12 +794,31 @@ function formatSupabaseError(status: number, payload: unknown) {
   return `Supabase orders request failed (${status})`;
 }
 
+function getSafeSupabaseErrorField(
+  payload: unknown,
+  field: 'code' | 'message'
+) {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+
+  const value = (payload as Record<string, unknown>)[field];
+
+  if (typeof value !== 'string' || !value.trim()) {
+    return undefined;
+  }
+
+  return value.replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
 async function supabaseRequest<T>(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  diagnostics?: SupabaseRequestDiagnostics
 ) {
   const supabaseUrl = getSupabaseUrl();
   const serviceRoleKey = getSupabaseServiceRoleKey();
+  const startedAt = Date.now();
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
@@ -916,6 +880,16 @@ async function supabaseRequest<T>(
   const payload = text ? (JSON.parse(text) as unknown) : null;
 
   if (!response.ok) {
+    console.error('Supabase request failed', {
+      endpointName: diagnostics?.endpointName ?? 'supabase_rest',
+      selectMode: diagnostics?.selectMode ?? 'unspecified',
+      status: response.status,
+      statusText: response.statusText,
+      code: getSafeSupabaseErrorField(payload, 'code'),
+      message: getSafeSupabaseErrorField(payload, 'message'),
+      durationMs: Date.now() - startedAt,
+    });
+
     throw new Error(formatSupabaseError(response.status, payload));
   }
 
@@ -1051,9 +1025,9 @@ export async function listOrders(status?: string | null) {
 
   const startedAt = Date.now();
   const params = new URLSearchParams({
-    select: studioOrderListSelect,
+    select: '*',
     order: 'created_at.desc',
-    limit: '50',
+    limit: '100',
   });
 
   if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
@@ -1063,7 +1037,12 @@ export async function listOrders(status?: string | null) {
   const [pricingSettings, rows] = await Promise.all([
     getPricingSettings(),
     supabaseRequest<SupabaseOrderRow[]>(
-      `orders?${params.toString()}`
+      `orders?${params.toString()}`,
+      {},
+      {
+        endpointName: 'orders.list',
+        selectMode: 'select_star_compat',
+      }
     ),
   ]);
 
@@ -1072,7 +1051,10 @@ export async function listOrders(status?: string | null) {
     count: rows.length,
   });
 
-  return rows.map((row) => parseOrder(row, pricingSettings));
+  return rows.map((row) => ({
+    ...parseOrder(row, pricingSettings),
+    logo_preview_url: null,
+  }));
 }
 
 export async function getOrderById(id: string) {
