@@ -213,6 +213,66 @@ const publicOrderSelect = [
   'payment_status',
 ].join(',');
 
+const studioOrderListSelect = [
+  'id',
+  'created_at',
+  'updated_at',
+  'public_token',
+  'customer_name',
+  'customer_email',
+  'customer_phone',
+  'quantity',
+  'customer_note',
+  'note',
+  'prompt',
+  'placement',
+  'shirt_color',
+  'design_config',
+  'stitches',
+  'colors',
+  'coverage',
+  'customer_price_eur',
+  'revised_price_eur',
+  'internal_cost_eur',
+  'estimated_profit_eur',
+  'profit_margin_percent',
+  'pricing_tier',
+  'manual_quote',
+  'warnings',
+  'recommendations',
+  'production_notes',
+  'team_message',
+  'cost_breakdown',
+  'status',
+  'customer_decision',
+  'customer_decision_at',
+  'customer_viewed_at',
+  'offer_sent_at',
+  'team_notified_at',
+  'team_notification_error',
+  'proposed_price_eur',
+  'requested_quantity',
+  'customer_change_note',
+  'wants_logo_change',
+  'change_requested_at',
+  'cancelled_at',
+  'payment_status',
+  'payment_requested_at',
+  'payment_completed_at',
+  'payment_provider',
+  'payment_session_id',
+  'production_state',
+  'production_paused_at',
+  'production_resumed_at',
+  'production_stopped_at',
+  'production_stop_reason',
+  'production_stop_note',
+  'production_stop_type',
+  'completed_at',
+  'archived_at',
+  'archive_reason',
+].join(',');
+
 const publicOrderSelectFallbacks = [
   publicOrderSelect,
   [
@@ -279,6 +339,7 @@ const emailPattern =
 const phonePattern = /^[+\d\s()-]+$/;
 const publicSiteUrl = 'https://stitchra.com';
 const emailBrandIconUrl = `${publicSiteUrl}/brand/exports/icons/icon-192.png`;
+const supabaseRequestTimeoutMs = 12_000;
 
 function getResendApiKey() {
   return process.env.RESEND_API_KEY?.trim() ?? '';
@@ -806,11 +867,50 @@ async function supabaseRequest<T>(
   headers.set('Authorization', `Bearer ${serviceRoleKey}`);
   headers.set('Content-Type', 'application/json');
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  const controller = new AbortController();
+  const sourceSignal = init.signal;
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, supabaseRequestTimeoutMs);
+  const abortFromSource = () => controller.abort();
+
+  if (sourceSignal) {
+    if (sourceSignal.aborted) {
+      controller.abort();
+    } else {
+      sourceSignal.addEventListener('abort', abortFromSource, {
+        once: true,
+      });
+    }
+  }
+
+  let response: Response | null = null;
+
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+      ...init,
+      headers,
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (timedOut) {
+      throw new Error(
+        `Supabase request timed out after ${supabaseRequestTimeoutMs / 1000}s.`
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    sourceSignal?.removeEventListener('abort', abortFromSource);
+  }
+
+  if (!response) {
+    throw new Error('Supabase request failed before receiving a response.');
+  }
 
   const text = await response.text();
   const payload = text ? (JSON.parse(text) as unknown) : null;
@@ -949,20 +1049,28 @@ export async function listOrders(status?: string | null) {
     return null;
   }
 
-  const pricingSettings = await getPricingSettings();
+  const startedAt = Date.now();
   const params = new URLSearchParams({
-    select: '*',
+    select: studioOrderListSelect,
     order: 'created_at.desc',
-    limit: '100',
+    limit: '50',
   });
 
   if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
     params.set('status', `eq.${status}`);
   }
 
-  const rows = await supabaseRequest<SupabaseOrderRow[]>(
-    `orders?${params.toString()}`
-  );
+  const [pricingSettings, rows] = await Promise.all([
+    getPricingSettings(),
+    supabaseRequest<SupabaseOrderRow[]>(
+      `orders?${params.toString()}`
+    ),
+  ]);
+
+  console.info('Supabase listOrders completed', {
+    durationMs: Date.now() - startedAt,
+    count: rows.length,
+  });
 
   return rows.map((row) => parseOrder(row, pricingSettings));
 }

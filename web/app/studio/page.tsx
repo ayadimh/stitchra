@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import StitchraLogo from '@/components/brand/StitchraLogo';
 import { formatPlacementLabel } from '@/lib/embroideryZones';
@@ -19,6 +19,10 @@ import {
 const API =
   process.env.NEXT_PUBLIC_API_URL ??
   'https://stitchra-production.up.railway.app';
+const STUDIO_ORDERS_TIMEOUT_MS = 10_000;
+const STUDIO_ORDER_DETAIL_TIMEOUT_MS = 10_000;
+
+type OrdersLoadProblem = 'none' | 'error' | 'timeout';
 
 type Placement = 'left' | 'center';
 type ShirtColor = 'black' | 'white';
@@ -1052,6 +1056,8 @@ export default function StudioPage() {
     useState<ArchiveFilter>('all');
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState('');
+  const [ordersLoadProblem, setOrdersLoadProblem] =
+    useState<OrdersLoadProblem>('none');
   const [orderEditForm, setOrderEditForm] =
     useState<OrderEditForm>(emptyOrderEditForm);
   const [orderEditError, setOrderEditError] = useState('');
@@ -1082,6 +1088,32 @@ export default function StudioPage() {
   const [pricingStatus, setPricingStatus] = useState('');
   const [pricingError, setPricingError] = useState('');
   const [toast, setToast] = useState<StudioToast | null>(null);
+  const isMountedRef = useRef(false);
+  const ordersRequestRef = useRef<{
+    controller: AbortController;
+    id: number;
+  } | null>(null);
+  const orderDetailRequestRef = useRef<{
+    controller: AbortController;
+    id: string;
+  } | null>(null);
+  const ordersRequestIdRef = useRef(0);
+  const selectedOrderIdRef = useRef<string | null>(null);
+  const loadedOrderDetailIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      ordersRequestRef.current?.controller.abort();
+      orderDetailRequestRef.current?.controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    selectedOrderIdRef.current = selectedOrder?.id ?? null;
+  }, [selectedOrder?.id]);
 
   const publicQuote = estimate ? getPublicQuote(estimate) : null;
   const internalQuote = estimate ? getInternalQuote(estimate) : null;
@@ -1124,6 +1156,89 @@ export default function StudioPage() {
     }, 3200);
   };
 
+  const loadOrderDetail = useCallback(
+    async (orderId: string) => {
+      if (loadedOrderDetailIdsRef.current.has(orderId)) {
+        return;
+      }
+
+      orderDetailRequestRef.current?.controller.abort();
+
+      const controller = new AbortController();
+      orderDetailRequestRef.current = { controller, id: orderId };
+      let timedOut = false;
+      const startedAt = Date.now();
+      const timeoutId = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, STUDIO_ORDER_DETAIL_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(`/api/orders/${orderId}`, {
+          headers: {
+            'x-studio-passcode': passcode,
+          },
+          signal: controller.signal,
+        });
+        const payload = (await response
+          .json()
+          .catch(() => ({}))) as {
+          order?: OrderRecord;
+        };
+
+        if (!response.ok || !payload.order) {
+          return;
+        }
+
+        const detailOrder = payload.order;
+        loadedOrderDetailIdsRef.current.add(orderId);
+
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setOrders((current) =>
+          current.map((item) =>
+            item.id === detailOrder.id ? detailOrder : item
+          )
+        );
+        setSelectedOrder((current) =>
+          current?.id === detailOrder.id ? detailOrder : current
+        );
+
+        if (selectedOrderIdRef.current === detailOrder.id) {
+          setOrderEditForm(getOrderEditForm(detailOrder, pricingSettings));
+        }
+
+        console.info('Studio order detail loaded', {
+          durationMs: Date.now() - startedAt,
+        });
+      } catch (error) {
+        if (timedOut) {
+          console.error('Studio order detail timed out', {
+            durationMs: Date.now() - startedAt,
+          });
+          return;
+        }
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        console.error('Studio order detail failed', {
+          durationMs: Date.now() - startedAt,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+
+        if (orderDetailRequestRef.current?.id === orderId) {
+          orderDetailRequestRef.current = null;
+        }
+      }
+    },
+    [passcode, pricingSettings]
+  );
+
   const selectOrder = (order: OrderRecord | null) => {
     setSelectedOrder(order);
     setOrderEditForm(getOrderEditForm(order, pricingSettings));
@@ -1133,17 +1248,36 @@ export default function StudioPage() {
     setPaymentLinkStatus('');
     setOfferEmailStatus('');
     setOfferEmailError('');
+
+    if (order) {
+      void loadOrderDetail(order.id);
+    }
   };
 
   const loadOrders = async () => {
+    ordersRequestRef.current?.controller.abort();
+
+    const requestId = ordersRequestIdRef.current + 1;
+    ordersRequestIdRef.current = requestId;
+    const controller = new AbortController();
+    ordersRequestRef.current = { controller, id: requestId };
+    let timedOut = false;
+    const startedAt = Date.now();
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, STUDIO_ORDERS_TIMEOUT_MS);
+
     setOrdersLoading(true);
     setOrdersError('');
+    setOrdersLoadProblem('none');
 
     try {
       const response = await fetch('/api/orders', {
         headers: {
           'x-studio-passcode': passcode,
         },
+        signal: controller.signal,
       });
       const payload = (await response
         .json()
@@ -1152,22 +1286,37 @@ export default function StudioPage() {
         emailConfigured?: boolean;
         message?: string;
         details?: string;
+        code?: string;
       };
+
+      if (
+        !isMountedRef.current ||
+        ordersRequestIdRef.current !== requestId
+      ) {
+        return;
+      }
 
       if (!response.ok) {
         setOrders([]);
         setSelectedOrder(null);
+        const isTimeout = payload.code === 'STUDIO_ORDERS_TIMEOUT';
+        setOrdersLoadProblem(isTimeout ? 'timeout' : 'error');
         setOrdersError(
-          payload.details ??
-            payload.message ??
-            'Database not configured.'
+          isTimeout
+            ? 'Orders took too long to load. Try again.'
+            : 'Could not load orders.'
         );
+        console.error('Studio orders load failed', {
+          durationMs: Date.now() - startedAt,
+          reason: payload.code ?? 'api_error',
+        });
         return;
       }
 
       setEmailConfigured(Boolean(payload.emailConfigured));
 
       const nextOrders = payload.orders ?? [];
+      loadedOrderDetailIdsRef.current.clear();
       const nextSelected = getOrderForPipeline(
         nextOrders,
         orderPipelineStage,
@@ -1177,11 +1326,39 @@ export default function StudioPage() {
 
       setOrders(nextOrders);
       selectOrder(nextSelected);
+      console.info('Studio orders loaded', {
+        durationMs: Date.now() - startedAt,
+        count: nextOrders.length,
+      });
     } catch (error) {
-      setOrdersError('Could not load orders.');
-      console.error(error);
+      if (
+        !isMountedRef.current ||
+        ordersRequestIdRef.current !== requestId ||
+        (controller.signal.aborted && !timedOut)
+      ) {
+        return;
+      }
+
+      setOrdersLoadProblem(timedOut ? 'timeout' : 'error');
+      setOrdersError(
+        timedOut
+          ? 'Orders took too long to load. Try again.'
+          : 'Could not load orders.'
+      );
+      console.error('Studio orders load failed', {
+        durationMs: Date.now() - startedAt,
+        reason: timedOut ? 'timeout' : 'request_failed',
+      });
     } finally {
-      setOrdersLoading(false);
+      window.clearTimeout(timeoutId);
+
+      if (
+        isMountedRef.current &&
+        ordersRequestIdRef.current === requestId
+      ) {
+        setOrdersLoading(false);
+        ordersRequestRef.current = null;
+      }
     }
   };
 
@@ -2097,6 +2274,7 @@ export default function StudioPage() {
           archiveFilter={archiveFilter}
           loading={ordersLoading}
           error={ordersError}
+          loadProblem={ordersLoadProblem}
           orderEditForm={orderEditForm}
           orderEditError={orderEditError}
           orderEditStatus={orderEditStatus}
@@ -2569,6 +2747,7 @@ function OrdersDashboard({
   archiveFilter,
   loading,
   error,
+  loadProblem,
   orderEditForm,
   orderEditError,
   orderEditStatus,
@@ -2604,6 +2783,7 @@ function OrdersDashboard({
   archiveFilter: ArchiveFilter;
   loading: boolean;
   error: string;
+  loadProblem: OrdersLoadProblem;
   orderEditForm: OrderEditForm;
   orderEditError: string;
   orderEditStatus: string;
@@ -2649,6 +2829,7 @@ function OrdersDashboard({
   ) => void;
   onAcceptRequestedChanges: (order: OrderRecord) => void;
 }) {
+  const [orderSearchInput, setOrderSearchInput] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [openSections, setOpenSections] = useState<
     Record<OrderDetailSection, boolean>
@@ -2660,6 +2841,16 @@ function OrdersDashboard({
   });
   const [productionModal, setProductionModal] =
     useState<ProductionControlModalState | null>(null);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setOrderSearch(orderSearchInput);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [orderSearchInput]);
   const targetMargin = parseTargetMargin(
     orderEditForm.target_margin_percent
   );
@@ -2988,8 +3179,10 @@ function OrdersDashboard({
           <label style={searchLabel}>
             Search orders
             <input
-              value={orderSearch}
-              onChange={(event) => setOrderSearch(event.target.value)}
+              value={orderSearchInput}
+              onChange={(event) =>
+                setOrderSearchInput(event.target.value)
+              }
               placeholder="Name, email, status, placement"
               style={searchInput}
             />
@@ -3044,7 +3237,23 @@ function OrdersDashboard({
         </div>
       )}
 
-      {error && <p style={warningCard}>{error}</p>}
+      {!loading && error && (
+        <div style={ordersStatePanel(warningCard)}>
+          <p style={stateTitle}>
+            {loadProblem === 'timeout'
+              ? 'Orders took too long to load. Try again.'
+              : 'Could not load orders.'}
+          </p>
+          <p style={mutedText}>Try again.</p>
+          <button
+            type="button"
+            onClick={onRefresh}
+            style={secondaryButton}
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {emailConfigured === false && (
         <p style={warningCard}>
           Email not configured. Copy customer link manually.
@@ -3054,9 +3263,9 @@ function OrdersDashboard({
 
       {!loading && !error && orders.length === 0 && (
         <div style={emptyStateCard}>
+          <p style={stateTitle}>No orders yet</p>
           <p style={mutedText}>
-            No orders yet. New customer requests will appear here after
-            customers submit the request form.
+            New quote requests will appear here.
           </p>
         </div>
       )}
@@ -4602,6 +4811,13 @@ const mutedText: CSSProperties = {
   lineHeight: 1.55,
 };
 
+const stateTitle: CSSProperties = {
+  margin: 0,
+  color: '#f5f7f8',
+  fontSize: '1rem',
+  fontWeight: 850,
+};
+
 const tinyText: CSSProperties = {
   color: 'rgba(245,247,248,0.38)',
   fontSize: 12,
@@ -4938,6 +5154,16 @@ const warningCard: CSSProperties = {
   color: '#ffe083',
   margin: 0,
 };
+
+function ordersStatePanel(base: CSSProperties): CSSProperties {
+  return {
+    ...base,
+    display: 'grid',
+    gap: 10,
+    alignItems: 'start',
+    justifyItems: 'start',
+  };
+}
 
 const recommendationCard: CSSProperties = {
   border: '1px solid rgba(157,255,196,0.20)',

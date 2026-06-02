@@ -13,6 +13,8 @@ import {
 } from '@/lib/orders';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const databaseMessage = 'Database not configured.';
 const previewNotConfiguredMessage =
@@ -21,9 +23,58 @@ const requiredDatabaseEnvVars = [
   'NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
 ] as const;
+const studioOrdersTimeoutMs = 9_000;
 
 function isPreviewDeployment() {
   return process.env.VERCEL_ENV === 'preview';
+}
+
+function getDatabaseConfigStatus() {
+  return {
+    supabaseUrlPresent: Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+    ),
+    serviceRolePresent: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  };
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          `Studio orders request timed out after ${timeoutMs / 1000}s.`
+        )
+      );
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
+}
+
+function getSafeStudioOrdersFailure(error: unknown) {
+  const message = getOrderErrorMessage(error).toLowerCase();
+
+  if (message.includes('timed out') || message.includes('timeout')) {
+    return {
+      code: 'STUDIO_ORDERS_TIMEOUT',
+      message: 'Orders took too long to load. Try again.',
+      reason: 'timeout',
+      status: 504,
+    };
+  }
+
+  return {
+    code: 'STUDIO_ORDERS_FAILED',
+    message: 'Could not load orders.',
+    reason: 'storage_error',
+    status: 500,
+  };
 }
 
 function getPublicDatabaseUnavailablePayload() {
@@ -153,6 +204,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const startedAt = Date.now();
+
   try {
     if (!isStudioRequest(request)) {
       return NextResponse.json(
@@ -173,9 +226,19 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
-    const orders = await listOrders(status);
+    const orders = await withTimeout(
+      listOrders(status),
+      studioOrdersTimeoutMs
+    );
 
     if (!orders) {
+      const durationMs = Date.now() - startedAt;
+      console.error('Studio orders failed', {
+        reason: 'database_not_configured',
+        durationMs,
+        ...getDatabaseConfigStatus(),
+      });
+
       return NextResponse.json(
         {
           databaseConfigured: false,
@@ -185,17 +248,30 @@ export async function GET(request: Request) {
       );
     }
 
+    console.info('Studio orders loaded', {
+      durationMs: Date.now() - startedAt,
+      count: orders.length,
+    });
+
     return NextResponse.json({
       orders,
       emailConfigured: isOfferEmailConfigured(),
     });
   } catch (error) {
+    const failure = getSafeStudioOrdersFailure(error);
+
+    console.error('Studio orders failed', {
+      reason: failure.reason,
+      durationMs: Date.now() - startedAt,
+      ...getDatabaseConfigStatus(),
+    });
+
     return NextResponse.json(
       {
-        message: 'Order storage error.',
-        details: getOrderErrorMessage(error),
+        message: failure.message,
+        code: failure.code,
       },
-      { status: 500 }
+      { status: failure.status }
     );
   }
 }
