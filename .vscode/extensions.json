@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "GitHub.vscode-pull-request-github",
+    "mikestead.dotenv",
+    "PKief.material-icon-theme",
+    "ms-python.python"
+  ],
+  "unwantedRecommendations": [
+    "bradlc.vscode-tailwindcss"
+  ]
+}
