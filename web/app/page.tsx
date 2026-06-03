@@ -89,9 +89,14 @@ const homepageImages = {
   // Temporary launch assets from free commercial-use stock sources. Replace with original Stitchra production photos later.
   heroMain: '/stitchra-hero-embroidery-v5.jpg',
   stitchFinish: '/stitchra-patch-detail-v5.jpg',
-  craftPremium: '/stitchra-craft-premium-v3.jpg',
-  threadDetail: '/stitchra-thread-v2.jpg',
+  threadDetail: '/stitchra-thread-spools-v5.jpg',
+  artworkPreview: '/stitchra-fabric-texture-v5.jpg',
+  quietMonogram: '/stitchra-hero-embroidery-v5.jpg',
+  streetwearMark: '/stitchra-streetwear-v5.jpg',
+  patchBadge: '/stitchra-patch-detail-v5.jpg',
+  minimalGraphic: '/stitchra-machine-detail-v5.jpg',
   machineDetail: '/stitchra-machine-detail-v5.jpg',
+  fabricTexture: '/stitchra-fabric-texture-v5.jpg',
 } as const;
 
 type Estimate = {
@@ -963,32 +968,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const features = getFeatures(activeLocale);
   const galleryItems = getGalleryItems(activeLocale);
   const craftStats = getCraftStats(activeLocale);
-  const productionProofCards = [
-    {
-      label: 'STITCH FINISH',
-      text: 'Clean edges and readable detail before production.',
-      className: 'production-finish-card',
-      visual: 'finish',
-    },
-    {
-      label: 'THREAD DETAIL',
-      text: 'Refined colors matched to fabric texture.',
-      className: 'production-thread-card',
-      visual: 'thread',
-    },
-    {
-      label: 'PLACEMENT PROOF',
-      text: 'Size and chest position checked before stitching.',
-      className: 'production-placement-card',
-      visual: 'placement',
-    },
-    {
-      label: 'PRICE CLARITY',
-      text: 'Preview, stitch count and quote before checkout.',
-      className: 'production-price-card',
-      visual: 'price',
-    },
-  ];
   const faqItems = getFaqItems(activeLocale);
   const pricingCards: PricingCardItem[] = [
     {
@@ -3939,43 +3918,67 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         className="desktop-home-section desktop-hero-section"
         style={{
           minHeight: '100svh',
-          padding: '132px 24px 88px',
+          padding: '124px 24px 90px',
           position: 'relative',
           zIndex: 1,
         }}
       >
         <style>
           {`
+            @keyframes heroAtelierFloat {
+              0%, 100% { transform: translate3d(0, 0, 0); }
+              50% { transform: translate3d(0, -10px, 0); }
+            }
+
+            @keyframes heroAtelierBreath {
+              0%, 100% { transform: translateX(-50%) translateZ(62px) scale3d(1, 1, 1); filter: brightness(1); }
+              50% { transform: translateX(-50%) translateZ(62px) scale3d(1.008, 1.006, 1); filter: brightness(1.035); }
+            }
+
+            @keyframes heroAtelierSheen {
+              0%, 100% { opacity: 0.18; transform: translateX(-34px) skewX(-10deg); }
+              50% { opacity: 0.36; transform: translateX(36px) skewX(-10deg); }
+            }
+
+            @keyframes heroAtelierThread {
+              from { background-position: 0 0; }
+              to { background-position: 64px 64px; }
+            }
+
+            @keyframes heroAtelierPulse {
+              0%, 100% { box-shadow: 0 0 18px rgba(177,255,202,0.28), 0 0 58px rgba(177,255,202,0.10), inset 0 0 22px rgba(255,255,255,0.08); }
+              50% { box-shadow: 0 0 26px rgba(177,255,202,0.38), 0 0 72px rgba(177,255,202,0.14), inset 0 0 28px rgba(255,255,255,0.11); }
+            }
+
+            @keyframes heroCardFloat {
+              0%, 100% { transform: translate3d(0, 0, 0) rotateX(0deg); }
+              50% { transform: translate3d(0, -12px, 0) rotateX(1.2deg); }
+            }
+
             .hero-atelier {
               position: relative;
               width: 100%;
-              max-width: 1320px;
+              max-width: 1280px;
               margin: 0 auto;
               display: grid;
-              grid-template-columns: minmax(0, 0.98fr) minmax(0, 1.02fr);
-              gap: clamp(28px, 3vw, 42px);
-              align-items: stretch;
-              min-height: clamp(650px, calc(100svh - 230px), 760px);
+              grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+              gap: clamp(32px, 3.5vw, 48px);
+              align-items: center;
             }
 
             .hero-copy-panel {
               position: relative;
               overflow: visible;
               min-width: 0;
-              height: 100%;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              padding: clamp(34px, 4vw, 54px);
-              border-radius: 36px;
-              border: 1px solid rgba(185,255,204,0.15);
+              padding: clamp(30px, 3.8vw, 48px);
+              border-radius: 34px;
+              border: 1px solid rgba(185,255,204,0.12);
               background:
-                radial-gradient(circle at 0% 16%, rgba(0,255,136,0.16), transparent 32%),
-                radial-gradient(circle at 100% 74%, rgba(0,200,255,0.12), transparent 34%),
-                linear-gradient(145deg, rgba(20,24,25,0.78), rgba(4,6,7,0.96) 56%, rgba(13,18,19,0.84));
+                radial-gradient(circle at 4% 20%, rgba(0,255,136,0.13), transparent 30%),
+                radial-gradient(circle at 94% 72%, rgba(0,200,255,0.10), transparent 31%),
+                linear-gradient(145deg, rgba(18,21,22,0.70), rgba(4,6,7,0.94) 58%, rgba(13,15,18,0.78));
               box-shadow:
                 0 42px 130px rgba(0,0,0,0.54),
-                0 0 70px rgba(0,215,255,0.045),
                 0 0 0 1px rgba(255,255,255,0.015),
                 inset 0 1px 0 rgba(255,255,255,0.08);
               backdrop-filter: blur(24px);
@@ -4026,9 +4029,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               margin: 0 0 28px;
               padding-bottom: 0.08em;
               overflow: visible;
-              font-size: clamp(48px, 5vw, 76px);
+              font-size: clamp(46px, 5.4vw, 78px);
               line-height: 1.02;
-              letter-spacing: 0;
+              letter-spacing: -0.025em;
               font-weight: 950;
               color: #f6f3eb;
               text-wrap: balance;
@@ -4036,12 +4039,12 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
             .hero-title-accent {
               display: block;
-              margin-bottom: 0;
+              margin-bottom: -0.08em;
               padding-bottom: 0.10em;
               overflow: visible;
               line-height: 1.08;
               color: transparent;
-              background: linear-gradient(90deg, #00ff88, #00d7ff 58%, #9dffc4);
+              background: linear-gradient(90deg, #00ff88, #00d7ff 58%, #d36bff);
               -webkit-background-clip: text;
               background-clip: text;
               text-shadow: 0 0 34px rgba(0,255,136,0.20);
@@ -4052,62 +4055,34 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-subcopy {
-              max-width: 600px;
-              margin: 0 0 30px;
+              max-width: 620px;
+              margin: 0 0 36px;
               color: rgba(246,243,235,0.70);
               font-size: clamp(17px, 1.35vw, 20px);
-              line-height: 1.62;
+              line-height: 1.68;
             }
 
             .hero-actions {
               display: flex;
-              align-items: center;
-              gap: 12px;
+              gap: 14px;
               flex-wrap: wrap;
-              width: fit-content;
-              max-width: 100%;
-              padding: 8px;
-              margin-bottom: 30px;
-              border: 1px solid rgba(255,255,255,0.09);
-              border-radius: 26px;
-              background: rgba(255,255,255,0.040);
-              box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.055),
-                0 18px 54px rgba(0,0,0,0.22);
+              margin-bottom: 32px;
             }
 
             .hero-proof-strip {
               display: grid;
               grid-template-columns: repeat(3, minmax(0, 1fr));
-              gap: 12px;
+              gap: 10px;
             }
 
             .hero-proof-item {
-              position: relative;
-              min-height: 92px;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              overflow: hidden;
-              padding: 17px;
+              min-height: 72px;
+              padding: 15px;
               border-radius: 20px;
-              border: 1px solid rgba(185,255,204,0.12);
+              border: 1px solid rgba(255,255,255,0.09);
               background:
-                radial-gradient(circle at 14% 4%, rgba(0,255,136,0.12), transparent 36%),
-                linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
+                linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
               box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-            }
-
-            .hero-proof-item::before {
-              content: "";
-              position: absolute;
-              left: 0;
-              top: 16px;
-              bottom: 16px;
-              width: 2px;
-              border-radius: 999px;
-              background: linear-gradient(180deg, #00ff88, #00c8ff);
-              opacity: 0.72;
             }
 
             .hero-proof-label {
@@ -4193,11 +4168,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               display: grid;
               grid-template-columns: minmax(0, 1fr) 188px;
               gap: 16px;
-              transform: none;
+              transform: rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
               transform-style: preserve-3d;
-              transition: none;
+              transition: transform 180ms ease-out;
               z-index: 2;
-              animation: none;
+              animation: heroCardFloat 7s ease-in-out infinite;
             }
 
             .hero-photo-panel,
@@ -4398,7 +4373,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               display: grid;
               place-items: center;
               border-radius: 13px;
-              background: linear-gradient(135deg, #00ff88, #00c8ff 58%, #9dffc4);
+              background: linear-gradient(135deg, #00ff88, #00c8ff 58%, #ff28d6);
               color: #04100a;
               font-weight: 900;
             }
@@ -4429,7 +4404,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-window-dot:nth-child(3) {
-              background: #7cf0d4;
+              background: #ff28d6;
             }
 
             .hero-placement-callout {
@@ -4478,14 +4453,14 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               height: 536px;
               transform: translateX(-50%) rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
               transform-style: preserve-3d;
-              transition: none;
+              transition: transform 180ms ease-out;
               z-index: 2;
             }
 
             .hero-float {
               position: absolute;
               inset: 0;
-              animation: none;
+              animation: heroAtelierFloat 7s ease-in-out infinite;
               transform-style: preserve-3d;
             }
 
@@ -4524,7 +4499,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               overflow: hidden;
               border-radius: 94px 94px 42px 42px / 88px 88px 34px 34px;
               clip-path: polygon(17% 0, 35% 0, 42% 12%, 58% 12%, 65% 0, 83% 0, 98% 22%, 87% 100%, 13% 100%, 2% 22%);
-              animation: none;
+              animation: heroAtelierBreath 6.4s ease-in-out infinite;
             }
 
             .hero-shirt-body::before {
@@ -4535,7 +4510,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 linear-gradient(104deg, transparent 0%, rgba(255,255,255,0.15) 17%, transparent 32%),
                 repeating-linear-gradient(90deg, rgba(255,255,255,0.032) 0 1px, transparent 1px 8px),
                 repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 10px);
-              animation: none;
+              animation: heroAtelierSheen 9s ease-in-out infinite;
               pointer-events: none;
             }
 
@@ -4570,7 +4545,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               border: 1px solid rgba(185,255,204,0.78);
               border-radius: 16px;
               background: linear-gradient(135deg, rgba(185,255,204,0.10), rgba(0,0,0,0.10));
-              animation: none;
+              animation: heroAtelierPulse 3.8s ease-in-out infinite;
               z-index: 2;
             }
 
@@ -4582,9 +4557,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               content: "";
               position: absolute;
               inset: 0;
-                background-image: linear-gradient(45deg, rgba(185,255,204,0.14) 25%, transparent 25%, transparent 50%, rgba(185,255,204,0.14) 50%, rgba(185,255,204,0.14) 75%, transparent 75%, transparent);
+              background-image: linear-gradient(45deg, rgba(185,255,204,0.14) 25%, transparent 25%, transparent 50%, rgba(185,255,204,0.14) 50%, rgba(185,255,204,0.14) 75%, transparent 75%, transparent);
               background-size: 16px 16px;
-              animation: none;
+              animation: heroAtelierThread 8s linear infinite;
               opacity: 0.22;
               pointer-events: none;
               z-index: 0;
@@ -4668,8 +4643,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 grid-template-columns: 1fr;
                 gap: 34px;
                 max-width: 760px;
-                min-height: auto;
-                align-items: start;
               }
 
               .hero-preview-card {
@@ -4780,20 +4753,18 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             /* Stable premium visual card: no mouse-follow spotlight or overlap. */
             .hero-preview-card {
               min-height: auto;
-              height: 100%;
               width: 100%;
               min-width: 0;
               overflow: hidden;
               display: grid;
-              grid-template-columns: minmax(0, 1fr) minmax(190px, 0.44fr);
+              grid-template-columns: minmax(0, 1fr) auto;
               grid-template-areas:
                 "toolbar badge"
                 "stage stage"
                 "callout quote"
                 "specs specs";
-              grid-template-rows: auto minmax(0, 1fr) auto auto;
-              gap: 16px;
-              padding: clamp(24px, 2.6vw, 32px);
+              gap: 18px;
+              padding: clamp(18px, 2.2vw, 26px);
               border-color: rgba(180,255,222,0.16);
               background:
                 radial-gradient(circle at 72% 12%, rgba(0,215,255,0.10), transparent 30%),
@@ -4802,6 +4773,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-preview-card:hover {
+              transform: translateY(-3px);
               border-color: rgba(124,240,212,0.24);
               box-shadow:
                 0 52px 150px rgba(0,0,0,0.62),
@@ -4857,28 +4829,20 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               grid-area: stage;
               display: grid;
               grid-template-columns: minmax(0, 1fr);
-              grid-template-areas:
-                "main"
-                "side"
-                "workflow";
-              grid-template-rows: auto auto auto;
               min-height: auto;
               gap: 16px;
               transform: none;
-              transition: none;
               animation: none;
             }
 
             .hero-photo-panel {
-              grid-area: main;
               grid-row: auto;
               min-height: 0;
               aspect-ratio: 16 / 11;
-              border-radius: 28px;
+              border-radius: 30px;
             }
 
             .hero-side-stack {
-              grid-area: side;
               display: grid;
               grid-template-columns: repeat(2, minmax(0, 1fr));
               grid-template-rows: none;
@@ -4894,27 +4858,24 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
             @media (min-width: 1100px) {
               .hero-editorial-stage {
-                grid-template-columns: minmax(0, 1.38fr) minmax(184px, 0.56fr);
-                grid-template-areas:
-                  "main side"
-                  "workflow workflow";
-                grid-template-rows: minmax(0, 1fr) auto;
-                min-height: 0;
-                height: 100%;
+                --hero-stage-height: clamp(340px, 30vw, 390px);
+                grid-template-columns: minmax(0, 1.42fr) minmax(170px, 0.58fr);
+                min-height: var(--hero-stage-height);
+                height: var(--hero-stage-height);
                 align-items: stretch;
               }
 
               .hero-photo-panel {
-                grid-row: auto;
-                min-height: 0;
-                height: 100%;
+                grid-row: 1 / span 2;
+                min-height: var(--hero-stage-height);
+                height: var(--hero-stage-height);
                 aspect-ratio: auto;
               }
 
               .hero-side-stack {
                 grid-template-columns: 1fr;
                 grid-template-rows: repeat(2, minmax(0, 1fr));
-                min-height: 0;
+                min-height: var(--hero-stage-height);
                 height: 100%;
               }
 
@@ -4925,7 +4886,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-fabric-note {
-              grid-area: workflow;
+              grid-column: 1 / -1;
               min-height: auto;
               padding: 18px 20px;
             }
@@ -4933,27 +4894,15 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             .hero-placement-callout {
               grid-area: callout;
               width: auto;
-              min-height: 78px;
               display: flex;
               align-items: center;
               gap: 13px;
-              padding: 15px 16px;
-              border-radius: 22px;
-              background:
-                linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
             }
 
             .hero-floating-quote {
               grid-area: quote;
               justify-self: end;
               min-width: 170px;
-              min-height: 78px;
-              align-content: center;
-              padding: 15px 17px;
-              border-radius: 22px;
-              background:
-                radial-gradient(circle at 12% 10%, rgba(0,255,136,0.13), transparent 42%),
-                rgba(5,8,9,0.64);
             }
 
             .hero-spec-grid {
@@ -4979,11 +4928,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             @media (max-width: 1099px) {
-              .hero-copy-panel,
-              .hero-preview-card {
-                height: auto;
-              }
-
               .hero-preview-card {
                 grid-template-columns: 1fr;
                 grid-template-areas:
@@ -5132,11 +5076,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               </a>
 
               <a
-                href="#features"
+                href="#craft"
                 className="lux-button"
                 style={secondaryButton}
               >
-                Explore Studio Tools
+                {t('hero.secondaryCta')}
               </a>
             </div>
 
@@ -5248,8 +5192,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 <div className="hero-mini-photo-card">
                   {/* Hero stitch detail image from the local launch asset set. */}
                   <Image
-                    src={homepageImages.craftPremium}
-                    alt="Close-up embroidery stitch texture on fabric"
+                    src={homepageImages.stitchFinish}
+                    alt="Close-up stitching detail on fabric"
                     fill
                     sizes="(max-width: 767px) calc(100vw - 64px), (max-width: 1099px) 330px, 300px"
                     style={{
@@ -5355,104 +5299,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="features" className="desktop-home-section studio-tools-section" style={toolSectionStyle}>
-        <div style={toolSectionInner}>
-          <SectionHeader
-            eyebrow={t('sections.featuresEyebrow')}
-            title={t('sections.featuresTitle')}
-            text={t('sections.featuresText')}
-          />
-
-          <div className="tool-card-grid" style={toolGrid}>
-            {features.map((feature) => (
-              <FeatureCard
-                key={feature.title}
-                icon={feature.icon}
-                title={feature.title}
-                text={feature.text}
-                accent={feature.accent}
-                footer={feature.footer}
-                visual={feature.visual}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="craft" className="desktop-home-section" style={sectionStyle}>
-        <div className="production-layout">
-          <div className="craft-copy-panel">
-            <div style={sectionEyebrow}>
-              PRODUCTION DETAIL
-            </div>
-
-            <h2 style={sectionTitle}>
-              Proof the finish before production
-            </h2>
-
-            <p style={sectionText}>
-              Stitchra keeps the customer focused on the final result: embroidery detail, fabric texture, placement confidence and a clear quote before the order moves into production.
-            </p>
-
-            <div className="production-stat-grid">
-              {craftStats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="glow-card production-stat-card"
-                >
-                  <span>{stat.value}</span>
-                  <small>{stat.label}</small>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="production-bento">
-            <div className="glow-card production-photo-card production-photo-main">
-              {/* Premium craft close-up image from the local launch asset set. */}
-              <Image
-                src={homepageImages.stitchFinish}
-                alt="Close-up embroidery detail with fabric texture"
-                fill
-                sizes="(max-width: 900px) 100vw, 620px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-photo-badge">
-                <strong>{t('craft.mainTitle')}</strong>
-                <span>{t('craft.mainText')}</span>
-              </div>
-            </div>
-
-            {productionProofCards.map((card) => (
-              <div
-                key={card.label}
-                className={`glow-card production-mini-card production-proof-card ${card.className}`}
-              >
-                <div
-                  className="production-proof-visual"
-                  data-proof-visual={card.visual}
-                  aria-hidden="true"
-                >
-                  <span />
-                  <i />
-                  <i />
-                  <i />
-                </div>
-                <div className="production-mini-copy">
-                  <span>{card.label}</span>
-                  <strong>{card.text}</strong>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -6588,6 +6434,142 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         </div>
       </section>
 
+      <section id="features" className="desktop-home-section studio-tools-section" style={toolSectionStyle}>
+        <div style={toolSectionInner}>
+          <SectionHeader
+            eyebrow={t('sections.featuresEyebrow')}
+            title={t('sections.featuresTitle')}
+            text={t('sections.featuresText')}
+          />
+
+          <div className="tool-card-grid" style={toolGrid}>
+            {features.map((feature) => (
+              <FeatureCard
+                key={feature.title}
+                icon={feature.icon}
+                title={feature.title}
+                text={feature.text}
+                accent={feature.accent}
+                footer={feature.footer}
+                visual={feature.visual}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="craft" className="desktop-home-section" style={sectionStyle}>
+        <div className="production-layout">
+          <div className="craft-copy-panel">
+            <div style={sectionEyebrow}>
+              {t('sections.craftEyebrow')}
+            </div>
+
+            <h2 style={sectionTitle}>
+              {t('sections.craftTitle')}
+            </h2>
+
+            <p style={sectionText}>
+              {t('sections.craftText')}
+            </p>
+
+            <div className="production-stat-grid">
+              {craftStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="glow-card production-stat-card"
+                >
+                  <span>{stat.value}</span>
+                  <small>{stat.label}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="production-bento">
+            <div className="glow-card production-photo-card production-photo-main">
+              {/* Premium craft close-up image from the local launch asset set. */}
+              <Image
+                src={homepageImages.stitchFinish}
+                alt="Close-up embroidery detail with fabric texture"
+                fill
+                sizes="(max-width: 900px) 100vw, 620px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-photo-badge">
+                <strong>{t('craft.mainTitle')}</strong>
+                <span>{t('craft.mainText')}</span>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-thread-card">
+              {/* Thread detail image from the local launch asset set. */}
+              <Image
+                src={homepageImages.threadDetail}
+                alt="Close-up thread detail and fabric texture"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>{t('craft.threadTitle')}</span>
+                <strong>{t('craft.threadText')}</strong>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-gallery-card">
+              {/* Fabric texture image from the local launch asset set. */}
+              <Image
+                src={homepageImages.artworkPreview}
+                alt="Abstract close-up fabric texture for artwork preview"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>{t('craft.artworkTitle')}</span>
+                <strong>{t('craft.artworkText')}</strong>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-workflow-card">
+              {/* Machine detail image from the local launch asset set. */}
+              <Image
+                src={homepageImages.machineDetail}
+                alt="Machine detail showing a streamlined fashion-tech embroidery workflow"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>{t('craft.workflowTitle')}</span>
+                <strong>{t('craft.workflowText')}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="gallery" className="desktop-home-section" style={sectionStyle}>
         <SectionHeader
           eyebrow={t('sections.galleryEyebrow')}
@@ -6602,7 +6584,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               title={item.title}
               text={item.text}
               accent={item.accent}
-              visual={item.visual}
+              image={item.image}
             />
           ))}
         </div>
@@ -6723,7 +6705,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         </div>
       </section>
 
-      <section className="desktop-home-section final-cta-section" style={ctaSection}>
+      <section className="desktop-home-section" style={ctaSection}>
         <div
           className="glow-card final-cta-card"
         >
@@ -7199,9 +7181,17 @@ function MannequinPreview({
   logoLabel: string;
   teeColor: TeeColor;
 }) {
+  const [mouse, setMouse] = useState({
+    x: 0,
+    y: 0,
+    active: false,
+  });
+
   const isWhite = teeColor === 'white';
-  const rotateX = 0;
-  const rotateY = 0;
+  const rotateX = mouse.active ? mouse.y * -5 : 0;
+  const rotateY = mouse.active ? mouse.x * 7 : 0;
+  const lightX = mouse.active ? 50 + mouse.x * 18 : 50;
+  const lightY = mouse.active ? 30 + mouse.y * 12 : 30;
   const placementLeft =
     preset.label === 'Center front' ? '50%' : '60%';
   const placementTop =
@@ -7232,13 +7222,34 @@ function MannequinPreview({
   return (
     <div
       className="designer-preview-card"
+      onMouseMove={(event) => {
+        const rect =
+          event.currentTarget.getBoundingClientRect();
+        const x =
+          (event.clientX - rect.left) / rect.width - 0.5;
+        const y =
+          (event.clientY - rect.top) / rect.height - 0.5;
+
+        setMouse({
+          x,
+          y,
+          active: true,
+        });
+      }}
+      onMouseLeave={() =>
+        setMouse({
+          x: 0,
+          y: 0,
+          active: false,
+        })
+      }
       style={{
         position: 'relative',
         minHeight: 650,
         borderRadius: 36,
         overflow: 'hidden',
         background:
-          'radial-gradient(circle at 50% 30%, rgba(124,240,212,0.20), transparent 18%), linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))',
+          `radial-gradient(circle at ${lightX}% ${lightY}%, rgba(124,240,212,0.20), transparent 18%), linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))`,
         border:
           '1px solid rgba(255,255,255,0.10)',
         boxShadow:
@@ -7249,6 +7260,36 @@ function MannequinPreview({
           'background 180ms ease, box-shadow 180ms ease',
       }}
     >
+      <style>
+        {`
+          @keyframes stitchraTorsoFloat {
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -14px, 0); }
+          }
+
+          @keyframes stitchraBreath {
+            0%, 100% { transform: translateX(-50%) translateZ(58px) scale3d(1, 1, 1); filter: brightness(1); }
+            50% { transform: translateX(-50%) translateZ(58px) scale3d(1.015, 1.008, 1); filter: brightness(1.045); }
+          }
+
+          @keyframes stitchraGlow {
+            0%, 100% { opacity: 0.52; transform: scale(1); }
+            50% { opacity: 0.92; transform: scale(1.045); }
+          }
+
+          @keyframes stitchraThread {
+            0% { background-position: 0 0; }
+            100% { background-position: 72px 72px; }
+          }
+
+          @keyframes stitchraFabric {
+            0% { opacity: 0.26; transform: translateX(-10px); }
+            50% { opacity: 0.38; transform: translateX(10px); }
+            100% { opacity: 0.26; transform: translateX(-10px); }
+          }
+        `}
+      </style>
+
       <div
         style={{
           position: 'absolute',
@@ -7258,6 +7299,9 @@ function MannequinPreview({
           backgroundSize: '44px 44px',
           maskImage:
             'radial-gradient(circle at 50% 45%, black, transparent 78%)',
+          transform:
+            `translate3d(${mouse.x * -10}px, ${mouse.y * -10}px, 0)`,
+          transition: 'transform 120ms ease',
         }}
       />
 
@@ -7269,7 +7313,8 @@ function MannequinPreview({
             'radial-gradient(ellipse at center, rgba(124,240,212,0.20), transparent 55%)',
           filter: 'blur(28px)',
           opacity: 0.72,
-          animation: 'none',
+          animation:
+            'stitchraGlow 4.6s ease-in-out infinite',
         }}
       />
 
@@ -7307,14 +7352,16 @@ function MannequinPreview({
           width: 420,
           height: 520,
           transformStyle: 'preserve-3d',
-          transition: 'none',
+          transition:
+            'transform 140ms ease-out',
         }}
       >
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            animation: 'none',
+            animation:
+              'stitchraTorsoFloat 6s ease-in-out infinite',
             transformStyle: 'preserve-3d',
           }}
         >
@@ -7390,7 +7437,8 @@ function MannequinPreview({
               boxShadow: isWhite
                 ? 'inset 24px 22px 38px rgba(255,255,255,0.70), inset -36px -42px 60px rgba(120,112,98,0.34), 0 56px 115px rgba(0,0,0,0.48), 0 0 74px rgba(124,240,212,0.13)'
                 : 'inset 24px 22px 42px rgba(255,255,255,0.055), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
-              animation: 'none',
+              animation:
+                'stitchraBreath 5.8s ease-in-out infinite',
               overflow: 'hidden',
             }}
           >
@@ -7401,7 +7449,8 @@ function MannequinPreview({
                 backgroundImage:
                   'linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.18) 18%, transparent 34%), repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 7px), repeating-linear-gradient(0deg, rgba(0,0,0,0.035) 0 1px, transparent 1px 9px)',
                 opacity: isWhite ? 0.44 : 0.26,
-                animation: 'none',
+                animation:
+                  'stitchraFabric 8s ease-in-out infinite',
                 pointerEvents: 'none',
               }}
             />
@@ -7453,7 +7502,10 @@ function MannequinPreview({
                 background: preview
                   ? 'transparent'
                   : 'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
-                animation: 'none',
+                animation:
+                  preview
+                    ? 'none'
+                    : 'stitchraGlow 3.2s ease-in-out infinite',
               }}
             >
               <div
@@ -7470,7 +7522,8 @@ function MannequinPreview({
                     : isWhite
                       ? 0.24
                       : 0.34,
-                  animation: 'none',
+                  animation:
+                    'stitchraThread 7s linear infinite',
                   pointerEvents: 'none',
                   zIndex: 0,
                 }}
@@ -7614,7 +7667,7 @@ function GlobalVisualStyles() {
       {`
         html {
           scroll-behavior: smooth;
-          scroll-padding-top: 132px;
+          scroll-padding-top: 112px;
           max-width: 100%;
         }
 
@@ -7634,28 +7687,11 @@ function GlobalVisualStyles() {
         }
 
         section[id] {
-          scroll-margin-top: 132px;
+          scroll-margin-top: 112px;
         }
 
         #gallery {
-          scroll-margin-top: 132px;
-        }
-
-        #features,
-        #craft,
-        #how,
-        #gallery,
-        #pricing,
-        #faq {
-          overflow: hidden;
-          background:
-            linear-gradient(rgba(185,255,222,0.020) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(185,255,222,0.018) 1px, transparent 1px),
-            radial-gradient(circle at 18% 12%, rgba(0,255,136,0.055), transparent 32%),
-            radial-gradient(circle at 84% 20%, rgba(0,215,255,0.050), transparent 34%),
-            linear-gradient(180deg, rgba(0,6,5,0.16), rgba(0,12,10,0.12));
-          background-size: 86px 86px, 86px 86px, auto, auto, auto;
-          background-position: center;
+          scroll-margin-top: 112px;
         }
 
         ::selection {
@@ -7722,11 +7758,13 @@ function GlobalVisualStyles() {
             0 20px 58px rgba(0,0,0,0.20);
           cursor: pointer;
           transition:
+            transform 180ms ease,
             border-color 180ms ease,
             box-shadow 180ms ease;
         }
 
         .stitchra-upload-box:hover {
+          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.10),
@@ -7851,6 +7889,7 @@ function GlobalVisualStyles() {
           font-weight: 850;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease;
         }
@@ -7870,6 +7909,7 @@ function GlobalVisualStyles() {
         }
 
         .upload-clean-button:hover {
+          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           background: rgba(24,255,154,0.09);
         }
@@ -7938,6 +7978,7 @@ function GlobalVisualStyles() {
           white-space: nowrap;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
@@ -7955,6 +7996,7 @@ function GlobalVisualStyles() {
         }
 
         .guided-studio-step-complete:hover {
+          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.34);
           color: #dffcff;
           background: rgba(0,215,255,0.07);
@@ -8069,6 +8111,7 @@ function GlobalVisualStyles() {
           text-align: left;
           cursor: pointer;
           transition:
+            transform 180ms ease,
             border-color 180ms ease,
             background 180ms ease,
             box-shadow 180ms ease;
@@ -8086,6 +8129,7 @@ function GlobalVisualStyles() {
 
         .design-start-card:hover,
         .design-start-card-active {
+          transform: translateY(-2px);
           border-color: rgba(0,255,136,0.44);
           background:
             radial-gradient(circle at 80% 18%, rgba(0,215,255,0.16), transparent 34%),
@@ -8332,6 +8376,7 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
@@ -8352,6 +8397,7 @@ function GlobalVisualStyles() {
 
         .draft-recovery-actions button:hover,
         .design-reset-link:hover {
+          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.38);
           color: #9dffc4;
         }
@@ -8452,6 +8498,7 @@ function GlobalVisualStyles() {
           font-weight: 850;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease,
             color 160ms ease;
@@ -8459,6 +8506,7 @@ function GlobalVisualStyles() {
 
         .ai-style-chip-row button:hover,
         .ai-style-chip-row .ai-style-chip-active {
+          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.42);
           color: #9dffc4;
           background: rgba(24,255,154,0.09);
@@ -8489,11 +8537,13 @@ function GlobalVisualStyles() {
           font-weight: 800;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease;
         }
 
         .ai-idea-chip-row button:hover {
+          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.42);
           background: rgba(0,215,255,0.09);
         }
@@ -8809,6 +8859,7 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             box-shadow 160ms ease;
         }
@@ -8836,6 +8887,7 @@ function GlobalVisualStyles() {
         .ai-concept-primary:hover,
         .ai-concept-secondary:hover,
         .ai-concept-link:hover {
+          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.42);
         }
 
@@ -9179,12 +9231,14 @@ function GlobalVisualStyles() {
           font-weight: 850;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease;
         }
 
         .placement-mode-row button:hover,
         .placement-mode-row .placement-mode-active {
+          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.42);
           color: #9dffc4;
           background: rgba(24,255,154,0.10);
@@ -9208,6 +9262,7 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
@@ -9215,6 +9270,7 @@ function GlobalVisualStyles() {
 
         .logo-size-quick-row button:hover,
         .logo-size-quick-row .logo-size-quick-active {
+          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           color: #9dffc4;
           background: rgba(24,255,154,0.10);
@@ -9265,12 +9321,14 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
+            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
         }
 
         .design-next-step-row button:hover {
+          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           color: #9dffc4;
           background: rgba(24,255,154,0.08);
@@ -9565,6 +9623,7 @@ function GlobalVisualStyles() {
           overflow: visible !important;
           isolation: isolate;
           transition:
+            transform 220ms ease,
             border-color 220ms ease,
             box-shadow 220ms ease,
             background 220ms ease;
@@ -9580,6 +9639,7 @@ function GlobalVisualStyles() {
           background:
             radial-gradient(circle at 50% 0%, var(--card-glow), rgba(0,212,255,0.08) 34%, transparent 68%);
           filter: blur(48px);
+          transform: translateZ(0);
           transition:
             opacity 220ms ease,
             filter 220ms ease;
@@ -9604,6 +9664,7 @@ function GlobalVisualStyles() {
         }
 
         .glow-card:hover {
+          transform: translateY(-3px);
           border-color: rgba(124,240,212,0.24) !important;
           box-shadow:
             0 28px 92px rgba(0,0,0,0.48),
@@ -9633,7 +9694,7 @@ function GlobalVisualStyles() {
         }
 
         .tool-card-grid .tool-card:nth-child(even) {
-          transform: none;
+          transform: translateY(28px);
         }
 
         .tool-card-grid .tool-card::after {
@@ -9647,12 +9708,23 @@ function GlobalVisualStyles() {
           opacity: 0.9;
         }
 
+        @keyframes homepageVisualFloat {
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -5px, 0); }
+        }
+
+        @keyframes homepageVisualShimmer {
+          0% { transform: translateX(-38%) rotate(-8deg); opacity: 0; }
+          42% { opacity: 0.52; }
+          100% { transform: translateX(38%) rotate(-8deg); opacity: 0; }
+        }
+
         .homepage-card-visual {
           position: relative;
           overflow: hidden;
           color: var(--visual-main);
           contain: paint;
-          animation: none;
+          animation: homepageVisualFloat 6.4s ease-in-out infinite;
         }
 
         .homepage-card-visual::before {
@@ -9676,7 +9748,7 @@ function GlobalVisualStyles() {
           width: 32px;
           pointer-events: none;
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.24), transparent);
-          animation: none;
+          animation: homepageVisualShimmer 7.2s ease-in-out infinite;
         }
 
         .homepage-card-visual svg {
@@ -9706,6 +9778,7 @@ function GlobalVisualStyles() {
           isolation: isolate;
           overflow: hidden;
           transition:
+            transform 180ms ease,
             box-shadow 180ms ease,
             filter 180ms ease;
         }
@@ -9718,21 +9791,25 @@ function GlobalVisualStyles() {
           z-index: 0;
           opacity: 0;
           background:
-            linear-gradient(110deg, transparent 18%, rgba(255,255,255,0.20) 46%, rgba(0,215,255,0.10) 52%, transparent 74%);
+            radial-gradient(circle, rgba(255,255,255,0.70), rgba(0,255,136,0.35) 24%, rgba(0,200,255,0.18) 42%, transparent 64%);
+          transform: translateX(-25%);
           transition:
-            opacity 180ms ease;
+            opacity 180ms ease,
+            transform 260ms ease;
           mix-blend-mode: soft-light;
         }
 
         .lux-button:hover {
+          transform: translateY(-2px);
           filter: saturate(1.18);
           box-shadow:
-            0 18px 48px rgba(0,255,136,0.16),
-            0 14px 42px rgba(0,200,255,0.12);
+            0 22px 64px rgba(0,255,136,0.22),
+            0 18px 54px rgba(0,200,255,0.18);
         }
 
         .lux-button:hover::before {
-          opacity: 0.72;
+          opacity: 1;
+          transform: translateX(18%);
         }
 
         .production-layout {
@@ -9788,7 +9865,7 @@ function GlobalVisualStyles() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-auto-rows: auto;
-          gap: 16px;
+          gap: 18px;
           min-width: 0;
           width: 100%;
         }
@@ -9821,160 +9898,19 @@ function GlobalVisualStyles() {
         .production-mini-card {
           min-height: 0;
           aspect-ratio: 16 / 9;
-          border-radius: 26px;
-        }
-
-        .production-proof-card {
-          min-height: 232px;
-          background:
-            radial-gradient(circle at 20% 14%, var(--card-glow), transparent 36%),
-            linear-gradient(145deg, rgba(10,18,17,0.82), rgba(2,6,6,0.94));
-          box-shadow:
-            0 28px 92px rgba(0,0,0,0.42),
-            0 0 48px rgba(0,215,255,0.045),
-            inset 0 1px 0 rgba(255,255,255,0.09);
-        }
-
-        .production-finish-card {
-          --card-glow: rgba(0,255,136,0.14);
+          border-radius: 28px;
         }
 
         .production-thread-card {
           --card-glow: rgba(0,215,255,0.16);
         }
 
-        .production-placement-card {
-          --card-glow: rgba(124,240,212,0.15);
+        .production-gallery-card {
+          --card-glow: rgba(0,255,136,0.14);
         }
 
-        .production-price-card {
-          --card-glow: rgba(24,255,154,0.13);
-        }
-
-        .production-proof-card::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background-image:
-            linear-gradient(rgba(185,255,222,0.032) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(185,255,222,0.026) 1px, transparent 1px);
-          background-size: 34px 34px;
-          mask-image: radial-gradient(circle at 50% 42%, black, transparent 74%);
-          opacity: 0.72;
-        }
-
-        .production-proof-visual {
-          position: absolute;
-          left: 18px;
-          right: 18px;
-          top: 18px;
-          bottom: 96px;
-          z-index: 1;
-          display: grid;
-          place-items: center;
-          overflow: hidden;
-          border-radius: 18px;
-          border: 1px solid rgba(184,255,222,0.11);
-          background:
-            radial-gradient(circle at 28% 18%, rgba(0,255,136,0.13), transparent 34%),
-            radial-gradient(circle at 82% 72%, rgba(0,215,255,0.10), transparent 34%),
-            rgba(255,255,255,0.035);
-        }
-
-        .production-proof-visual::before,
-        .production-proof-visual::after,
-        .production-proof-visual span,
-        .production-proof-visual i {
-          content: "";
-          position: absolute;
-          display: block;
-          pointer-events: none;
-        }
-
-        .production-proof-visual::before {
-          inset: 18px;
-          border: 1px dashed rgba(184,255,222,0.24);
-          border-radius: 16px;
-        }
-
-        .production-proof-visual::after {
-          width: 74px;
-          height: 74px;
-          border-radius: 50%;
-          border: 1px solid rgba(0,215,255,0.34);
-          box-shadow:
-            0 0 0 12px rgba(0,215,255,0.035),
-            inset 0 0 32px rgba(0,255,136,0.08);
-        }
-
-        .production-proof-visual span {
-          width: 52px;
-          height: 52px;
-          border-radius: 16px;
-          border: 1px solid rgba(124,240,212,0.46);
-          background:
-            linear-gradient(135deg, rgba(0,255,136,0.16), rgba(0,215,255,0.08));
-          box-shadow: 0 0 34px rgba(0,215,255,0.10);
-        }
-
-        .production-proof-visual i {
-          height: 3px;
-          width: 72px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, transparent, rgba(157,255,196,0.74), transparent);
-        }
-
-        .production-proof-visual i:nth-of-type(1) {
-          transform: translateY(-24px);
-        }
-
-        .production-proof-visual i:nth-of-type(2) {
-          width: 96px;
-        }
-
-        .production-proof-visual i:nth-of-type(3) {
-          transform: translateY(24px);
-        }
-
-        .production-proof-visual[data-proof-visual="thread"] span {
-          width: 86px;
-          height: 44px;
-          border-radius: 999px;
-        }
-
-        .production-proof-visual[data-proof-visual="thread"] i {
-          width: 42px;
-          background: linear-gradient(90deg, rgba(0,215,255,0.85), rgba(24,255,154,0.78));
-        }
-
-        .production-proof-visual[data-proof-visual="placement"]::after {
-          width: 92px;
-          height: 62px;
-          border-radius: 18px;
-        }
-
-        .production-proof-visual[data-proof-visual="placement"] span {
-          width: 34px;
-          height: 34px;
-          border-radius: 999px;
-        }
-
-        .production-proof-visual[data-proof-visual="price"] span {
-          width: 58px;
-          height: 58px;
-          border-radius: 999px;
-        }
-
-        .production-proof-visual[data-proof-visual="price"] span::after {
-          content: "€";
-          position: absolute;
-          inset: 0;
-          display: grid;
-          place-items: center;
-          color: #9dffc4;
-          font-size: 28px;
-          font-weight: 950;
+        .production-workflow-card {
+          --card-glow: rgba(168,121,255,0.14);
         }
 
         .production-image {
@@ -10011,9 +9947,8 @@ function GlobalVisualStyles() {
           min-width: 0;
           padding: 14px 15px;
           border-radius: 18px;
-          border: 1px solid rgba(184,255,222,0.13);
-          background:
-            linear-gradient(145deg, rgba(8,14,14,0.78), rgba(3,6,7,0.68));
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(5,6,7,0.56);
           backdrop-filter: blur(16px);
         }
 
@@ -10073,7 +10008,7 @@ function GlobalVisualStyles() {
           opacity: 0.18;
         }
 
-        .gallery-card-with-visual {
+        .gallery-card-with-image {
           padding-top: 22px;
         }
 
@@ -10089,27 +10024,6 @@ function GlobalVisualStyles() {
           background: rgba(255,255,255,0.04);
         }
 
-        .gallery-visual-panel {
-          display: grid;
-          place-items: center;
-          background:
-            radial-gradient(circle at 22% 16%, var(--card-glow), transparent 34%),
-            radial-gradient(circle at 82% 76%, rgba(0,215,255,0.11), transparent 34%),
-            linear-gradient(145deg, rgba(10,18,17,0.74), rgba(3,7,8,0.92));
-        }
-
-        .gallery-visual-panel::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(185,255,222,0.032) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(185,255,222,0.026) 1px, transparent 1px);
-          background-size: 32px 32px;
-          mask-image: radial-gradient(circle at 50% 48%, black, transparent 78%);
-          pointer-events: none;
-        }
-
         .gallery-image::after {
           content: "";
           position: absolute;
@@ -10118,66 +10032,6 @@ function GlobalVisualStyles() {
             linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.70)),
             radial-gradient(circle at 24% 16%, rgba(0,255,136,0.16), transparent 34%);
           pointer-events: none;
-        }
-
-        .gallery-visual-panel span,
-        .gallery-visual-panel i {
-          position: absolute;
-          z-index: 1;
-          display: block;
-          pointer-events: none;
-        }
-
-        .gallery-visual-panel span {
-          width: 76px;
-          height: 76px;
-          border-radius: 22px;
-          border: 1px solid rgba(184,255,222,0.30);
-          background:
-            linear-gradient(135deg, rgba(0,255,136,0.14), rgba(0,215,255,0.08));
-          box-shadow:
-            0 0 44px rgba(0,215,255,0.10),
-            inset 0 1px 0 rgba(255,255,255,0.10);
-        }
-
-        .gallery-visual-panel i {
-          height: 3px;
-          width: 88px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, transparent, rgba(157,255,196,0.70), transparent);
-        }
-
-        .gallery-visual-panel i:nth-of-type(1) {
-          transform: translateY(-30px);
-        }
-
-        .gallery-visual-panel i:nth-of-type(2) {
-          width: 112px;
-        }
-
-        .gallery-visual-panel i:nth-of-type(3) {
-          transform: translateY(30px);
-        }
-
-        .gallery-visual-panel[data-gallery-visual="teamPatch"] span {
-          border-radius: 999px;
-        }
-
-        .gallery-visual-panel[data-gallery-visual="placement"] span {
-          width: 96px;
-          height: 62px;
-        }
-
-        .gallery-visual-panel[data-gallery-visual="placement"]::after {
-          background:
-            linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.62)),
-            radial-gradient(circle at 50% 50%, rgba(0,215,255,0.13), transparent 40%);
-        }
-
-        .gallery-visual-panel[data-gallery-visual="minimalMerch"] span {
-          width: 58px;
-          height: 58px;
-          border-radius: 999px;
         }
 
         .gallery-mark {
@@ -10619,11 +10473,13 @@ function GlobalVisualStyles() {
             inset 0 1px 0 rgba(255,255,255,0.08),
             0 20px 70px rgba(0,0,0,0.24);
           transition:
+            transform 180ms ease,
             border-color 180ms ease,
             box-shadow 180ms ease;
         }
 
         .pricing-card:hover {
+          transform: translateY(-5px);
           border-color: var(--pricing-main);
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.10),
@@ -10743,7 +10599,7 @@ function GlobalVisualStyles() {
           overflow: hidden;
           padding: 22px;
           background:
-            radial-gradient(circle at 92% 0%, rgba(0,215,255,0.13), transparent 36%),
+            radial-gradient(circle at 92% 0%, rgba(255,40,214,0.16), transparent 36%),
             rgba(255,255,255,0.045);
         }
 
@@ -10774,8 +10630,8 @@ function GlobalVisualStyles() {
         .pricing-stitch-bars i {
           width: 34px;
           border-radius: 999px 999px 8px 8px;
-          background: linear-gradient(180deg, rgba(0,255,136,0.72), rgba(0,215,255,0.48));
-          box-shadow: 0 0 24px rgba(0,215,255,0.14);
+          background: linear-gradient(180deg, rgba(255,40,214,0.82), rgba(0,215,255,0.48));
+          box-shadow: 0 0 24px rgba(255,40,214,0.18);
         }
 
         .pricing-stitch-bars i:nth-child(1) { height: 18px; }
@@ -10809,8 +10665,13 @@ function GlobalVisualStyles() {
           width: 32%;
           transform: rotate(18deg);
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.36), transparent);
-          opacity: 0.22;
-          animation: none;
+          animation: pricingCtaShimmer 4.2s ease-in-out infinite;
+        }
+
+        @keyframes pricingCtaShimmer {
+          0%, 58% { transform: translateX(0) rotate(18deg); opacity: 0; }
+          68% { opacity: 0.65; }
+          100% { transform: translateX(420%) rotate(18deg); opacity: 0; }
         }
 
         .faq-grid {
@@ -10841,72 +10702,20 @@ function GlobalVisualStyles() {
           line-height: 1.65;
         }
 
-        .final-cta-section {
-          overflow: hidden;
-          background:
-            radial-gradient(circle at 22% 18%, rgba(0,255,136,0.12), transparent 34%),
-            radial-gradient(circle at 82% 12%, rgba(0,215,255,0.10), transparent 32%),
-            linear-gradient(180deg, rgba(1,8,7,0.12), rgba(2,12,10,0.58) 52%, rgba(0,4,4,0.90));
-          isolation: isolate;
-        }
-
-        .final-cta-section::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background-image:
-            linear-gradient(rgba(185,255,222,0.030) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(185,255,222,0.026) 1px, transparent 1px);
-          background-size: 74px 74px;
-          mask-image: radial-gradient(circle at 50% 42%, black, transparent 76%);
-          opacity: 0.82;
-          z-index: 0;
-        }
-
-        .final-cta-section::after {
-          content: "";
-          position: absolute;
-          inset: 22px max(18px, calc((100vw - 1120px) / 2)) 18px;
-          pointer-events: none;
-          border-radius: 40px;
-          border: 1px solid rgba(184,255,222,0.07);
-          background:
-            radial-gradient(circle at 18% 20%, rgba(0,255,136,0.10), transparent 36%),
-            radial-gradient(circle at 82% 72%, rgba(0,215,255,0.08), transparent 36%);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.045);
-          z-index: 0;
-        }
-
         .final-cta-card {
-          position: relative;
-          z-index: 1;
           max-width: 980px;
           margin: 0 auto;
           padding: clamp(34px, 5vw, 58px);
           text-align: center;
           border-radius: 36px;
-          border: 1px solid rgba(184,255,222,0.18);
+          border: 1px solid rgba(0,255,136,0.22);
           background:
-            radial-gradient(circle at 22% 10%, rgba(0,255,136,0.13), transparent 34%),
-            radial-gradient(circle at 82% 84%, rgba(0,215,255,0.11), transparent 34%),
-            linear-gradient(145deg, rgba(14,24,22,0.72), rgba(3,7,7,0.90));
+            radial-gradient(circle at 22% 10%, rgba(0,255,136,0.18), transparent 34%),
+            radial-gradient(circle at 82% 84%, rgba(0,215,255,0.16), transparent 34%),
+            rgba(255,255,255,0.04);
           box-shadow:
-            0 44px 130px rgba(0,0,0,0.52),
-            0 0 72px rgba(0,215,255,0.055),
+            0 44px 130px rgba(0,0,0,0.46),
             inset 0 1px 0 rgba(255,255,255,0.10);
-          overflow: hidden !important;
-        }
-
-        .final-cta-card::after {
-          content: "";
-          position: absolute;
-          inset: 1px;
-          border-radius: inherit;
-          pointer-events: none;
-          background:
-            linear-gradient(120deg, rgba(255,255,255,0.10), transparent 28%, rgba(124,240,212,0.06));
-          opacity: 0.56;
         }
 
         @media (max-width: 1023px) {
@@ -12291,7 +12100,7 @@ function GlobalVisualStyles() {
             gap: 18px;
           }
 
-          .gallery-card-with-visual {
+          .gallery-card-with-image {
             padding-top: 22px;
           }
 
@@ -12391,7 +12200,7 @@ function BackgroundEffects() {
           inset: '10% -8% auto',
           height: 520,
           background:
-            'radial-gradient(circle at 25% 35%, rgba(0,255,136,0.13), transparent 28%), radial-gradient(circle at 80% 26%, rgba(0,215,255,0.12), transparent 30%), radial-gradient(circle at 50% 82%, rgba(124,240,212,0.08), transparent 32%)',
+            'radial-gradient(circle at 25% 35%, rgba(0,255,136,0.13), transparent 28%), radial-gradient(circle at 80% 26%, rgba(0,215,255,0.12), transparent 30%), radial-gradient(circle at 50% 82%, rgba(255,40,214,0.08), transparent 32%)',
           filter: 'blur(10px)',
         }}
       />
@@ -12413,7 +12222,7 @@ function HoverCard({
       className={className ? `glow-card ${className}` : 'glow-card'}
       style={{
         transition:
-          'border-color 180ms ease',
+          'transform 180ms ease, border-color 180ms ease',
         ...style,
       }}
     >
@@ -12656,7 +12465,7 @@ function HomepageCardVisual({
           <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor={colors.main} stopOpacity="0.96" />
             <stop offset="58%" stopColor="#00d7ff" stopOpacity="0.66" />
-            <stop offset="100%" stopColor="#9dffc4" stopOpacity="0.54" />
+            <stop offset="100%" stopColor="#ff28d6" stopOpacity="0.54" />
           </linearGradient>
           <filter id={glowId} x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="5" result="blur" />
@@ -12714,7 +12523,7 @@ function HomepageCardVisual({
             />
             <circle cx="116" cy="62" r="4" fill={colors.main} />
             <circle cx="130" cy="78" r="4" fill="#00d7ff" />
-            <circle cx="145" cy="62" r="4" fill="#7cf0d4" />
+            <circle cx="145" cy="62" r="4" fill="#ff28d6" />
             <rect x="36" y="87" width="28" height="28" rx="10" fill="#050607" stroke="rgba(255,255,255,0.22)" />
             <rect x="68" y="87" width="28" height="28" rx="10" fill="#f5f1e8" stroke="rgba(255,255,255,0.22)" />
             <path d="M196 54H226M196 72H216M196 90H230" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.72" />
@@ -12731,7 +12540,7 @@ function HomepageCardVisual({
             <path d="M177 83C188 56 204 56 216 83C203 103 189 104 177 83Z" fill="none" stroke={colors.main} strokeWidth="3" />
             <circle cx="177" cy="83" r="4" fill="#00d7ff" />
             <circle cx="216" cy="83" r="4" fill="#00d7ff" />
-            <circle cx="196" cy="59" r="4" fill="#7cf0d4" />
+            <circle cx="196" cy="59" r="4" fill="#ff28d6" />
             <path d="M203 35L207 43L216 46L207 49L203 58L199 49L190 46L199 43Z" fill={colors.main} opacity="0.8" />
           </>
         )}
@@ -12758,7 +12567,7 @@ function HomepageCardVisual({
             <path d="M62 54H96M62 73H124M62 92H108" stroke="rgba(255,255,255,0.34)" strokeWidth="4" strokeLinecap="round" />
             <circle cx="143" cy="54" r="6" fill={colors.main} />
             <circle cx="143" cy="73" r="6" fill="#00d7ff" />
-            <circle cx="143" cy="92" r="6" fill="#7cf0d4" />
+            <circle cx="143" cy="92" r="6" fill="#ff28d6" />
             <circle cx="196" cy="74" r="34" fill={`url(#${gradientId})`} opacity="0.88" filter={`url(#${glowId})`} />
             <text x="196" y="83" textAnchor="middle" fontSize="30" fontWeight="900" fill="#05100b">€</text>
             <path d="M184 116H226" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.7" />
@@ -12773,7 +12582,7 @@ function HomepageCardVisual({
             <path d="M151 75C160 54 174 54 184 75C174 90 160 91 151 75Z" fill="none" stroke={colors.main} strokeWidth="3" />
             <circle cx="132" cy="47" r="4" fill={colors.main} />
             <circle cx="204" cy="71" r="4" fill="#00d7ff" />
-            <circle cx="148" cy="102" r="4" fill="#7cf0d4" />
+            <circle cx="148" cy="102" r="4" fill="#ff28d6" />
             <path d="M132 47L166 62L204 71M166 62L148 102" stroke="rgba(255,255,255,0.20)" />
           </>
         )}
@@ -12819,33 +12628,35 @@ function GalleryCard({
   title,
   text,
   accent,
-  visual,
+  image,
 }: {
   title: string;
   text: string;
   accent: Accent;
-  visual: GalleryVisualKind;
+  image: string;
 }) {
   const colors = accentStyles[accent];
 
   return (
     <div
-      className="glow-card gallery-card gallery-card-with-visual"
+      className="glow-card gallery-card gallery-card-with-image"
       style={{
         '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
         background: colors.surface,
       } as CSSProperties}
     >
-      <div
-        className="gallery-image gallery-visual-panel"
-        data-gallery-visual={visual}
-        aria-hidden="true"
-      >
-        <span />
-        <i />
-        <i />
-        <i />
+      <div className="gallery-image">
+        <Image
+          src={image}
+          alt={`${title} embroidery texture`}
+          fill
+          sizes="(max-width: 640px) calc(100vw - 80px), (max-width: 1180px) 44vw, 260px"
+          style={{
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
       </div>
 
       <div className="gallery-copy">
@@ -13082,11 +12893,6 @@ type HomepageCardVisualKind =
   | 'fabricPreview'
   | 'cleanup'
   | 'price';
-type GalleryVisualKind =
-  | 'monogram'
-  | 'teamPatch'
-  | 'placement'
-  | 'minimalMerch';
 
 const accentStyles: Record<
   Accent,
@@ -13118,22 +12924,22 @@ const accentStyles: Record<
       'linear-gradient(145deg, rgba(7,14,18,0.82), rgba(4,7,10,0.90))',
   },
   purple: {
-    main: '#7cf0d4',
-    soft: 'rgba(124,240,212,0.13)',
-    border: 'rgba(124,240,212,0.22)',
-    glow: 'rgba(124,240,212,0.20)',
-    icon: 'linear-gradient(135deg, rgba(124,240,212,0.28), rgba(0,215,255,0.12))',
+    main: '#a879ff',
+    soft: 'rgba(168,121,255,0.14)',
+    border: 'rgba(168,121,255,0.24)',
+    glow: 'rgba(168,121,255,0.24)',
+    icon: 'linear-gradient(135deg, rgba(168,121,255,0.32), rgba(255,40,214,0.14))',
     surface:
-      'linear-gradient(145deg, rgba(7,17,16,0.82), rgba(3,7,8,0.90))',
+      'linear-gradient(145deg, rgba(12,10,18,0.82), rgba(6,6,10,0.90))',
   },
   pink: {
-    main: '#9dffc4',
-    soft: 'rgba(157,255,196,0.12)',
-    border: 'rgba(157,255,196,0.20)',
-    glow: 'rgba(0,255,136,0.18)',
-    icon: 'linear-gradient(135deg, rgba(157,255,196,0.28), rgba(0,215,255,0.10))',
+    main: '#ff28d6',
+    soft: 'rgba(255,40,214,0.13)',
+    border: 'rgba(255,40,214,0.22)',
+    glow: 'rgba(255,40,214,0.24)',
+    icon: 'linear-gradient(135deg, rgba(255,40,214,0.34), rgba(255,206,0,0.16))',
     surface:
-      'linear-gradient(145deg, rgba(7,18,13,0.82), rgba(3,7,6,0.90))',
+      'linear-gradient(145deg, rgba(16,8,14,0.82), rgba(7,6,9,0.90))',
   },
 };
 
@@ -13198,17 +13004,17 @@ function getGalleryItems(locale: Locale): Array<{
   title: string;
   text: string;
   accent: Accent;
-  visual: GalleryVisualKind;
+  image: string;
 }> {
   const copy = getLocalizedArray<{
     title: string;
     text: string;
   }>(locale, 'gallery');
   const meta = [
-    { accent: 'green' as const, visual: 'monogram' as const },
-    { accent: 'cyan' as const, visual: 'teamPatch' as const },
-    { accent: 'purple' as const, visual: 'placement' as const },
-    { accent: 'pink' as const, visual: 'minimalMerch' as const },
+    { accent: 'green' as const, image: homepageImages.quietMonogram },
+    { accent: 'cyan' as const, image: homepageImages.streetwearMark },
+    { accent: 'purple' as const, image: homepageImages.patchBadge },
+    { accent: 'pink' as const, image: homepageImages.minimalGraphic },
   ];
 
   return meta.map((item, index) => ({
@@ -13409,7 +13215,7 @@ const pricingPanel: CSSProperties = {
 };
 
 const ctaSection: CSSProperties = {
-  padding: '96px 24px 156px',
+  padding: '92px 24px 120px',
   position: 'relative',
   zIndex: 1,
 };
@@ -13429,13 +13235,11 @@ const ctaText: CSSProperties = {
 };
 
 const footerStyle: CSSProperties = {
-  borderTop: '1px solid rgba(184,255,222,0.10)',
+  borderTop: '1px solid rgba(255,255,255,0.08)',
   padding: '34px 24px',
   position: 'relative',
   zIndex: 1,
-  background:
-    'linear-gradient(180deg, rgba(2,12,10,0.82), rgba(0,2,2,0.96))',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
+  background: 'rgba(0,0,0,0.18)',
 };
 
 const footerInner: CSSProperties = {
@@ -13480,11 +13284,9 @@ const wideButton: CSSProperties = {
 const secondaryButton: CSSProperties = {
   ...primaryButton,
   color: '#f5f7f8',
-  background:
-    'linear-gradient(145deg, rgba(255,255,255,0.075), rgba(5,10,11,0.72))',
-  border: '1px solid rgba(124,240,212,0.34)',
-  boxShadow:
-    'inset 0 1px 0 rgba(255,255,255,0.10), 0 14px 36px rgba(0,0,0,0.24)',
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.14)',
+  boxShadow: 'none',
 };
 
 const navLink: CSSProperties = {
