@@ -3925,36 +3925,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
       >
         <style>
           {`
-            @keyframes heroAtelierFloat {
-              0%, 100% { transform: translate3d(0, 0, 0); }
-              50% { transform: translate3d(0, -10px, 0); }
-            }
-
-            @keyframes heroAtelierBreath {
-              0%, 100% { transform: translateX(-50%) translateZ(62px) scale3d(1, 1, 1); filter: brightness(1); }
-              50% { transform: translateX(-50%) translateZ(62px) scale3d(1.008, 1.006, 1); filter: brightness(1.035); }
-            }
-
-            @keyframes heroAtelierSheen {
-              0%, 100% { opacity: 0.18; transform: translateX(-34px) skewX(-10deg); }
-              50% { opacity: 0.36; transform: translateX(36px) skewX(-10deg); }
-            }
-
-            @keyframes heroAtelierThread {
-              from { background-position: 0 0; }
-              to { background-position: 64px 64px; }
-            }
-
-            @keyframes heroAtelierPulse {
-              0%, 100% { box-shadow: 0 0 18px rgba(177,255,202,0.28), 0 0 58px rgba(177,255,202,0.10), inset 0 0 22px rgba(255,255,255,0.08); }
-              50% { box-shadow: 0 0 26px rgba(177,255,202,0.38), 0 0 72px rgba(177,255,202,0.14), inset 0 0 28px rgba(255,255,255,0.11); }
-            }
-
-            @keyframes heroCardFloat {
-              0%, 100% { transform: translate3d(0, 0, 0) rotateX(0deg); }
-              50% { transform: translate3d(0, -12px, 0) rotateX(1.2deg); }
-            }
-
             .hero-atelier {
               position: relative;
               width: 100%;
@@ -4202,9 +4172,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               display: grid;
               grid-template-columns: minmax(0, 1fr) 188px;
               gap: 16px;
-              transform: rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
+              transform: none;
               transform-style: preserve-3d;
-              transition: transform 180ms ease-out;
+              transition: none;
               z-index: 2;
               animation: none;
             }
@@ -4487,7 +4457,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               height: 536px;
               transform: translateX(-50%) rotateX(var(--hero-rotate-x)) rotateY(var(--hero-rotate-y));
               transform-style: preserve-3d;
-              transition: transform 180ms ease-out;
+              transition: none;
               z-index: 2;
             }
 
@@ -4874,6 +4844,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               min-height: auto;
               gap: 16px;
               transform: none;
+              transition: none;
               animation: none;
             }
 
@@ -5140,11 +5111,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               </a>
 
               <a
-                href="#craft"
+                href="#features"
                 className="lux-button"
                 style={secondaryButton}
               >
-                {t('hero.secondaryCta')}
+                Explore Studio Tools
               </a>
             </div>
 
@@ -5362,6 +5333,142 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className="desktop-home-section studio-tools-section" style={toolSectionStyle}>
+        <div style={toolSectionInner}>
+          <SectionHeader
+            eyebrow={t('sections.featuresEyebrow')}
+            title={t('sections.featuresTitle')}
+            text={t('sections.featuresText')}
+          />
+
+          <div className="tool-card-grid" style={toolGrid}>
+            {features.map((feature) => (
+              <FeatureCard
+                key={feature.title}
+                icon={feature.icon}
+                title={feature.title}
+                text={feature.text}
+                accent={feature.accent}
+                footer={feature.footer}
+                visual={feature.visual}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="craft" className="desktop-home-section" style={sectionStyle}>
+        <div className="production-layout">
+          <div className="craft-copy-panel">
+            <div style={sectionEyebrow}>
+              PRODUCTION DETAIL
+            </div>
+
+            <h2 style={sectionTitle}>
+              Proof the finish before production
+            </h2>
+
+            <p style={sectionText}>
+              Stitchra keeps the customer focused on the final result: embroidery detail, fabric texture, placement confidence and a clear quote before the order moves into production.
+            </p>
+
+            <div className="production-stat-grid">
+              {craftStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="glow-card production-stat-card"
+                >
+                  <span>{stat.value}</span>
+                  <small>{stat.label}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="production-bento">
+            <div className="glow-card production-photo-card production-photo-main">
+              {/* Premium craft close-up image from the local launch asset set. */}
+              <Image
+                src={homepageImages.stitchFinish}
+                alt="Close-up embroidery detail with fabric texture"
+                fill
+                sizes="(max-width: 900px) 100vw, 620px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-photo-badge">
+                <strong>{t('craft.mainTitle')}</strong>
+                <span>{t('craft.mainText')}</span>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-thread-card">
+              {/* Thread detail image from the local launch asset set. */}
+              <Image
+                src={homepageImages.threadDetail}
+                alt="Close-up thread detail and fabric texture"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>{t('craft.threadTitle')}</span>
+                <strong>{t('craft.threadText')}</strong>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-gallery-card">
+              {/* Fabric texture image from the local launch asset set. */}
+              <Image
+                src={homepageImages.artworkPreview}
+                alt="Abstract close-up fabric texture for artwork preview"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>{t('craft.artworkTitle')}</span>
+                <strong>{t('craft.artworkText')}</strong>
+              </div>
+            </div>
+
+            <div className="glow-card production-mini-card production-workflow-card">
+              {/* Machine detail image from the local launch asset set. */}
+              <Image
+                src={homepageImages.machineDetail}
+                alt="Machine detail showing a streamlined fashion-tech embroidery workflow"
+                fill
+                sizes="(max-width: 900px) 100vw, 300px"
+                className="production-image"
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+              <div className="production-photo-overlay" />
+              <div className="production-mini-copy">
+                <span>{t('craft.workflowTitle')}</span>
+                <strong>{t('craft.workflowText')}</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -6498,142 +6605,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         </div>
       </section>
 
-      <section id="features" className="desktop-home-section studio-tools-section" style={toolSectionStyle}>
-        <div style={toolSectionInner}>
-          <SectionHeader
-            eyebrow={t('sections.featuresEyebrow')}
-            title={t('sections.featuresTitle')}
-            text={t('sections.featuresText')}
-          />
-
-          <div className="tool-card-grid" style={toolGrid}>
-            {features.map((feature) => (
-              <FeatureCard
-                key={feature.title}
-                icon={feature.icon}
-                title={feature.title}
-                text={feature.text}
-                accent={feature.accent}
-                footer={feature.footer}
-                visual={feature.visual}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="craft" className="desktop-home-section" style={sectionStyle}>
-        <div className="production-layout">
-          <div className="craft-copy-panel">
-            <div style={sectionEyebrow}>
-              {t('sections.craftEyebrow')}
-            </div>
-
-            <h2 style={sectionTitle}>
-              {t('sections.craftTitle')}
-            </h2>
-
-            <p style={sectionText}>
-              {t('sections.craftText')}
-            </p>
-
-            <div className="production-stat-grid">
-              {craftStats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="glow-card production-stat-card"
-                >
-                  <span>{stat.value}</span>
-                  <small>{stat.label}</small>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="production-bento">
-            <div className="glow-card production-photo-card production-photo-main">
-              {/* Premium craft close-up image from the local launch asset set. */}
-              <Image
-                src={homepageImages.stitchFinish}
-                alt="Close-up embroidery detail with fabric texture"
-                fill
-                sizes="(max-width: 900px) 100vw, 620px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-photo-badge">
-                <strong>{t('craft.mainTitle')}</strong>
-                <span>{t('craft.mainText')}</span>
-              </div>
-            </div>
-
-            <div className="glow-card production-mini-card production-thread-card">
-              {/* Thread detail image from the local launch asset set. */}
-              <Image
-                src={homepageImages.threadDetail}
-                alt="Close-up thread detail and fabric texture"
-                fill
-                sizes="(max-width: 900px) 100vw, 300px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-mini-copy">
-                <span>{t('craft.threadTitle')}</span>
-                <strong>{t('craft.threadText')}</strong>
-              </div>
-            </div>
-
-            <div className="glow-card production-mini-card production-gallery-card">
-              {/* Fabric texture image from the local launch asset set. */}
-              <Image
-                src={homepageImages.artworkPreview}
-                alt="Abstract close-up fabric texture for artwork preview"
-                fill
-                sizes="(max-width: 900px) 100vw, 300px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-mini-copy">
-                <span>{t('craft.artworkTitle')}</span>
-                <strong>{t('craft.artworkText')}</strong>
-              </div>
-            </div>
-
-            <div className="glow-card production-mini-card production-workflow-card">
-              {/* Machine detail image from the local launch asset set. */}
-              <Image
-                src={homepageImages.machineDetail}
-                alt="Machine detail showing a streamlined fashion-tech embroidery workflow"
-                fill
-                sizes="(max-width: 900px) 100vw, 300px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-mini-copy">
-                <span>{t('craft.workflowTitle')}</span>
-                <strong>{t('craft.workflowText')}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="gallery" className="desktop-home-section" style={sectionStyle}>
         <SectionHeader
           eyebrow={t('sections.galleryEyebrow')}
@@ -7245,17 +7216,9 @@ function MannequinPreview({
   logoLabel: string;
   teeColor: TeeColor;
 }) {
-  const [mouse, setMouse] = useState({
-    x: 0,
-    y: 0,
-    active: false,
-  });
-
   const isWhite = teeColor === 'white';
-  const rotateX = mouse.active ? mouse.y * -5 : 0;
-  const rotateY = mouse.active ? mouse.x * 7 : 0;
-  const lightX = mouse.active ? 50 + mouse.x * 18 : 50;
-  const lightY = mouse.active ? 30 + mouse.y * 12 : 30;
+  const rotateX = 0;
+  const rotateY = 0;
   const placementLeft =
     preset.label === 'Center front' ? '50%' : '60%';
   const placementTop =
@@ -7286,34 +7249,13 @@ function MannequinPreview({
   return (
     <div
       className="designer-preview-card"
-      onMouseMove={(event) => {
-        const rect =
-          event.currentTarget.getBoundingClientRect();
-        const x =
-          (event.clientX - rect.left) / rect.width - 0.5;
-        const y =
-          (event.clientY - rect.top) / rect.height - 0.5;
-
-        setMouse({
-          x,
-          y,
-          active: true,
-        });
-      }}
-      onMouseLeave={() =>
-        setMouse({
-          x: 0,
-          y: 0,
-          active: false,
-        })
-      }
       style={{
         position: 'relative',
         minHeight: 650,
         borderRadius: 36,
         overflow: 'hidden',
         background:
-          `radial-gradient(circle at ${lightX}% ${lightY}%, rgba(124,240,212,0.20), transparent 18%), linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))`,
+          'radial-gradient(circle at 50% 30%, rgba(124,240,212,0.20), transparent 18%), linear-gradient(145deg,rgba(3,5,7,0.98),rgba(8,15,17,0.94) 48%,rgba(2,3,5,0.98))',
         border:
           '1px solid rgba(255,255,255,0.10)',
         boxShadow:
@@ -7324,36 +7266,6 @@ function MannequinPreview({
           'background 180ms ease, box-shadow 180ms ease',
       }}
     >
-      <style>
-        {`
-          @keyframes stitchraTorsoFloat {
-            0%, 100% { transform: translate3d(0, 0, 0); }
-            50% { transform: translate3d(0, -14px, 0); }
-          }
-
-          @keyframes stitchraBreath {
-            0%, 100% { transform: translateX(-50%) translateZ(58px) scale3d(1, 1, 1); filter: brightness(1); }
-            50% { transform: translateX(-50%) translateZ(58px) scale3d(1.015, 1.008, 1); filter: brightness(1.045); }
-          }
-
-          @keyframes stitchraGlow {
-            0%, 100% { opacity: 0.52; transform: scale(1); }
-            50% { opacity: 0.92; transform: scale(1.045); }
-          }
-
-          @keyframes stitchraThread {
-            0% { background-position: 0 0; }
-            100% { background-position: 72px 72px; }
-          }
-
-          @keyframes stitchraFabric {
-            0% { opacity: 0.26; transform: translateX(-10px); }
-            50% { opacity: 0.38; transform: translateX(10px); }
-            100% { opacity: 0.26; transform: translateX(-10px); }
-          }
-        `}
-      </style>
-
       <div
         style={{
           position: 'absolute',
@@ -7363,9 +7275,6 @@ function MannequinPreview({
           backgroundSize: '44px 44px',
           maskImage:
             'radial-gradient(circle at 50% 45%, black, transparent 78%)',
-          transform:
-            `translate3d(${mouse.x * -10}px, ${mouse.y * -10}px, 0)`,
-          transition: 'transform 120ms ease',
         }}
       />
 
@@ -7377,8 +7286,7 @@ function MannequinPreview({
             'radial-gradient(ellipse at center, rgba(124,240,212,0.20), transparent 55%)',
           filter: 'blur(28px)',
           opacity: 0.72,
-          animation:
-            'stitchraGlow 4.6s ease-in-out infinite',
+          animation: 'none',
         }}
       />
 
@@ -7416,16 +7324,14 @@ function MannequinPreview({
           width: 420,
           height: 520,
           transformStyle: 'preserve-3d',
-          transition:
-            'transform 140ms ease-out',
+          transition: 'none',
         }}
       >
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            animation:
-              'stitchraTorsoFloat 6s ease-in-out infinite',
+            animation: 'none',
             transformStyle: 'preserve-3d',
           }}
         >
@@ -7501,8 +7407,7 @@ function MannequinPreview({
               boxShadow: isWhite
                 ? 'inset 24px 22px 38px rgba(255,255,255,0.70), inset -36px -42px 60px rgba(120,112,98,0.34), 0 56px 115px rgba(0,0,0,0.48), 0 0 74px rgba(124,240,212,0.13)'
                 : 'inset 24px 22px 42px rgba(255,255,255,0.055), inset -38px -48px 66px rgba(0,0,0,0.66), 0 56px 115px rgba(0,0,0,0.58), 0 0 78px rgba(124,240,212,0.13)',
-              animation:
-                'stitchraBreath 5.8s ease-in-out infinite',
+              animation: 'none',
               overflow: 'hidden',
             }}
           >
@@ -7513,8 +7418,7 @@ function MannequinPreview({
                 backgroundImage:
                   'linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.18) 18%, transparent 34%), repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 7px), repeating-linear-gradient(0deg, rgba(0,0,0,0.035) 0 1px, transparent 1px 9px)',
                 opacity: isWhite ? 0.44 : 0.26,
-                animation:
-                  'stitchraFabric 8s ease-in-out infinite',
+                animation: 'none',
                 pointerEvents: 'none',
               }}
             />
@@ -7566,10 +7470,7 @@ function MannequinPreview({
                 background: preview
                   ? 'transparent'
                   : 'linear-gradient(135deg, rgba(124,240,212,0.13), rgba(0,0,0,0.08))',
-                animation:
-                  preview
-                    ? 'none'
-                    : 'stitchraGlow 3.2s ease-in-out infinite',
+                animation: 'none',
               }}
             >
               <div
@@ -7586,8 +7487,7 @@ function MannequinPreview({
                     : isWhite
                       ? 0.24
                       : 0.34,
-                  animation:
-                    'stitchraThread 7s linear infinite',
+                  animation: 'none',
                   pointerEvents: 'none',
                   zIndex: 0,
                 }}
@@ -7822,13 +7722,11 @@ function GlobalVisualStyles() {
             0 20px 58px rgba(0,0,0,0.20);
           cursor: pointer;
           transition:
-            transform 180ms ease,
             border-color 180ms ease,
             box-shadow 180ms ease;
         }
 
         .stitchra-upload-box:hover {
-          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.10),
@@ -7953,7 +7851,6 @@ function GlobalVisualStyles() {
           font-weight: 850;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease;
         }
@@ -7973,7 +7870,6 @@ function GlobalVisualStyles() {
         }
 
         .upload-clean-button:hover {
-          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           background: rgba(24,255,154,0.09);
         }
@@ -8042,7 +7938,6 @@ function GlobalVisualStyles() {
           white-space: nowrap;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
@@ -8060,7 +7955,6 @@ function GlobalVisualStyles() {
         }
 
         .guided-studio-step-complete:hover {
-          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.34);
           color: #dffcff;
           background: rgba(0,215,255,0.07);
@@ -8175,7 +8069,6 @@ function GlobalVisualStyles() {
           text-align: left;
           cursor: pointer;
           transition:
-            transform 180ms ease,
             border-color 180ms ease,
             background 180ms ease,
             box-shadow 180ms ease;
@@ -8193,7 +8086,6 @@ function GlobalVisualStyles() {
 
         .design-start-card:hover,
         .design-start-card-active {
-          transform: translateY(-2px);
           border-color: rgba(0,255,136,0.44);
           background:
             radial-gradient(circle at 80% 18%, rgba(0,215,255,0.16), transparent 34%),
@@ -8440,7 +8332,6 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
@@ -8461,7 +8352,6 @@ function GlobalVisualStyles() {
 
         .draft-recovery-actions button:hover,
         .design-reset-link:hover {
-          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.38);
           color: #9dffc4;
         }
@@ -8562,7 +8452,6 @@ function GlobalVisualStyles() {
           font-weight: 850;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease,
             color 160ms ease;
@@ -8570,7 +8459,6 @@ function GlobalVisualStyles() {
 
         .ai-style-chip-row button:hover,
         .ai-style-chip-row .ai-style-chip-active {
-          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.42);
           color: #9dffc4;
           background: rgba(24,255,154,0.09);
@@ -8601,13 +8489,11 @@ function GlobalVisualStyles() {
           font-weight: 800;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease;
         }
 
         .ai-idea-chip-row button:hover {
-          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.42);
           background: rgba(0,215,255,0.09);
         }
@@ -8923,7 +8809,6 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             box-shadow 160ms ease;
         }
@@ -8951,7 +8836,6 @@ function GlobalVisualStyles() {
         .ai-concept-primary:hover,
         .ai-concept-secondary:hover,
         .ai-concept-link:hover {
-          transform: translateY(-1px);
           border-color: rgba(0,215,255,0.42);
         }
 
@@ -9295,14 +9179,12 @@ function GlobalVisualStyles() {
           font-weight: 850;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             background 160ms ease;
         }
 
         .placement-mode-row button:hover,
         .placement-mode-row .placement-mode-active {
-          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.42);
           color: #9dffc4;
           background: rgba(24,255,154,0.10);
@@ -9326,7 +9208,6 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
@@ -9334,7 +9215,6 @@ function GlobalVisualStyles() {
 
         .logo-size-quick-row button:hover,
         .logo-size-quick-row .logo-size-quick-active {
-          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           color: #9dffc4;
           background: rgba(24,255,154,0.10);
@@ -9385,14 +9265,12 @@ function GlobalVisualStyles() {
           font-weight: 900;
           cursor: pointer;
           transition:
-            transform 160ms ease,
             border-color 160ms ease,
             color 160ms ease,
             background 160ms ease;
         }
 
         .design-next-step-row button:hover {
-          transform: translateY(-1px);
           border-color: rgba(24,255,154,0.38);
           color: #9dffc4;
           background: rgba(24,255,154,0.08);
@@ -9687,7 +9565,6 @@ function GlobalVisualStyles() {
           overflow: visible !important;
           isolation: isolate;
           transition:
-            transform 220ms ease,
             border-color 220ms ease,
             box-shadow 220ms ease,
             background 220ms ease;
@@ -9703,7 +9580,6 @@ function GlobalVisualStyles() {
           background:
             radial-gradient(circle at 50% 0%, var(--card-glow), rgba(0,212,255,0.08) 34%, transparent 68%);
           filter: blur(48px);
-          transform: translateZ(0);
           transition:
             opacity 220ms ease,
             filter 220ms ease;
@@ -9728,7 +9604,6 @@ function GlobalVisualStyles() {
         }
 
         .glow-card:hover {
-          transform: translateY(-3px);
           border-color: rgba(124,240,212,0.24) !important;
           box-shadow:
             0 28px 92px rgba(0,0,0,0.48),
@@ -9758,7 +9633,7 @@ function GlobalVisualStyles() {
         }
 
         .tool-card-grid .tool-card:nth-child(even) {
-          transform: translateY(28px);
+          transform: none;
         }
 
         .tool-card-grid .tool-card::after {
@@ -9772,23 +9647,12 @@ function GlobalVisualStyles() {
           opacity: 0.9;
         }
 
-        @keyframes homepageVisualFloat {
-          0%, 100% { transform: translate3d(0, 0, 0); }
-          50% { transform: translate3d(0, -5px, 0); }
-        }
-
-        @keyframes homepageVisualShimmer {
-          0% { transform: translateX(-38%) rotate(-8deg); opacity: 0; }
-          42% { opacity: 0.52; }
-          100% { transform: translateX(38%) rotate(-8deg); opacity: 0; }
-        }
-
         .homepage-card-visual {
           position: relative;
           overflow: hidden;
           color: var(--visual-main);
           contain: paint;
-          animation: homepageVisualFloat 6.4s ease-in-out infinite;
+          animation: none;
         }
 
         .homepage-card-visual::before {
@@ -9812,7 +9676,7 @@ function GlobalVisualStyles() {
           width: 32px;
           pointer-events: none;
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.24), transparent);
-          animation: homepageVisualShimmer 7.2s ease-in-out infinite;
+          animation: none;
         }
 
         .homepage-card-visual svg {
@@ -9842,7 +9706,6 @@ function GlobalVisualStyles() {
           isolation: isolate;
           overflow: hidden;
           transition:
-            transform 180ms ease,
             box-shadow 180ms ease,
             filter 180ms ease;
         }
@@ -9855,25 +9718,21 @@ function GlobalVisualStyles() {
           z-index: 0;
           opacity: 0;
           background:
-            radial-gradient(circle, rgba(255,255,255,0.70), rgba(0,255,136,0.35) 24%, rgba(0,200,255,0.18) 42%, transparent 64%);
-          transform: translateX(-25%);
+            linear-gradient(110deg, transparent 18%, rgba(255,255,255,0.20) 46%, rgba(0,215,255,0.10) 52%, transparent 74%);
           transition:
-            opacity 180ms ease,
-            transform 260ms ease;
+            opacity 180ms ease;
           mix-blend-mode: soft-light;
         }
 
         .lux-button:hover {
-          transform: translateY(-2px);
           filter: saturate(1.18);
           box-shadow:
-            0 22px 64px rgba(0,255,136,0.22),
-            0 18px 54px rgba(0,200,255,0.18);
+            0 18px 48px rgba(0,255,136,0.16),
+            0 14px 42px rgba(0,200,255,0.12);
         }
 
         .lux-button:hover::before {
-          opacity: 1;
-          transform: translateX(18%);
+          opacity: 0.72;
         }
 
         .production-layout {
@@ -10537,13 +10396,11 @@ function GlobalVisualStyles() {
             inset 0 1px 0 rgba(255,255,255,0.08),
             0 20px 70px rgba(0,0,0,0.24);
           transition:
-            transform 180ms ease,
             border-color 180ms ease,
             box-shadow 180ms ease;
         }
 
         .pricing-card:hover {
-          transform: translateY(-5px);
           border-color: var(--pricing-main);
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.10),
@@ -10729,13 +10586,8 @@ function GlobalVisualStyles() {
           width: 32%;
           transform: rotate(18deg);
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.36), transparent);
-          animation: pricingCtaShimmer 4.2s ease-in-out infinite;
-        }
-
-        @keyframes pricingCtaShimmer {
-          0%, 58% { transform: translateX(0) rotate(18deg); opacity: 0; }
-          68% { opacity: 0.65; }
-          100% { transform: translateX(420%) rotate(18deg); opacity: 0; }
+          opacity: 0.22;
+          animation: none;
         }
 
         .faq-grid {
@@ -12286,7 +12138,7 @@ function HoverCard({
       className={className ? `glow-card ${className}` : 'glow-card'}
       style={{
         transition:
-          'transform 180ms ease, border-color 180ms ease',
+          'border-color 180ms ease',
         ...style,
       }}
     >
@@ -13348,9 +13200,11 @@ const wideButton: CSSProperties = {
 const secondaryButton: CSSProperties = {
   ...primaryButton,
   color: '#f5f7f8',
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.14)',
-  boxShadow: 'none',
+  background:
+    'linear-gradient(145deg, rgba(255,255,255,0.075), rgba(5,10,11,0.72))',
+  border: '1px solid rgba(124,240,212,0.34)',
+  boxShadow:
+    'inset 0 1px 0 rgba(255,255,255,0.10), 0 14px 36px rgba(0,0,0,0.24)',
 };
 
 const navLink: CSSProperties = {
