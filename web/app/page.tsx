@@ -89,6 +89,7 @@ const homepageImages = {
   // Temporary launch assets from free commercial-use stock sources. Replace with original Stitchra production photos later.
   heroMain: '/stitchra-hero-embroidery-v5.jpg',
   stitchFinish: '/stitchra-patch-detail-v5.jpg',
+  craftPremium: '/stitchra-craft-premium-v3.jpg',
   threadDetail: '/stitchra-thread-spools-v5.jpg',
   artworkPreview: '/stitchra-fabric-texture-v5.jpg',
   quietMonogram: '/stitchra-hero-embroidery-v5.jpg',
@@ -968,6 +969,36 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const features = getFeatures(activeLocale);
   const galleryItems = getGalleryItems(activeLocale);
   const craftStats = getCraftStats(activeLocale);
+  const productionProofCards = [
+    {
+      label: 'STITCH FINISH',
+      text: 'Clean edges and readable detail before production.',
+      image: homepageImages.stitchFinish,
+      alt: 'Close-up embroidered finish on dark fabric',
+      className: 'production-finish-card',
+    },
+    {
+      label: 'THREAD DETAIL',
+      text: 'Refined colors matched to fabric texture.',
+      image: homepageImages.craftPremium,
+      alt: 'Close-up thread detail showing embroidery texture',
+      className: 'production-thread-card',
+    },
+    {
+      label: 'PLACEMENT PROOF',
+      text: 'Size and chest position checked before stitching.',
+      image: homepageImages.streetwearMark,
+      alt: 'Dark garment detail used for embroidery placement proof',
+      className: 'production-placement-card',
+    },
+    {
+      label: 'PRICE CLARITY',
+      text: 'Preview, stitch count and quote before checkout.',
+      image: homepageImages.machineDetail,
+      alt: 'Embroidery machine detail for production quote confidence',
+      className: 'production-price-card',
+    },
+  ];
   const faqItems = getFaqItems(activeLocale);
   const pricingCards: PricingCardItem[] = [
     {
@@ -5411,65 +5442,29 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               </div>
             </div>
 
-            <div className="glow-card production-mini-card production-thread-card">
-              {/* Thread detail image from the local launch asset set. */}
-              <Image
-                src={homepageImages.threadDetail}
-                alt="Close-up thread detail and fabric texture"
-                fill
-                sizes="(max-width: 900px) 100vw, 300px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-mini-copy">
-                <span>{t('craft.threadTitle')}</span>
-                <strong>{t('craft.threadText')}</strong>
+            {productionProofCards.map((card) => (
+              <div
+                key={card.label}
+                className={`glow-card production-mini-card production-proof-card ${card.className}`}
+              >
+                <Image
+                  src={card.image}
+                  alt={card.alt}
+                  fill
+                  sizes="(max-width: 900px) 100vw, 300px"
+                  className="production-image"
+                  style={{
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                  }}
+                />
+                <div className="production-photo-overlay" />
+                <div className="production-mini-copy">
+                  <span>{card.label}</span>
+                  <strong>{card.text}</strong>
+                </div>
               </div>
-            </div>
-
-            <div className="glow-card production-mini-card production-gallery-card">
-              {/* Fabric texture image from the local launch asset set. */}
-              <Image
-                src={homepageImages.artworkPreview}
-                alt="Abstract close-up fabric texture for artwork preview"
-                fill
-                sizes="(max-width: 900px) 100vw, 300px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-mini-copy">
-                <span>{t('craft.artworkTitle')}</span>
-                <strong>{t('craft.artworkText')}</strong>
-              </div>
-            </div>
-
-            <div className="glow-card production-mini-card production-workflow-card">
-              {/* Machine detail image from the local launch asset set. */}
-              <Image
-                src={homepageImages.machineDetail}
-                alt="Machine detail showing a streamlined fashion-tech embroidery workflow"
-                fill
-                sizes="(max-width: 900px) 100vw, 300px"
-                className="production-image"
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-              <div className="production-photo-overlay" />
-              <div className="production-mini-copy">
-                <span>{t('craft.workflowTitle')}</span>
-                <strong>{t('craft.workflowText')}</strong>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -6740,7 +6735,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         </div>
       </section>
 
-      <section className="desktop-home-section" style={ctaSection}>
+      <section className="desktop-home-section final-cta-section" style={ctaSection}>
         <div
           className="glow-card final-cta-card"
         >
@@ -9788,7 +9783,7 @@ function GlobalVisualStyles() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-auto-rows: auto;
-          gap: 18px;
+          gap: 16px;
           min-width: 0;
           width: 100%;
         }
@@ -9821,19 +9816,27 @@ function GlobalVisualStyles() {
         .production-mini-card {
           min-height: 0;
           aspect-ratio: 16 / 9;
-          border-radius: 28px;
+          border-radius: 26px;
+        }
+
+        .production-proof-card {
+          min-height: 232px;
+        }
+
+        .production-finish-card {
+          --card-glow: rgba(0,255,136,0.14);
         }
 
         .production-thread-card {
           --card-glow: rgba(0,215,255,0.16);
         }
 
-        .production-gallery-card {
-          --card-glow: rgba(0,255,136,0.14);
+        .production-placement-card {
+          --card-glow: rgba(124,240,212,0.15);
         }
 
-        .production-workflow-card {
-          --card-glow: rgba(168,121,255,0.14);
+        .production-price-card {
+          --card-glow: rgba(24,255,154,0.13);
         }
 
         .production-image {
@@ -9870,8 +9873,9 @@ function GlobalVisualStyles() {
           min-width: 0;
           padding: 14px 15px;
           border-radius: 18px;
-          border: 1px solid rgba(255,255,255,0.10);
-          background: rgba(5,6,7,0.56);
+          border: 1px solid rgba(184,255,222,0.13);
+          background:
+            linear-gradient(145deg, rgba(8,14,14,0.78), rgba(3,6,7,0.68));
           backdrop-filter: blur(16px);
         }
 
@@ -10618,20 +10622,72 @@ function GlobalVisualStyles() {
           line-height: 1.65;
         }
 
+        .final-cta-section {
+          overflow: hidden;
+          background:
+            radial-gradient(circle at 22% 18%, rgba(0,255,136,0.12), transparent 34%),
+            radial-gradient(circle at 82% 12%, rgba(0,215,255,0.10), transparent 32%),
+            linear-gradient(180deg, rgba(1,8,7,0.12), rgba(2,12,10,0.58) 52%, rgba(0,4,4,0.90));
+          isolation: isolate;
+        }
+
+        .final-cta-section::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background-image:
+            linear-gradient(rgba(185,255,222,0.030) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(185,255,222,0.026) 1px, transparent 1px);
+          background-size: 74px 74px;
+          mask-image: radial-gradient(circle at 50% 42%, black, transparent 76%);
+          opacity: 0.82;
+          z-index: 0;
+        }
+
+        .final-cta-section::after {
+          content: "";
+          position: absolute;
+          inset: 22px max(18px, calc((100vw - 1120px) / 2)) 18px;
+          pointer-events: none;
+          border-radius: 40px;
+          border: 1px solid rgba(184,255,222,0.07);
+          background:
+            radial-gradient(circle at 18% 20%, rgba(0,255,136,0.10), transparent 36%),
+            radial-gradient(circle at 82% 72%, rgba(0,215,255,0.08), transparent 36%);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.045);
+          z-index: 0;
+        }
+
         .final-cta-card {
+          position: relative;
+          z-index: 1;
           max-width: 980px;
           margin: 0 auto;
           padding: clamp(34px, 5vw, 58px);
           text-align: center;
           border-radius: 36px;
-          border: 1px solid rgba(0,255,136,0.22);
+          border: 1px solid rgba(184,255,222,0.18);
           background:
-            radial-gradient(circle at 22% 10%, rgba(0,255,136,0.18), transparent 34%),
-            radial-gradient(circle at 82% 84%, rgba(0,215,255,0.16), transparent 34%),
-            rgba(255,255,255,0.04);
+            radial-gradient(circle at 22% 10%, rgba(0,255,136,0.13), transparent 34%),
+            radial-gradient(circle at 82% 84%, rgba(0,215,255,0.11), transparent 34%),
+            linear-gradient(145deg, rgba(14,24,22,0.72), rgba(3,7,7,0.90));
           box-shadow:
-            0 44px 130px rgba(0,0,0,0.46),
+            0 44px 130px rgba(0,0,0,0.52),
+            0 0 72px rgba(0,215,255,0.055),
             inset 0 1px 0 rgba(255,255,255,0.10);
+          overflow: hidden !important;
+        }
+
+        .final-cta-card::after {
+          content: "";
+          position: absolute;
+          inset: 1px;
+          border-radius: inherit;
+          pointer-events: none;
+          background:
+            linear-gradient(120deg, rgba(255,255,255,0.10), transparent 28%, rgba(124,240,212,0.06));
+          opacity: 0.56;
         }
 
         @media (max-width: 1023px) {
@@ -13151,11 +13207,13 @@ const ctaText: CSSProperties = {
 };
 
 const footerStyle: CSSProperties = {
-  borderTop: '1px solid rgba(255,255,255,0.08)',
+  borderTop: '1px solid rgba(184,255,222,0.10)',
   padding: '34px 24px',
   position: 'relative',
   zIndex: 1,
-  background: 'rgba(0,0,0,0.18)',
+  background:
+    'linear-gradient(180deg, rgba(2,12,10,0.82), rgba(0,2,2,0.96))',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
 };
 
 const footerInner: CSSProperties = {
