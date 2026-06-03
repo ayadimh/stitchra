@@ -3918,7 +3918,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
         className="desktop-home-section desktop-hero-section"
         style={{
           minHeight: '100svh',
-          padding: '124px 24px 90px',
+          padding: '132px 24px 88px',
           position: 'relative',
           zIndex: 1,
         }}
@@ -3958,27 +3958,33 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             .hero-atelier {
               position: relative;
               width: 100%;
-              max-width: 1280px;
+              max-width: 1320px;
               margin: 0 auto;
               display: grid;
-              grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
-              gap: clamp(32px, 3.5vw, 48px);
-              align-items: center;
+              grid-template-columns: minmax(0, 0.98fr) minmax(0, 1.02fr);
+              gap: clamp(28px, 3vw, 42px);
+              align-items: stretch;
+              min-height: clamp(650px, calc(100svh - 230px), 760px);
             }
 
             .hero-copy-panel {
               position: relative;
               overflow: visible;
               min-width: 0;
-              padding: clamp(30px, 3.8vw, 48px);
-              border-radius: 34px;
-              border: 1px solid rgba(185,255,204,0.12);
+              height: 100%;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              padding: clamp(34px, 4vw, 54px);
+              border-radius: 36px;
+              border: 1px solid rgba(185,255,204,0.15);
               background:
-                radial-gradient(circle at 4% 20%, rgba(0,255,136,0.13), transparent 30%),
-                radial-gradient(circle at 94% 72%, rgba(0,200,255,0.10), transparent 31%),
-                linear-gradient(145deg, rgba(18,21,22,0.70), rgba(4,6,7,0.94) 58%, rgba(13,15,18,0.78));
+                radial-gradient(circle at 0% 16%, rgba(0,255,136,0.16), transparent 32%),
+                radial-gradient(circle at 100% 74%, rgba(0,200,255,0.12), transparent 34%),
+                linear-gradient(145deg, rgba(20,24,25,0.78), rgba(4,6,7,0.96) 56%, rgba(13,18,19,0.84));
               box-shadow:
                 0 42px 130px rgba(0,0,0,0.54),
+                0 0 70px rgba(0,215,255,0.045),
                 0 0 0 1px rgba(255,255,255,0.015),
                 inset 0 1px 0 rgba(255,255,255,0.08);
               backdrop-filter: blur(24px);
@@ -4029,9 +4035,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               margin: 0 0 28px;
               padding-bottom: 0.08em;
               overflow: visible;
-              font-size: clamp(46px, 5.4vw, 78px);
+              font-size: clamp(48px, 5vw, 76px);
               line-height: 1.02;
-              letter-spacing: -0.025em;
+              letter-spacing: 0;
               font-weight: 950;
               color: #f6f3eb;
               text-wrap: balance;
@@ -4039,7 +4045,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
             .hero-title-accent {
               display: block;
-              margin-bottom: -0.08em;
+              margin-bottom: 0;
               padding-bottom: 0.10em;
               overflow: visible;
               line-height: 1.08;
@@ -4055,34 +4061,62 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-subcopy {
-              max-width: 620px;
-              margin: 0 0 36px;
+              max-width: 600px;
+              margin: 0 0 30px;
               color: rgba(246,243,235,0.70);
               font-size: clamp(17px, 1.35vw, 20px);
-              line-height: 1.68;
+              line-height: 1.62;
             }
 
             .hero-actions {
               display: flex;
-              gap: 14px;
+              align-items: center;
+              gap: 12px;
               flex-wrap: wrap;
-              margin-bottom: 32px;
+              width: fit-content;
+              max-width: 100%;
+              padding: 8px;
+              margin-bottom: 30px;
+              border: 1px solid rgba(255,255,255,0.09);
+              border-radius: 26px;
+              background: rgba(255,255,255,0.040);
+              box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.055),
+                0 18px 54px rgba(0,0,0,0.22);
             }
 
             .hero-proof-strip {
               display: grid;
               grid-template-columns: repeat(3, minmax(0, 1fr));
-              gap: 10px;
+              gap: 12px;
             }
 
             .hero-proof-item {
-              min-height: 72px;
-              padding: 15px;
+              position: relative;
+              min-height: 92px;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              overflow: hidden;
+              padding: 17px;
               border-radius: 20px;
-              border: 1px solid rgba(255,255,255,0.09);
+              border: 1px solid rgba(185,255,204,0.12);
               background:
-                linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
+                radial-gradient(circle at 14% 4%, rgba(0,255,136,0.12), transparent 36%),
+                linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
               box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+            }
+
+            .hero-proof-item::before {
+              content: "";
+              position: absolute;
+              left: 0;
+              top: 16px;
+              bottom: 16px;
+              width: 2px;
+              border-radius: 999px;
+              background: linear-gradient(180deg, #00ff88, #00c8ff);
+              opacity: 0.72;
             }
 
             .hero-proof-label {
@@ -4172,7 +4206,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               transform-style: preserve-3d;
               transition: transform 180ms ease-out;
               z-index: 2;
-              animation: heroCardFloat 7s ease-in-out infinite;
+              animation: none;
             }
 
             .hero-photo-panel,
@@ -4460,7 +4494,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             .hero-float {
               position: absolute;
               inset: 0;
-              animation: heroAtelierFloat 7s ease-in-out infinite;
+              animation: none;
               transform-style: preserve-3d;
             }
 
@@ -4499,7 +4533,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               overflow: hidden;
               border-radius: 94px 94px 42px 42px / 88px 88px 34px 34px;
               clip-path: polygon(17% 0, 35% 0, 42% 12%, 58% 12%, 65% 0, 83% 0, 98% 22%, 87% 100%, 13% 100%, 2% 22%);
-              animation: heroAtelierBreath 6.4s ease-in-out infinite;
+              animation: none;
             }
 
             .hero-shirt-body::before {
@@ -4510,7 +4544,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 linear-gradient(104deg, transparent 0%, rgba(255,255,255,0.15) 17%, transparent 32%),
                 repeating-linear-gradient(90deg, rgba(255,255,255,0.032) 0 1px, transparent 1px 8px),
                 repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 10px);
-              animation: heroAtelierSheen 9s ease-in-out infinite;
+              animation: none;
               pointer-events: none;
             }
 
@@ -4545,7 +4579,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               border: 1px solid rgba(185,255,204,0.78);
               border-radius: 16px;
               background: linear-gradient(135deg, rgba(185,255,204,0.10), rgba(0,0,0,0.10));
-              animation: heroAtelierPulse 3.8s ease-in-out infinite;
+              animation: none;
               z-index: 2;
             }
 
@@ -4557,9 +4591,9 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               content: "";
               position: absolute;
               inset: 0;
-              background-image: linear-gradient(45deg, rgba(185,255,204,0.14) 25%, transparent 25%, transparent 50%, rgba(185,255,204,0.14) 50%, rgba(185,255,204,0.14) 75%, transparent 75%, transparent);
+                background-image: linear-gradient(45deg, rgba(185,255,204,0.14) 25%, transparent 25%, transparent 50%, rgba(185,255,204,0.14) 50%, rgba(185,255,204,0.14) 75%, transparent 75%, transparent);
               background-size: 16px 16px;
-              animation: heroAtelierThread 8s linear infinite;
+              animation: none;
               opacity: 0.22;
               pointer-events: none;
               z-index: 0;
@@ -4643,6 +4677,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 grid-template-columns: 1fr;
                 gap: 34px;
                 max-width: 760px;
+                min-height: auto;
+                align-items: start;
               }
 
               .hero-preview-card {
@@ -4753,18 +4789,20 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             /* Stable premium visual card: no mouse-follow spotlight or overlap. */
             .hero-preview-card {
               min-height: auto;
+              height: 100%;
               width: 100%;
               min-width: 0;
               overflow: hidden;
               display: grid;
-              grid-template-columns: minmax(0, 1fr) auto;
+              grid-template-columns: minmax(0, 1fr) minmax(190px, 0.44fr);
               grid-template-areas:
                 "toolbar badge"
                 "stage stage"
                 "callout quote"
                 "specs specs";
-              gap: 18px;
-              padding: clamp(18px, 2.2vw, 26px);
+              grid-template-rows: auto minmax(0, 1fr) auto auto;
+              gap: 16px;
+              padding: clamp(24px, 2.6vw, 32px);
               border-color: rgba(180,255,222,0.16);
               background:
                 radial-gradient(circle at 72% 12%, rgba(0,215,255,0.10), transparent 30%),
@@ -4773,7 +4811,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-preview-card:hover {
-              transform: translateY(-3px);
               border-color: rgba(124,240,212,0.24);
               box-shadow:
                 0 52px 150px rgba(0,0,0,0.62),
@@ -4829,6 +4866,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               grid-area: stage;
               display: grid;
               grid-template-columns: minmax(0, 1fr);
+              grid-template-areas:
+                "main"
+                "side"
+                "workflow";
+              grid-template-rows: auto auto auto;
               min-height: auto;
               gap: 16px;
               transform: none;
@@ -4836,13 +4878,15 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-photo-panel {
+              grid-area: main;
               grid-row: auto;
               min-height: 0;
               aspect-ratio: 16 / 11;
-              border-radius: 30px;
+              border-radius: 28px;
             }
 
             .hero-side-stack {
+              grid-area: side;
               display: grid;
               grid-template-columns: repeat(2, minmax(0, 1fr));
               grid-template-rows: none;
@@ -4858,24 +4902,27 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
 
             @media (min-width: 1100px) {
               .hero-editorial-stage {
-                --hero-stage-height: clamp(340px, 30vw, 390px);
-                grid-template-columns: minmax(0, 1.42fr) minmax(170px, 0.58fr);
-                min-height: var(--hero-stage-height);
-                height: var(--hero-stage-height);
+                grid-template-columns: minmax(0, 1.38fr) minmax(184px, 0.56fr);
+                grid-template-areas:
+                  "main side"
+                  "workflow workflow";
+                grid-template-rows: minmax(0, 1fr) auto;
+                min-height: 0;
+                height: 100%;
                 align-items: stretch;
               }
 
               .hero-photo-panel {
-                grid-row: 1 / span 2;
-                min-height: var(--hero-stage-height);
-                height: var(--hero-stage-height);
+                grid-row: auto;
+                min-height: 0;
+                height: 100%;
                 aspect-ratio: auto;
               }
 
               .hero-side-stack {
                 grid-template-columns: 1fr;
                 grid-template-rows: repeat(2, minmax(0, 1fr));
-                min-height: var(--hero-stage-height);
+                min-height: 0;
                 height: 100%;
               }
 
@@ -4886,7 +4933,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-fabric-note {
-              grid-column: 1 / -1;
+              grid-area: workflow;
               min-height: auto;
               padding: 18px 20px;
             }
@@ -4894,15 +4941,27 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             .hero-placement-callout {
               grid-area: callout;
               width: auto;
+              min-height: 78px;
               display: flex;
               align-items: center;
               gap: 13px;
+              padding: 15px 16px;
+              border-radius: 22px;
+              background:
+                linear-gradient(145deg, rgba(255,255,255,0.070), rgba(255,255,255,0.026));
             }
 
             .hero-floating-quote {
               grid-area: quote;
               justify-self: end;
               min-width: 170px;
+              min-height: 78px;
+              align-content: center;
+              padding: 15px 17px;
+              border-radius: 22px;
+              background:
+                radial-gradient(circle at 12% 10%, rgba(0,255,136,0.13), transparent 42%),
+                rgba(5,8,9,0.64);
             }
 
             .hero-spec-grid {
@@ -4928,6 +4987,11 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             @media (max-width: 1099px) {
+              .hero-copy-panel,
+              .hero-preview-card {
+                height: auto;
+              }
+
               .hero-preview-card {
                 grid-template-columns: 1fr;
                 grid-template-areas:
