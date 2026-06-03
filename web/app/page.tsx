@@ -90,14 +90,8 @@ const homepageImages = {
   heroMain: '/stitchra-hero-embroidery-v5.jpg',
   stitchFinish: '/stitchra-patch-detail-v5.jpg',
   craftPremium: '/stitchra-craft-premium-v3.jpg',
-  threadDetail: '/stitchra-thread-spools-v5.jpg',
-  artworkPreview: '/stitchra-fabric-texture-v5.jpg',
-  quietMonogram: '/stitchra-hero-embroidery-v5.jpg',
-  streetwearMark: '/stitchra-streetwear-v5.jpg',
-  patchBadge: '/stitchra-patch-detail-v5.jpg',
-  minimalGraphic: '/stitchra-machine-detail-v5.jpg',
+  threadDetail: '/stitchra-thread-v2.jpg',
   machineDetail: '/stitchra-machine-detail-v5.jpg',
-  fabricTexture: '/stitchra-fabric-texture-v5.jpg',
 } as const;
 
 type Estimate = {
@@ -973,30 +967,26 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     {
       label: 'STITCH FINISH',
       text: 'Clean edges and readable detail before production.',
-      image: homepageImages.stitchFinish,
-      alt: 'Close-up embroidered finish on dark fabric',
       className: 'production-finish-card',
+      visual: 'finish',
     },
     {
       label: 'THREAD DETAIL',
       text: 'Refined colors matched to fabric texture.',
-      image: homepageImages.craftPremium,
-      alt: 'Close-up thread detail showing embroidery texture',
       className: 'production-thread-card',
+      visual: 'thread',
     },
     {
       label: 'PLACEMENT PROOF',
       text: 'Size and chest position checked before stitching.',
-      image: homepageImages.streetwearMark,
-      alt: 'Dark garment detail used for embroidery placement proof',
       className: 'production-placement-card',
+      visual: 'placement',
     },
     {
       label: 'PRICE CLARITY',
       text: 'Preview, stitch count and quote before checkout.',
-      image: homepageImages.machineDetail,
-      alt: 'Embroidery machine detail for production quote confidence',
       className: 'production-price-card',
+      visual: 'price',
     },
   ];
   const faqItems = getFaqItems(activeLocale);
@@ -4051,7 +4041,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               overflow: visible;
               line-height: 1.08;
               color: transparent;
-              background: linear-gradient(90deg, #00ff88, #00d7ff 58%, #d36bff);
+              background: linear-gradient(90deg, #00ff88, #00d7ff 58%, #9dffc4);
               -webkit-background-clip: text;
               background-clip: text;
               text-shadow: 0 0 34px rgba(0,255,136,0.20);
@@ -4408,7 +4398,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               display: grid;
               place-items: center;
               border-radius: 13px;
-              background: linear-gradient(135deg, #00ff88, #00c8ff 58%, #ff28d6);
+              background: linear-gradient(135deg, #00ff88, #00c8ff 58%, #9dffc4);
               color: #04100a;
               font-weight: 900;
             }
@@ -4439,7 +4429,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
             }
 
             .hero-window-dot:nth-child(3) {
-              background: #ff28d6;
+              background: #7cf0d4;
             }
 
             .hero-placement-callout {
@@ -5258,8 +5248,8 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 <div className="hero-mini-photo-card">
                   {/* Hero stitch detail image from the local launch asset set. */}
                   <Image
-                    src={homepageImages.stitchFinish}
-                    alt="Close-up stitching detail on fabric"
+                    src={homepageImages.craftPremium}
+                    alt="Close-up embroidery stitch texture on fabric"
                     fill
                     sizes="(max-width: 767px) calc(100vw - 64px), (max-width: 1099px) 330px, 300px"
                     style={{
@@ -5447,18 +5437,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
                 key={card.label}
                 className={`glow-card production-mini-card production-proof-card ${card.className}`}
               >
-                <Image
-                  src={card.image}
-                  alt={card.alt}
-                  fill
-                  sizes="(max-width: 900px) 100vw, 300px"
-                  className="production-image"
-                  style={{
-                    objectFit: 'cover',
-                    objectPosition: 'center',
-                  }}
-                />
-                <div className="production-photo-overlay" />
+                <div
+                  className="production-proof-visual"
+                  data-proof-visual={card.visual}
+                  aria-hidden="true"
+                >
+                  <span />
+                  <i />
+                  <i />
+                  <i />
+                </div>
                 <div className="production-mini-copy">
                   <span>{card.label}</span>
                   <strong>{card.text}</strong>
@@ -6614,7 +6602,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
               title={item.title}
               text={item.text}
               accent={item.accent}
-              image={item.image}
+              visual={item.visual}
             />
           ))}
         </div>
@@ -7626,7 +7614,7 @@ function GlobalVisualStyles() {
       {`
         html {
           scroll-behavior: smooth;
-          scroll-padding-top: 112px;
+          scroll-padding-top: 132px;
           max-width: 100%;
         }
 
@@ -7646,11 +7634,28 @@ function GlobalVisualStyles() {
         }
 
         section[id] {
-          scroll-margin-top: 112px;
+          scroll-margin-top: 132px;
         }
 
         #gallery {
-          scroll-margin-top: 112px;
+          scroll-margin-top: 132px;
+        }
+
+        #features,
+        #craft,
+        #how,
+        #gallery,
+        #pricing,
+        #faq {
+          overflow: hidden;
+          background:
+            linear-gradient(rgba(185,255,222,0.020) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(185,255,222,0.018) 1px, transparent 1px),
+            radial-gradient(circle at 18% 12%, rgba(0,255,136,0.055), transparent 32%),
+            radial-gradient(circle at 84% 20%, rgba(0,215,255,0.050), transparent 34%),
+            linear-gradient(180deg, rgba(0,6,5,0.16), rgba(0,12,10,0.12));
+          background-size: 86px 86px, 86px 86px, auto, auto, auto;
+          background-position: center;
         }
 
         ::selection {
@@ -9821,6 +9826,13 @@ function GlobalVisualStyles() {
 
         .production-proof-card {
           min-height: 232px;
+          background:
+            radial-gradient(circle at 20% 14%, var(--card-glow), transparent 36%),
+            linear-gradient(145deg, rgba(10,18,17,0.82), rgba(2,6,6,0.94));
+          box-shadow:
+            0 28px 92px rgba(0,0,0,0.42),
+            0 0 48px rgba(0,215,255,0.045),
+            inset 0 1px 0 rgba(255,255,255,0.09);
         }
 
         .production-finish-card {
@@ -9837,6 +9849,132 @@ function GlobalVisualStyles() {
 
         .production-price-card {
           --card-glow: rgba(24,255,154,0.13);
+        }
+
+        .production-proof-card::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background-image:
+            linear-gradient(rgba(185,255,222,0.032) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(185,255,222,0.026) 1px, transparent 1px);
+          background-size: 34px 34px;
+          mask-image: radial-gradient(circle at 50% 42%, black, transparent 74%);
+          opacity: 0.72;
+        }
+
+        .production-proof-visual {
+          position: absolute;
+          left: 18px;
+          right: 18px;
+          top: 18px;
+          bottom: 96px;
+          z-index: 1;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          border-radius: 18px;
+          border: 1px solid rgba(184,255,222,0.11);
+          background:
+            radial-gradient(circle at 28% 18%, rgba(0,255,136,0.13), transparent 34%),
+            radial-gradient(circle at 82% 72%, rgba(0,215,255,0.10), transparent 34%),
+            rgba(255,255,255,0.035);
+        }
+
+        .production-proof-visual::before,
+        .production-proof-visual::after,
+        .production-proof-visual span,
+        .production-proof-visual i {
+          content: "";
+          position: absolute;
+          display: block;
+          pointer-events: none;
+        }
+
+        .production-proof-visual::before {
+          inset: 18px;
+          border: 1px dashed rgba(184,255,222,0.24);
+          border-radius: 16px;
+        }
+
+        .production-proof-visual::after {
+          width: 74px;
+          height: 74px;
+          border-radius: 50%;
+          border: 1px solid rgba(0,215,255,0.34);
+          box-shadow:
+            0 0 0 12px rgba(0,215,255,0.035),
+            inset 0 0 32px rgba(0,255,136,0.08);
+        }
+
+        .production-proof-visual span {
+          width: 52px;
+          height: 52px;
+          border-radius: 16px;
+          border: 1px solid rgba(124,240,212,0.46);
+          background:
+            linear-gradient(135deg, rgba(0,255,136,0.16), rgba(0,215,255,0.08));
+          box-shadow: 0 0 34px rgba(0,215,255,0.10);
+        }
+
+        .production-proof-visual i {
+          height: 3px;
+          width: 72px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, transparent, rgba(157,255,196,0.74), transparent);
+        }
+
+        .production-proof-visual i:nth-of-type(1) {
+          transform: translateY(-24px);
+        }
+
+        .production-proof-visual i:nth-of-type(2) {
+          width: 96px;
+        }
+
+        .production-proof-visual i:nth-of-type(3) {
+          transform: translateY(24px);
+        }
+
+        .production-proof-visual[data-proof-visual="thread"] span {
+          width: 86px;
+          height: 44px;
+          border-radius: 999px;
+        }
+
+        .production-proof-visual[data-proof-visual="thread"] i {
+          width: 42px;
+          background: linear-gradient(90deg, rgba(0,215,255,0.85), rgba(24,255,154,0.78));
+        }
+
+        .production-proof-visual[data-proof-visual="placement"]::after {
+          width: 92px;
+          height: 62px;
+          border-radius: 18px;
+        }
+
+        .production-proof-visual[data-proof-visual="placement"] span {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+        }
+
+        .production-proof-visual[data-proof-visual="price"] span {
+          width: 58px;
+          height: 58px;
+          border-radius: 999px;
+        }
+
+        .production-proof-visual[data-proof-visual="price"] span::after {
+          content: "€";
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          color: #9dffc4;
+          font-size: 28px;
+          font-weight: 950;
         }
 
         .production-image {
@@ -9935,7 +10073,7 @@ function GlobalVisualStyles() {
           opacity: 0.18;
         }
 
-        .gallery-card-with-image {
+        .gallery-card-with-visual {
           padding-top: 22px;
         }
 
@@ -9951,6 +10089,27 @@ function GlobalVisualStyles() {
           background: rgba(255,255,255,0.04);
         }
 
+        .gallery-visual-panel {
+          display: grid;
+          place-items: center;
+          background:
+            radial-gradient(circle at 22% 16%, var(--card-glow), transparent 34%),
+            radial-gradient(circle at 82% 76%, rgba(0,215,255,0.11), transparent 34%),
+            linear-gradient(145deg, rgba(10,18,17,0.74), rgba(3,7,8,0.92));
+        }
+
+        .gallery-visual-panel::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-image:
+            linear-gradient(rgba(185,255,222,0.032) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(185,255,222,0.026) 1px, transparent 1px);
+          background-size: 32px 32px;
+          mask-image: radial-gradient(circle at 50% 48%, black, transparent 78%);
+          pointer-events: none;
+        }
+
         .gallery-image::after {
           content: "";
           position: absolute;
@@ -9959,6 +10118,66 @@ function GlobalVisualStyles() {
             linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.70)),
             radial-gradient(circle at 24% 16%, rgba(0,255,136,0.16), transparent 34%);
           pointer-events: none;
+        }
+
+        .gallery-visual-panel span,
+        .gallery-visual-panel i {
+          position: absolute;
+          z-index: 1;
+          display: block;
+          pointer-events: none;
+        }
+
+        .gallery-visual-panel span {
+          width: 76px;
+          height: 76px;
+          border-radius: 22px;
+          border: 1px solid rgba(184,255,222,0.30);
+          background:
+            linear-gradient(135deg, rgba(0,255,136,0.14), rgba(0,215,255,0.08));
+          box-shadow:
+            0 0 44px rgba(0,215,255,0.10),
+            inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+
+        .gallery-visual-panel i {
+          height: 3px;
+          width: 88px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, transparent, rgba(157,255,196,0.70), transparent);
+        }
+
+        .gallery-visual-panel i:nth-of-type(1) {
+          transform: translateY(-30px);
+        }
+
+        .gallery-visual-panel i:nth-of-type(2) {
+          width: 112px;
+        }
+
+        .gallery-visual-panel i:nth-of-type(3) {
+          transform: translateY(30px);
+        }
+
+        .gallery-visual-panel[data-gallery-visual="teamPatch"] span {
+          border-radius: 999px;
+        }
+
+        .gallery-visual-panel[data-gallery-visual="placement"] span {
+          width: 96px;
+          height: 62px;
+        }
+
+        .gallery-visual-panel[data-gallery-visual="placement"]::after {
+          background:
+            linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.62)),
+            radial-gradient(circle at 50% 50%, rgba(0,215,255,0.13), transparent 40%);
+        }
+
+        .gallery-visual-panel[data-gallery-visual="minimalMerch"] span {
+          width: 58px;
+          height: 58px;
+          border-radius: 999px;
         }
 
         .gallery-mark {
@@ -10524,7 +10743,7 @@ function GlobalVisualStyles() {
           overflow: hidden;
           padding: 22px;
           background:
-            radial-gradient(circle at 92% 0%, rgba(255,40,214,0.16), transparent 36%),
+            radial-gradient(circle at 92% 0%, rgba(0,215,255,0.13), transparent 36%),
             rgba(255,255,255,0.045);
         }
 
@@ -10555,8 +10774,8 @@ function GlobalVisualStyles() {
         .pricing-stitch-bars i {
           width: 34px;
           border-radius: 999px 999px 8px 8px;
-          background: linear-gradient(180deg, rgba(255,40,214,0.82), rgba(0,215,255,0.48));
-          box-shadow: 0 0 24px rgba(255,40,214,0.18);
+          background: linear-gradient(180deg, rgba(0,255,136,0.72), rgba(0,215,255,0.48));
+          box-shadow: 0 0 24px rgba(0,215,255,0.14);
         }
 
         .pricing-stitch-bars i:nth-child(1) { height: 18px; }
@@ -12072,7 +12291,7 @@ function GlobalVisualStyles() {
             gap: 18px;
           }
 
-          .gallery-card-with-image {
+          .gallery-card-with-visual {
             padding-top: 22px;
           }
 
@@ -12172,7 +12391,7 @@ function BackgroundEffects() {
           inset: '10% -8% auto',
           height: 520,
           background:
-            'radial-gradient(circle at 25% 35%, rgba(0,255,136,0.13), transparent 28%), radial-gradient(circle at 80% 26%, rgba(0,215,255,0.12), transparent 30%), radial-gradient(circle at 50% 82%, rgba(255,40,214,0.08), transparent 32%)',
+            'radial-gradient(circle at 25% 35%, rgba(0,255,136,0.13), transparent 28%), radial-gradient(circle at 80% 26%, rgba(0,215,255,0.12), transparent 30%), radial-gradient(circle at 50% 82%, rgba(124,240,212,0.08), transparent 32%)',
           filter: 'blur(10px)',
         }}
       />
@@ -12437,7 +12656,7 @@ function HomepageCardVisual({
           <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor={colors.main} stopOpacity="0.96" />
             <stop offset="58%" stopColor="#00d7ff" stopOpacity="0.66" />
-            <stop offset="100%" stopColor="#ff28d6" stopOpacity="0.54" />
+            <stop offset="100%" stopColor="#9dffc4" stopOpacity="0.54" />
           </linearGradient>
           <filter id={glowId} x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="5" result="blur" />
@@ -12495,7 +12714,7 @@ function HomepageCardVisual({
             />
             <circle cx="116" cy="62" r="4" fill={colors.main} />
             <circle cx="130" cy="78" r="4" fill="#00d7ff" />
-            <circle cx="145" cy="62" r="4" fill="#ff28d6" />
+            <circle cx="145" cy="62" r="4" fill="#7cf0d4" />
             <rect x="36" y="87" width="28" height="28" rx="10" fill="#050607" stroke="rgba(255,255,255,0.22)" />
             <rect x="68" y="87" width="28" height="28" rx="10" fill="#f5f1e8" stroke="rgba(255,255,255,0.22)" />
             <path d="M196 54H226M196 72H216M196 90H230" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.72" />
@@ -12512,7 +12731,7 @@ function HomepageCardVisual({
             <path d="M177 83C188 56 204 56 216 83C203 103 189 104 177 83Z" fill="none" stroke={colors.main} strokeWidth="3" />
             <circle cx="177" cy="83" r="4" fill="#00d7ff" />
             <circle cx="216" cy="83" r="4" fill="#00d7ff" />
-            <circle cx="196" cy="59" r="4" fill="#ff28d6" />
+            <circle cx="196" cy="59" r="4" fill="#7cf0d4" />
             <path d="M203 35L207 43L216 46L207 49L203 58L199 49L190 46L199 43Z" fill={colors.main} opacity="0.8" />
           </>
         )}
@@ -12539,7 +12758,7 @@ function HomepageCardVisual({
             <path d="M62 54H96M62 73H124M62 92H108" stroke="rgba(255,255,255,0.34)" strokeWidth="4" strokeLinecap="round" />
             <circle cx="143" cy="54" r="6" fill={colors.main} />
             <circle cx="143" cy="73" r="6" fill="#00d7ff" />
-            <circle cx="143" cy="92" r="6" fill="#ff28d6" />
+            <circle cx="143" cy="92" r="6" fill="#7cf0d4" />
             <circle cx="196" cy="74" r="34" fill={`url(#${gradientId})`} opacity="0.88" filter={`url(#${glowId})`} />
             <text x="196" y="83" textAnchor="middle" fontSize="30" fontWeight="900" fill="#05100b">€</text>
             <path d="M184 116H226" stroke={colors.main} strokeWidth="3" strokeLinecap="round" opacity="0.7" />
@@ -12554,7 +12773,7 @@ function HomepageCardVisual({
             <path d="M151 75C160 54 174 54 184 75C174 90 160 91 151 75Z" fill="none" stroke={colors.main} strokeWidth="3" />
             <circle cx="132" cy="47" r="4" fill={colors.main} />
             <circle cx="204" cy="71" r="4" fill="#00d7ff" />
-            <circle cx="148" cy="102" r="4" fill="#ff28d6" />
+            <circle cx="148" cy="102" r="4" fill="#7cf0d4" />
             <path d="M132 47L166 62L204 71M166 62L148 102" stroke="rgba(255,255,255,0.20)" />
           </>
         )}
@@ -12600,35 +12819,33 @@ function GalleryCard({
   title,
   text,
   accent,
-  image,
+  visual,
 }: {
   title: string;
   text: string;
   accent: Accent;
-  image: string;
+  visual: GalleryVisualKind;
 }) {
   const colors = accentStyles[accent];
 
   return (
     <div
-      className="glow-card gallery-card gallery-card-with-image"
+      className="glow-card gallery-card gallery-card-with-visual"
       style={{
         '--card-glow': colors.glow,
         border: `1px solid ${colors.border}`,
         background: colors.surface,
       } as CSSProperties}
     >
-      <div className="gallery-image">
-        <Image
-          src={image}
-          alt={`${title} embroidery texture`}
-          fill
-          sizes="(max-width: 640px) calc(100vw - 80px), (max-width: 1180px) 44vw, 260px"
-          style={{
-            objectFit: 'cover',
-            objectPosition: 'center',
-          }}
-        />
+      <div
+        className="gallery-image gallery-visual-panel"
+        data-gallery-visual={visual}
+        aria-hidden="true"
+      >
+        <span />
+        <i />
+        <i />
+        <i />
       </div>
 
       <div className="gallery-copy">
@@ -12865,6 +13082,11 @@ type HomepageCardVisualKind =
   | 'fabricPreview'
   | 'cleanup'
   | 'price';
+type GalleryVisualKind =
+  | 'monogram'
+  | 'teamPatch'
+  | 'placement'
+  | 'minimalMerch';
 
 const accentStyles: Record<
   Accent,
@@ -12896,22 +13118,22 @@ const accentStyles: Record<
       'linear-gradient(145deg, rgba(7,14,18,0.82), rgba(4,7,10,0.90))',
   },
   purple: {
-    main: '#a879ff',
-    soft: 'rgba(168,121,255,0.14)',
-    border: 'rgba(168,121,255,0.24)',
-    glow: 'rgba(168,121,255,0.24)',
-    icon: 'linear-gradient(135deg, rgba(168,121,255,0.32), rgba(255,40,214,0.14))',
+    main: '#7cf0d4',
+    soft: 'rgba(124,240,212,0.13)',
+    border: 'rgba(124,240,212,0.22)',
+    glow: 'rgba(124,240,212,0.20)',
+    icon: 'linear-gradient(135deg, rgba(124,240,212,0.28), rgba(0,215,255,0.12))',
     surface:
-      'linear-gradient(145deg, rgba(12,10,18,0.82), rgba(6,6,10,0.90))',
+      'linear-gradient(145deg, rgba(7,17,16,0.82), rgba(3,7,8,0.90))',
   },
   pink: {
-    main: '#ff28d6',
-    soft: 'rgba(255,40,214,0.13)',
-    border: 'rgba(255,40,214,0.22)',
-    glow: 'rgba(255,40,214,0.24)',
-    icon: 'linear-gradient(135deg, rgba(255,40,214,0.34), rgba(255,206,0,0.16))',
+    main: '#9dffc4',
+    soft: 'rgba(157,255,196,0.12)',
+    border: 'rgba(157,255,196,0.20)',
+    glow: 'rgba(0,255,136,0.18)',
+    icon: 'linear-gradient(135deg, rgba(157,255,196,0.28), rgba(0,215,255,0.10))',
     surface:
-      'linear-gradient(145deg, rgba(16,8,14,0.82), rgba(7,6,9,0.90))',
+      'linear-gradient(145deg, rgba(7,18,13,0.82), rgba(3,7,6,0.90))',
   },
 };
 
@@ -12976,17 +13198,17 @@ function getGalleryItems(locale: Locale): Array<{
   title: string;
   text: string;
   accent: Accent;
-  image: string;
+  visual: GalleryVisualKind;
 }> {
   const copy = getLocalizedArray<{
     title: string;
     text: string;
   }>(locale, 'gallery');
   const meta = [
-    { accent: 'green' as const, image: homepageImages.quietMonogram },
-    { accent: 'cyan' as const, image: homepageImages.streetwearMark },
-    { accent: 'purple' as const, image: homepageImages.patchBadge },
-    { accent: 'pink' as const, image: homepageImages.minimalGraphic },
+    { accent: 'green' as const, visual: 'monogram' as const },
+    { accent: 'cyan' as const, visual: 'teamPatch' as const },
+    { accent: 'purple' as const, visual: 'placement' as const },
+    { accent: 'pink' as const, visual: 'minimalMerch' as const },
   ];
 
   return meta.map((item, index) => ({
@@ -13187,7 +13409,7 @@ const pricingPanel: CSSProperties = {
 };
 
 const ctaSection: CSSProperties = {
-  padding: '92px 24px 120px',
+  padding: '96px 24px 156px',
   position: 'relative',
   zIndex: 1,
 };
