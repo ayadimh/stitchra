@@ -48,6 +48,9 @@ const SHIRT_RENDER_PATHS: Record<
 } as const;
 
 const FRAME_COUNT = 16;
+const SHIRT_COLORS_WITH_360_FRAMES = new Set<
+  ShirtConfiguratorProps['shirtColor']
+>(['white']);
 const ROTATE_FRAME_THRESHOLD = 26;
 const STATIC_RENDER_SHIRT_BOUNDS: Record<StaticRenderSide, ZoneLayout> = {
   front: { left: 31, top: 26, width: 38, height: 58 },
@@ -466,9 +469,11 @@ export default function ShirtPlacementMockup({
   const zone = getEmbroideryZone(placementZone);
   const selectedPlacementSideLabel = getPlacementSideLabel(placementZone);
   const isWhite = shirtColor === 'white';
-  const preferred360FramePath = !failed360FrameSets[shirtColor]
-    ? getFramePath(shirtColor, currentFrame)
-    : null;
+  const hasNative360Frames = SHIRT_COLORS_WITH_360_FRAMES.has(shirtColor);
+  const preferred360FramePath =
+    hasNative360Frames && !failed360FrameSets[shirtColor]
+      ? getFramePath(shirtColor, currentFrame)
+      : null;
   const fallbackWhite360FramePath =
     shirtColor !== 'white' && !failed360FrameSets.white
       ? getFramePath('white', currentFrame)

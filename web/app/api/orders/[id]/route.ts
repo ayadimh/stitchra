@@ -18,6 +18,8 @@ import {
 } from '@/lib/pricing';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const databaseMessage = 'Database not configured.';
 
@@ -52,6 +54,54 @@ function parseNullableMoney(value: unknown) {
   }
 
   return value;
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    if (!isStudioRequest(request)) {
+      return NextResponse.json(
+        { message: 'Studio passcode required.' },
+        { status: 401 }
+      );
+    }
+
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        {
+          databaseConfigured: false,
+          message: databaseMessage,
+        },
+        { status: 503 }
+      );
+    }
+
+    const { id } = await params;
+    const order = await getOrderById(id);
+
+    if (!order) {
+      return NextResponse.json(
+        { message: 'Order not found.' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ order });
+  } catch (error) {
+    console.error('Studio order detail failed', {
+      reason: getOrderErrorMessage(error),
+    });
+
+    return NextResponse.json(
+      {
+        message: 'Order storage error.',
+        details: getOrderErrorMessage(error),
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function PATCH(

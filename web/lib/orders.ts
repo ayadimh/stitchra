@@ -1057,28 +1057,6 @@ export async function listOrders(status?: string | null) {
   }));
 }
 
-export async function checkOrdersStorageHealth() {
-  if (!isDatabaseConfigured()) {
-    return false;
-  }
-
-  const params = new URLSearchParams({
-    select: 'id',
-    limit: '1',
-  });
-
-  await supabaseRequest<SupabaseOrderRow[]>(
-    `orders?${params.toString()}`,
-    {},
-    {
-      endpointName: 'orders.health',
-      selectMode: 'select_id',
-    }
-  );
-
-  return true;
-}
-
 export async function getOrderById(id: string) {
   if (!isDatabaseConfigured()) {
     return null;
