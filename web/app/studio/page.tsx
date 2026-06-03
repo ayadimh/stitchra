@@ -21,6 +21,7 @@ const API =
   'https://stitchra-production.up.railway.app';
 const STUDIO_ORDERS_TIMEOUT_MS = 10_000;
 const STUDIO_ORDER_DETAIL_TIMEOUT_MS = 10_000;
+const STUDIO_SYSTEM_STATUS_TIMEOUT_MS = 8_000;
 
 type OrdersLoadProblem = 'none' | 'error' | 'timeout';
 
@@ -232,6 +233,18 @@ type StudioToast = {
   message: string;
 };
 type OfferKpiTone = 'neutral' | 'good' | 'warning' | 'danger';
+type SystemStatusTone = 'success' | 'warning' | 'error';
+type SystemStatusResponse = {
+  appStatus: 'ok' | 'degraded' | 'error';
+  supabaseUrlConfigured: boolean;
+  supabaseServiceRoleConfigured: boolean;
+  ordersStorageCheck: 'ok' | 'error';
+  railwayApiReachable: 'ok' | 'error' | 'unknown';
+  resendEmailConfigured: boolean;
+  stripeConfigured: boolean;
+  durationMs: number;
+  timestamp: string;
+};
 
 const placementSize = {
   left: { width: 90, height: 60, label: 'Left chest' },
@@ -1087,6 +1100,10 @@ export default function StudioPage() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingStatus, setPricingStatus] = useState('');
   const [pricingError, setPricingError] = useState('');
+  const [systemStatus, setSystemStatus] =
+    useState<SystemStatusResponse | null>(null);
+  const [systemStatusLoading, setSystemStatusLoading] = useState(false);
+  const [systemStatusError, setSystemStatusError] = useState('');
   const [toast, setToast] = useState<StudioToast | null>(null);
   const isMountedRef = useRef(false);
   const ordersRequestRef = useRef<{
@@ -1404,6 +1421,62 @@ export default function StudioPage() {
       console.error(error);
     } finally {
       setPricingLoading(false);
+    }
+  };
+
+  const loadSystemStatus = async () => {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, STUDIO_SYSTEM_STATUS_TIMEOUT_MS);
+
+    setSystemStatusLoading(true);
+    setSystemStatusError('');
+
+    try {
+      const response = await fetch('/api/studio/status', {
+        headers: {
+          'x-studio-passcode': passcode,
+        },
+        signal: controller.signal,
+      });
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as Partial<SystemStatusResponse> & {
+        message?: string;
+      };
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      if (!response.ok || !payload.appStatus || !payload.timestamp) {
+        setSystemStatusError(
+          payload.message ?? 'Could not load system status.'
+        );
+        return;
+      }
+
+      setSystemStatus(payload as SystemStatusResponse);
+    } catch (error) {
+      if (!isMountedRef.current || (controller.signal.aborted && !timedOut)) {
+        return;
+      }
+
+      setSystemStatusError(
+        timedOut
+          ? 'System status took too long to load.'
+          : 'Could not load system status.'
+      );
+      console.error(error);
+    } finally {
+      window.clearTimeout(timeoutId);
+
+      if (isMountedRef.current) {
+        setSystemStatusLoading(false);
+      }
     }
   };
 
@@ -2072,6 +2145,7 @@ export default function StudioPage() {
     if (passcode === expectedPasscode) {
       setUnlocked(true);
       setGateError('');
+      void loadSystemStatus();
       void loadOrders();
       void loadPricingSettings();
       return;
@@ -2265,6 +2339,13 @@ export default function StudioPage() {
           </Link>
         </div>
       </header>
+
+      <SystemStatusPanel
+        status={systemStatus}
+        loading={systemStatusLoading}
+        error={systemStatusError}
+        onRefresh={() => void loadSystemStatus()}
+      />
 
       {activeView === 'orders' && (
         <OrdersDashboard
@@ -2534,6 +2615,146 @@ function OfferKpiCard({
       <span style={offerKpiLabel}>{label}</span>
       {children ?? <strong style={offerKpiValue}>{value}</strong>}
     </div>
+  );
+}
+
+function getConfiguredStatus(
+  configured: boolean
+): { label: string; tone: SystemStatusTone } {
+  return {
+    label: configured ? 'Configured' : 'Missing',
+    tone: configured ? 'success' : 'error',
+  };
+}
+
+function getHealthStatus(
+  value: 'ok' | 'error' | 'unknown'
+): { label: string; tone: SystemStatusTone } {
+  if (value === 'ok') {
+    return { label: 'OK', tone: 'success' };
+  }
+
+  if (value === 'unknown') {
+    return { label: 'Unknown', tone: 'warning' };
+  }
+
+  return { label: 'Error', tone: 'error' };
+}
+
+function getAppStatusDisplay(
+  status: SystemStatusResponse['appStatus']
+): { label: string; tone: SystemStatusTone } {
+  if (status === 'ok') {
+    return { label: 'OK', tone: 'success' };
+  }
+
+  if (status === 'degraded') {
+    return { label: 'Degraded', tone: 'warning' };
+  }
+
+  return { label: 'Error', tone: 'error' };
+}
+
+function formatSystemStatusTimestamp(timestamp: string) {
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
+  return date.toLocaleString();
+}
+
+function SystemStatusPanel({
+  status,
+  loading,
+  error,
+  onRefresh,
+}: {
+  status: SystemStatusResponse | null;
+  loading: boolean;
+  error: string;
+  onRefresh: () => void;
+}) {
+  const checks = status
+    ? [
+        {
+          name: 'App',
+          ...getAppStatusDisplay(status.appStatus),
+        },
+        {
+          name: 'Supabase URL',
+          ...getConfiguredStatus(status.supabaseUrlConfigured),
+        },
+        {
+          name: 'Service role',
+          ...getConfiguredStatus(status.supabaseServiceRoleConfigured),
+        },
+        {
+          name: 'Orders storage',
+          ...getHealthStatus(status.ordersStorageCheck),
+        },
+        {
+          name: 'Railway API',
+          ...getHealthStatus(status.railwayApiReachable),
+        },
+        {
+          name: 'Email',
+          ...getConfiguredStatus(status.resendEmailConfigured),
+        },
+        {
+          name: 'Stripe',
+          ...getConfiguredStatus(status.stripeConfigured),
+        },
+      ]
+    : [];
+
+  return (
+    <section style={systemStatusPanel}>
+      <div style={systemStatusHeader}>
+        <div>
+          <p style={eyebrow}>System</p>
+          <h2 style={systemStatusTitle}>System status</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          style={{
+            ...secondaryButton,
+            opacity: loading ? 0.68 : 1,
+          }}
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && <p style={errorText}>{error}</p>}
+
+      {status ? (
+        <>
+          <div style={systemStatusGrid}>
+            {checks.map((check) => (
+              <div key={check.name} style={systemStatusItem}>
+                <span style={detailLabel}>{check.name}</span>
+                <span style={systemStatusPill(check.tone)}>
+                  {check.label}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p style={systemStatusMeta}>
+            Updated {formatSystemStatusTimestamp(status.timestamp)}
+            {' · '}
+            {status.durationMs} ms
+          </p>
+        </>
+      ) : (
+        <p style={compactMutedText}>
+          {loading ? 'Loading status...' : 'Status not loaded yet.'}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -4927,6 +5148,84 @@ const panel: CSSProperties = {
   background:
     'linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025))',
   boxShadow: '0 30px 90px rgba(0,0,0,0.34)',
+};
+
+const systemStatusPanel: CSSProperties = {
+  ...panel,
+  maxWidth: 1320,
+  margin: '0 auto 20px',
+  padding: '18px',
+};
+
+const systemStatusHeader: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+  flexWrap: 'wrap',
+  marginBottom: 14,
+};
+
+const systemStatusTitle: CSSProperties = {
+  margin: 0,
+  fontSize: 20,
+};
+
+const systemStatusGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))',
+  gap: 10,
+};
+
+const systemStatusItem: CSSProperties = {
+  minHeight: 58,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: 10,
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 16,
+  padding: '11px 12px',
+  background: 'rgba(0,0,0,0.22)',
+};
+
+function systemStatusPill(tone: SystemStatusTone): CSSProperties {
+  const colors = {
+    success: {
+      border: 'rgba(157,255,196,0.34)',
+      background: 'rgba(157,255,196,0.10)',
+      color: '#9dffc4',
+    },
+    warning: {
+      border: 'rgba(255,224,131,0.36)',
+      background: 'rgba(255,224,131,0.12)',
+      color: '#ffe083',
+    },
+    error: {
+      border: 'rgba(255,157,157,0.36)',
+      background: 'rgba(255,157,157,0.12)',
+      color: '#ffb4b4',
+    },
+  }[tone];
+
+  return {
+    minWidth: 72,
+    textAlign: 'center',
+    padding: '7px 10px',
+    borderRadius: 999,
+    border: `1px solid ${colors.border}`,
+    background: colors.background,
+    color: colors.color,
+    fontSize: 12,
+    fontWeight: 900,
+    lineHeight: 1,
+  };
+}
+
+const systemStatusMeta: CSSProperties = {
+  ...tinyText,
+  margin: '12px 0 0',
 };
 
 const settingsSection: CSSProperties = {
