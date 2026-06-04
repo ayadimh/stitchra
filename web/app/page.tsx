@@ -35,6 +35,7 @@ import DesignStartOptions, {
   type DesignStartMode,
 } from '@/components/configurator/DesignStartOptions';
 import DraftRecoveryBanner from '@/components/configurator/DraftRecoveryBanner';
+import IntroSplash from '@/components/IntroSplash';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
 import UploadOwnDesignPanel from '@/components/configurator/UploadOwnDesignPanel';
 import type { CustomLogoPlacement } from '@/components/configurator/types';
@@ -2967,6 +2968,7 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     >
       <BackgroundEffects />
       <GlobalVisualStyles />
+      {entry === 'home' && <IntroSplash />}
       <Header
         locale={activeLocale}
         t={t}
