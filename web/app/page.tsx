@@ -35,7 +35,6 @@ import DesignStartOptions, {
   type DesignStartMode,
 } from '@/components/configurator/DesignStartOptions';
 import DraftRecoveryBanner from '@/components/configurator/DraftRecoveryBanner';
-import MobileLogoIntro from '@/components/mobile/MobileLogoIntro';
 import ShirtPlacementMockup from '@/components/configurator/ShirtPlacementMockup';
 import UploadOwnDesignPanel from '@/components/configurator/UploadOwnDesignPanel';
 import type { CustomLogoPlacement } from '@/components/configurator/types';
@@ -1275,10 +1274,16 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
   const handleStartDesigningClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
+
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        window.location.assign(localizedPath(activeLocale, '/design'));
+        return;
+      }
+
       window.history.replaceState(null, '', '#designer');
       focusShirtViewer(undefined, true);
     },
-    [focusShirtViewer]
+    [activeLocale, focusShirtViewer]
   );
 
   const scrollToHomeStart = useCallback(() => {
@@ -2962,8 +2967,6 @@ export default function Home({ locale, entry = 'home' }: HomeProps = {}) {
     >
       <BackgroundEffects />
       <GlobalVisualStyles />
-      {entry === 'home' && <MobileLogoIntro />}
-
       <Header
         locale={activeLocale}
         t={t}
@@ -10856,12 +10859,12 @@ function GlobalVisualStyles() {
 
         @media (max-width: 768px) {
           .desktop-home-section {
-            display: none !important;
+            display: block;
           }
 
           .mobile-app-launch,
           .mobile-explore-hub {
-            display: block;
+            display: none !important;
           }
 
           .home-entry-home .mobile-explore-hub,
@@ -10875,6 +10878,87 @@ function GlobalVisualStyles() {
 
           .home-entry-design .designer-section {
             display: none !important;
+          }
+
+          .site-header {
+            background:
+              linear-gradient(180deg, rgba(0,8,7,0.96), rgba(0,5,5,0.86)) !important;
+            border-bottom-color: rgba(185,255,222,0.16) !important;
+            box-shadow:
+              0 18px 58px rgba(0,0,0,0.54),
+              inset 0 1px 0 rgba(255,255,255,0.05) !important;
+          }
+
+          .site-nav {
+            gap: 10px !important;
+          }
+
+          .header-actions {
+            flex: 1 1 auto;
+            justify-content: flex-end;
+            overflow: hidden;
+          }
+
+          .mobile-start-link {
+            max-width: min(42vw, 156px);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .mobile-menu-button {
+            flex: 0 0 auto;
+            white-space: nowrap;
+          }
+
+          .home-entry-home .desktop-hero-section {
+            min-height: auto !important;
+            padding: calc(108px + env(safe-area-inset-top)) 16px 76px !important;
+          }
+
+          .home-entry-home .hero-atelier {
+            grid-template-columns: minmax(0, 1fr);
+            max-width: 600px;
+            gap: 20px;
+          }
+
+          .home-entry-home .hero-copy-panel {
+            padding: 24px 20px;
+            border-radius: 28px;
+          }
+
+          .home-entry-home .hero-preview-card {
+            height: auto;
+            border-radius: 28px;
+          }
+
+          .home-entry-home .hero-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+
+          .home-entry-home .hero-actions .lux-button {
+            width: 100%;
+          }
+
+          .home-entry-home .hero-proof-strip,
+          .home-entry-home .hero-spec-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .home-entry-home #how,
+          .home-entry-home #features,
+          .home-entry-home #craft,
+          .home-entry-home #gallery,
+          .home-entry-home #pricing,
+          .home-entry-home #faq,
+          .home-entry-home .final-cta-section {
+            padding: 88px 18px 76px !important;
+          }
+
+          .home-entry-home .pricing-confidence-panel {
+            margin-top: 32px !important;
           }
 
           .mobile-design-wizard {
