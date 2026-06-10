@@ -70,6 +70,7 @@ export default function IntroSplash() {
   return (
     <section
       className={styles.overlay}
+      data-intro-version="real-shirt-front-black-v2"
       aria-label="Stitchra intro"
       role="dialog"
       aria-modal="true"

@@ -76,8 +76,8 @@
 
 .shirtPreview {
   position: relative;
-  width: min(440px, 100%);
-  min-height: 540px;
+  width: min(500px, 100%);
+  min-height: 560px;
   display: grid;
   place-items: center;
 }
@@ -95,7 +95,7 @@
 
 .shirtFrame {
   position: relative;
-  width: min(390px, 88%);
+  width: min(440px, 94%);
   aspect-ratio: 0.77;
   display: grid;
   place-items: center;
@@ -103,11 +103,11 @@
   border-radius: 34px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.09), transparent 28%),
-    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018));
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.14), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,0.072), rgba(255,255,255,0.024));
   box-shadow:
-    0 34px 100px rgba(0,0,0,0.50),
-    0 0 46px rgba(0,255,136,0.10),
+    0 36px 104px rgba(0,0,0,0.46),
+    0 0 52px rgba(0,255,136,0.13),
     inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
@@ -136,13 +136,14 @@
 .shirtImage {
   position: relative;
   z-index: 1;
-  width: min(86%, 330px);
+  width: min(94%, 398px);
   height: auto;
   object-fit: contain;
   filter:
-    drop-shadow(0 28px 42px rgba(0,0,0,0.48))
-    contrast(1.04)
-    saturate(0.92);
+    drop-shadow(0 30px 44px rgba(0,0,0,0.48))
+    brightness(1.18)
+    contrast(1.08)
+    saturate(1.02);
 }
 
 .chestLogo {
@@ -307,12 +308,12 @@
   }
 
   .shirtFrame {
-    width: min(285px, 86%);
+    width: min(315px, 88%);
     border-radius: 28px;
   }
 
   .shirtImage {
-    width: min(82%, 226px);
+    width: min(92%, 270px);
   }
 
   .chestLogo {
@@ -384,11 +385,11 @@
   }
 
   .shirtFrame {
-    width: min(245px, 84%);
+    width: min(270px, 86%);
   }
 
   .shirtImage {
-    width: min(82%, 196px);
+    width: min(92%, 232px);
   }
 
   .chestLogo {
