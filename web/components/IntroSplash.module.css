@@ -24,7 +24,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 44%, rgba(255,255,255,0.08), transparent 24%),
+    radial-gradient(circle at 50% 44%, rgba(255,255,255,0.07), transparent 24%),
     linear-gradient(180deg, transparent, rgba(0,0,0,0.38));
 }
 
@@ -74,120 +74,89 @@
   place-items: center;
 }
 
-.mannequin {
+.shirtPreview {
   position: relative;
-  width: min(420px, 100%);
-  height: 520px;
+  width: min(440px, 100%);
+  min-height: 540px;
+  display: grid;
+  place-items: center;
 }
 
-.head {
+.shirtHalo {
   position: absolute;
-  top: 16px;
-  left: 50%;
-  width: 86px;
-  height: 96px;
-  transform: translateX(-50%);
-  border: 1px solid rgba(185,255,222,0.12);
-  border-radius: 38px 38px 34px 34px;
+  inset: 9% 7% 16%;
+  border-radius: 999px;
   background:
-    radial-gradient(circle at 38% 18%, rgba(255,255,255,0.12), transparent 36%),
-    linear-gradient(160deg, #171d1c, #080b0c 72%);
-  box-shadow:
-    inset 10px 10px 26px rgba(255,255,255,0.04),
-    inset -18px -22px 34px rgba(0,0,0,0.52),
-    0 24px 72px rgba(0,0,0,0.42);
+    radial-gradient(circle at 48% 32%, rgba(0,255,136,0.18), transparent 34%),
+    radial-gradient(circle at 62% 62%, rgba(0,200,255,0.12), transparent 42%);
+  filter: blur(24px);
+  opacity: 0.95;
 }
 
-.neck {
-  position: absolute;
-  top: 102px;
-  left: 50%;
-  width: 54px;
-  height: 58px;
-  transform: translateX(-50%);
-  border-radius: 16px 16px 10px 10px;
-  background: linear-gradient(180deg, #141918, #080b0c);
-}
-
-.shirtStage {
-  position: absolute;
-  inset: 126px 0 28px;
-}
-
-.sleeveLeft,
-.sleeveRight {
-  position: absolute;
-  top: 68px;
-  width: 126px;
-  height: 228px;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.08), transparent 28%),
-    linear-gradient(160deg, #161b1c, #050607 74%);
-  box-shadow:
-    inset 16px 20px 30px rgba(255,255,255,0.055),
-    inset -24px -32px 48px rgba(0,0,0,0.58),
-    0 30px 70px rgba(0,0,0,0.38);
-}
-
-.sleeveLeft {
-  left: 22px;
-  border-radius: 50px 22px 48px 66px;
-  clip-path: polygon(42% 0, 100% 16%, 78% 100%, 18% 91%, 0 24%);
-  transform: rotate(6deg);
-}
-
-.sleeveRight {
-  right: 22px;
-  border-radius: 22px 50px 66px 48px;
-  clip-path: polygon(0 16%, 58% 0, 100% 24%, 82% 91%, 22% 100%);
-  transform: rotate(-6deg);
-}
-
-.shirtBody {
-  position: absolute;
-  top: 28px;
-  left: 50%;
-  width: 300px;
-  height: 352px;
-  transform: translateX(-50%);
+.shirtFrame {
+  position: relative;
+  width: min(390px, 88%);
+  aspect-ratio: 0.77;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(185,255,222,0.16);
+  border-radius: 34px;
   overflow: hidden;
-  border-radius: 82px 82px 38px 38px / 78px 78px 32px 32px;
-  clip-path: polygon(17% 0, 35% 0, 42% 12%, 58% 12%, 65% 0, 83% 0, 98% 22%, 87% 100%, 13% 100%, 2% 22%);
   background:
-    linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.12) 18%, transparent 34%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.030) 0 1px, transparent 1px 8px),
-    linear-gradient(160deg, #161b1c, #050607 74%);
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.09), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018));
   box-shadow:
-    inset 22px 22px 42px rgba(255,255,255,0.055),
-    inset -38px -48px 66px rgba(0,0,0,0.66),
-    0 56px 118px rgba(0,0,0,0.56),
-    0 0 78px rgba(124,240,212,0.13);
+    0 34px 100px rgba(0,0,0,0.50),
+    0 0 46px rgba(0,255,136,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
-.shirtBody::before {
+.shirtFrame::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 50%;
-  width: 102px;
-  height: 58px;
-  transform: translateX(-50%);
-  border-radius: 0 0 999px 999px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0.34));
-  box-shadow: 0 10px 24px rgba(0,0,0,0.38);
+  inset: 18px;
+  border-radius: 28px;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.08), transparent 28%),
+    radial-gradient(circle at 50% 42%, rgba(0,0,0,0.12), transparent 58%);
+  pointer-events: none;
+}
+
+.shirtFrame::after {
+  content: "";
+  position: absolute;
+  inset: auto 11% 8%;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.48);
+  filter: blur(10px);
+  opacity: 0.72;
+}
+
+.shirtImage {
+  position: relative;
+  z-index: 1;
+  width: min(86%, 330px);
+  height: auto;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 28px 42px rgba(0,0,0,0.48))
+    contrast(1.04)
+    saturate(0.92);
 }
 
 .chestLogo {
   position: absolute;
-  top: 122px;
+  z-index: 2;
+  top: 33%;
   left: 50%;
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   display: grid;
   place-items: center;
   transform: translateX(-50%);
-  border: 1px solid rgba(124,240,212,0.36);
-  border-radius: 22px;
+  border: 1px solid rgba(124,240,212,0.40);
+  border-radius: 20px;
   color: #9dffc4;
   background:
     radial-gradient(circle at 50% 35%, rgba(0,255,136,0.18), transparent 58%),
@@ -197,11 +166,47 @@
     inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
+.previewPlate {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 58px;
+  max-width: min(250px, 78%);
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(185,255,222,0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(10,24,22,0.72), rgba(3,8,9,0.90)),
+    rgba(255,255,255,0.05);
+  box-shadow:
+    0 18px 48px rgba(0,0,0,0.34),
+    0 0 26px rgba(0,215,255,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.previewPlate span {
+  color: rgba(246,255,249,0.70);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.previewPlate strong {
+  color: #f7fff9;
+  font-size: 14px;
+  font-weight: 920;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
 .shadow {
   position: absolute;
   left: 50%;
-  bottom: 0;
-  width: 320px;
+  bottom: 12px;
+  width: min(340px, 78%);
   height: 52px;
   transform: translateX(-50%);
   border-radius: 50%;
@@ -258,6 +263,13 @@
   cursor: pointer;
 }
 
+.enterButton:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 20px 54px rgba(0,200,255,0.24),
+    0 0 24px rgba(0,255,136,0.14);
+}
+
 .enterButton:focus-visible {
   outline: 2px solid rgba(255,255,255,0.88);
   outline-offset: 4px;
@@ -286,61 +298,48 @@
   }
 
   .visual {
-    min-height: 360px;
+    min-height: 350px;
   }
 
-  .mannequin {
-    width: min(330px, 100%);
-    height: 360px;
+  .shirtPreview {
+    width: min(350px, 100%);
+    min-height: 350px;
   }
 
-  .head {
-    top: 4px;
-    width: 58px;
-    height: 66px;
-    border-radius: 26px 26px 22px 22px;
+  .shirtFrame {
+    width: min(285px, 86%);
+    border-radius: 28px;
   }
 
-  .neck {
-    top: 62px;
-    width: 38px;
-    height: 44px;
-  }
-
-  .shirtStage {
-    inset: 90px 0 16px;
-  }
-
-  .sleeveLeft,
-  .sleeveRight {
-    top: 48px;
-    width: 92px;
-    height: 166px;
-  }
-
-  .sleeveLeft {
-    left: 24px;
-  }
-
-  .sleeveRight {
-    right: 24px;
-  }
-
-  .shirtBody {
-    top: 20px;
-    width: 220px;
-    height: 258px;
-    border-radius: 62px 62px 30px 30px / 58px 58px 26px 26px;
+  .shirtImage {
+    width: min(82%, 226px);
   }
 
   .chestLogo {
-    top: 88px;
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
+    top: 32%;
+    width: 54px;
+    height: 54px;
+    border-radius: 17px;
+  }
+
+  .previewPlate {
+    right: 0;
+    bottom: 30px;
+    max-width: min(218px, 76%);
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .previewPlate span {
+    font-size: 10px;
+  }
+
+  .previewPlate strong {
+    font-size: 12px;
   }
 
   .shadow {
+    bottom: 2px;
     width: 250px;
     height: 42px;
   }
@@ -361,45 +360,68 @@
 
   .subline {
     max-width: 330px;
-    margin: 16px 0 22px;
-    font-size: 15.5px;
+    margin: 16px 0 20px;
+    font-size: 15px;
+    line-height: 1.5;
   }
 
   .enterButton {
-    width: min(100%, 310px);
-  }
-
-  .detailLine {
-    max-width: 310px;
-    line-height: 1.45;
+    width: min(100%, 280px);
   }
 }
 
-@media (max-width: 380px), (max-height: 690px) {
-  .visual {
-    min-height: 306px;
-  }
-
-  .mannequin {
-    height: 306px;
-    transform: scale(0.86);
-  }
-
+@media (max-width: 420px), (max-height: 720px) {
   .panel {
-    gap: 6px;
+    padding: 18px 14px;
+  }
+
+  .visual {
+    min-height: 300px;
+  }
+
+  .shirtPreview {
+    min-height: 300px;
+  }
+
+  .shirtFrame {
+    width: min(245px, 84%);
+  }
+
+  .shirtImage {
+    width: min(82%, 196px);
+  }
+
+  .chestLogo {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+  }
+
+  .previewPlate {
+    bottom: 16px;
+    max-width: min(204px, 78%);
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .copy h1 {
+    font-size: clamp(31px, 10.5vw, 40px);
   }
 
   .subline {
-    margin: 12px 0 18px;
+    margin: 12px 0 16px;
+  }
+
+  .detailLine {
+    margin-top: 12px;
+    font-size: 12px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .overlay,
-  .panel,
-  .enterButton {
-    scroll-behavior: auto;
-    transition: none;
-    animation: none;
+  .enterButton:hover {
+    transform: none;
   }
 }
